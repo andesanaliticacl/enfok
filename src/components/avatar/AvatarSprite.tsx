@@ -5,13 +5,14 @@ import type { AvatarConfig } from '@/lib/avatar/types'
 
 interface AvatarSpriteProps {
   config: AvatarConfig
-  scale?: number
+  /** Final rendered box size in pixels. The internal scale is derived from this, so the sprite never gets clipped by a mismatched container. */
+  size?: number
   className?: string
 }
 
 const provider = lpcProvider
 
-export function AvatarSprite({ config, scale = 3, className }: AvatarSpriteProps) {
+export function AvatarSprite({ config, size = 192, className }: AvatarSpriteProps) {
   const layers = useMemo(() => {
     return provider.categories
       .map((category) => {
@@ -24,7 +25,7 @@ export function AvatarSprite({ config, scale = 3, className }: AvatarSpriteProps
       .sort((a, b) => a.zIndex - b.zIndex)
   }, [config])
 
-  const size = provider.frameSize * scale
+  const scale = size / provider.frameSize
 
   return (
     <div className={className} style={{ width: size, height: size, position: 'relative', overflow: 'hidden' }}>

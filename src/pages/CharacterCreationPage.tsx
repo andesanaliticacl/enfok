@@ -89,7 +89,7 @@ export function CharacterCreationPage() {
       <h1 className="font-pixel text-lg text-gold-400">Crea tu aventurero</h1>
 
       <div className="my-8 flex justify-center">
-        <AvatarSprite config={avatar} scale={5} />
+        <AvatarSprite config={avatar} size={256} />
       </div>
 
       <div className="mb-4 flex flex-wrap justify-center gap-2">

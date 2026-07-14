@@ -15,9 +15,7 @@ export function MapPage() {
     <div>
       <header className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-ink-800">
-            <AvatarSprite config={avatar} scale={2} />
-          </div>
+          <AvatarSprite config={avatar} size={48} className="rounded-xl bg-ink-800" />
           <div>
             <h1 className="font-pixel text-lg text-gold-400">Questly</h1>
             <p className="mt-1 text-xs text-ink-400">El mapa de tu vida</p>

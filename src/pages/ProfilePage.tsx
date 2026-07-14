@@ -25,9 +25,7 @@ export function ProfilePage() {
   return (
     <div>
       <header className="mb-6 flex flex-col items-center text-center">
-        <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl bg-ink-800">
-          <AvatarSprite config={avatar} scale={4} />
-        </div>
+        <AvatarSprite config={avatar} size={96} className="rounded-2xl bg-ink-800" />
         <h1 className="mt-3 text-lg font-semibold text-ink-50">{profile.name}</h1>
         <p className="font-pixel text-[10px] text-gold-400">Nivel {profile.level}</p>
         {biome && (
