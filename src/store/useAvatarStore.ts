@@ -33,10 +33,13 @@ interface AvatarState {
   hasCreatedCharacter: boolean
   avatar: AvatarConfig
   biome: BiomeId | null
+  biomeArt: string | null
   setFigure: (figure: AvatarConfig['figure']) => void
   setOption: (category: keyof AvatarConfig['options'], optionId: string) => void
   setColor: (category: keyof AvatarConfig['colors'], colorId: string) => void
   setBiome: (biome: BiomeId) => void
+  setBiomeArt: (dataUrl: string) => void
+  clearBiomeArt: () => void
   setPixelOverride: (category: keyof AvatarConfig['options'], dataUrl: string) => void
   clearPixelOverride: (category: keyof AvatarConfig['options']) => void
   finishCreation: () => void
@@ -49,6 +52,7 @@ export const useAvatarStore = create<AvatarState>()(
       hasCreatedCharacter: false,
       avatar: DEFAULT_AVATAR,
       biome: null,
+      biomeArt: null,
 
       setFigure: (figure) =>
         set((state) => {
@@ -83,6 +87,10 @@ export const useAvatarStore = create<AvatarState>()(
 
       setBiome: (biome) => set({ biome }),
 
+      setBiomeArt: (dataUrl) => set({ biomeArt: dataUrl }),
+
+      clearBiomeArt: () => set({ biomeArt: null }),
+
       setPixelOverride: (category, dataUrl) =>
         set((state) => ({
           avatar: {
@@ -100,7 +108,7 @@ export const useAvatarStore = create<AvatarState>()(
 
       finishCreation: () => set({ hasCreatedCharacter: true }),
 
-      deleteCharacter: () => set({ hasCreatedCharacter: false, avatar: DEFAULT_AVATAR, biome: null }),
+      deleteCharacter: () => set({ hasCreatedCharacter: false, avatar: DEFAULT_AVATAR, biome: null, biomeArt: null }),
     }),
     {
       name: 'questly-avatar-state',

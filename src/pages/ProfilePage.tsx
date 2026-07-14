@@ -17,7 +17,7 @@ export function ProfilePage() {
   const profile = useGameStore((s) => s.profile)
   const regions = useGameStore((s) => s.regions)
   const missions = useGameStore((s) => s.missions)
-  const { avatar, biome: biomeId, deleteCharacter } = useAvatarStore()
+  const { avatar, biome: biomeId, biomeArt, deleteCharacter } = useAvatarStore()
 
   const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -43,7 +43,17 @@ export function ProfilePage() {
   return (
     <div>
       <header className="mb-6 flex flex-col items-center text-center">
-        <AvatarSprite config={avatar} size={128} className="rounded-2xl bg-ink-800" />
+        <div
+          className="flex items-center justify-center rounded-2xl border border-ink-700"
+          style={{
+            backgroundImage: biomeArt ? `url(${biomeArt})` : undefined,
+            backgroundColor: biome?.color ?? 'var(--color-ink-800)',
+            backgroundSize: 'cover',
+            imageRendering: 'pixelated',
+          }}
+        >
+          <AvatarSprite config={avatar} size={128} />
+        </div>
         <h1 className="mt-3 text-lg font-semibold text-ink-50">{profile.name}</h1>
         <p className="font-pixel text-[10px] text-gold-400">Nivel {profile.level}</p>
         {biome && (

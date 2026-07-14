@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Eraser, Paintbrush, X, RotateCcw } from 'lucide-react'
-import { getEditableFrame } from '@/lib/avatar/pixelFrame'
-import { lpcProvider, CATEGORY_LABELS } from '@/lib/avatar/providers/lpcProvider'
+import { lpcProvider } from '@/lib/avatar/providers/lpcProvider'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { AvatarConfig, AvatarLayerCategory } from '@/lib/avatar/types'
 
 interface PixelEditorProps {
   open: boolean
-  category: AvatarLayerCategory
-  avatar: AvatarConfig
+  title: string
+  /** Loads the starting canvas (current paint, or the base art to paint over). */
+  loadFrame: () => Promise<HTMLCanvasElement>
+  /** When provided, the brush/eraser can only touch cells where this is true — keeps paint inside the garment's actual shape. Omit for free painting (e.g. a background). */
+  loadSilhouette?: () => Promise<boolean[][] | null>
   onClose: () => void
   onSave: (dataUrl: string) => void
   onClear: () => void
@@ -19,8 +20,9 @@ interface PixelEditorProps {
 const CELL_SIZE = 6
 const QUICK_COLORS = ['#1c1c1c', '#ffffff', '#e8b892', '#2f5fa8', '#6e2632', '#2f5a3a', '#d4af6a', '#7a4a2a']
 
-export function PixelEditor({ open, category, avatar, onClose, onSave, onClear }: PixelEditorProps) {
+export function PixelEditor({ open, title, loadFrame, loadSilhouette, onClose, onSave, onClear }: PixelEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const silhouetteRef = useRef<boolean[][] | null>(null)
   const [tool, setTool] = useState<'brush' | 'eraser'>('brush')
   const [color, setColor] = useState('#2f5fa8')
   const [isPainting, setIsPainting] = useState(false)
@@ -29,27 +31,38 @@ export function PixelEditor({ open, category, avatar, onClose, onSave, onClear }
   const frameSize = lpcProvider.frameSize
   const canvasPx = frameSize * CELL_SIZE
 
+  function clipToSilhouette(ctx: CanvasRenderingContext2D) {
+    const silhouette = silhouetteRef.current
+    if (!silhouette) return
+    for (let y = 0; y < frameSize; y++) {
+      for (let x = 0; x < frameSize; x++) {
+        if (!silhouette[y][x]) ctx.clearRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+      }
+    }
+  }
+
+  async function reload() {
+    setLoading(true)
+    const [frame, silhouette] = await Promise.all([loadFrame(), loadSilhouette ? loadSilhouette() : Promise.resolve(null)])
+    silhouetteRef.current = silhouette
+
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    ctx.imageSmoothingEnabled = false
+    ctx.clearRect(0, 0, canvasPx, canvasPx)
+    ctx.drawImage(frame, 0, 0, frameSize, frameSize, 0, 0, canvasPx, canvasPx)
+    // Any pre-existing paint that fell outside the shape (e.g. from before
+    // this constraint existed) gets cleaned up the moment it's reopened.
+    clipToSilhouette(ctx)
+    setLoading(false)
+  }
+
   useEffect(() => {
     if (!open) return
-    let cancelled = false
-    setLoading(true)
-
-    getEditableFrame(avatar, category).then((frame) => {
-      if (cancelled) return
-      const canvas = canvasRef.current
-      if (!canvas) return
-      const ctx = canvas.getContext('2d')!
-      ctx.imageSmoothingEnabled = false
-      ctx.clearRect(0, 0, canvasPx, canvasPx)
-      ctx.drawImage(frame, 0, 0, frameSize, frameSize, 0, 0, canvasPx, canvasPx)
-      setLoading(false)
-    })
-
-    return () => {
-      cancelled = true
-    }
+    reload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, category])
+  }, [open])
 
   function paintAt(clientX: number, clientY: number) {
     const canvas = canvasRef.current
@@ -58,6 +71,7 @@ export function PixelEditor({ open, category, avatar, onClose, onSave, onClear }
     const x = Math.floor(((clientX - rect.left) / rect.width) * frameSize)
     const y = Math.floor(((clientY - rect.top) / rect.height) * frameSize)
     if (x < 0 || y < 0 || x >= frameSize || y >= frameSize) return
+    if (silhouetteRef.current && !silhouetteRef.current[y][x]) return
 
     const ctx = canvas.getContext('2d')!
     const px = x * CELL_SIZE
@@ -102,14 +116,7 @@ export function PixelEditor({ open, category, avatar, onClose, onSave, onClear }
 
   function handleReset() {
     onClear()
-    getEditableFrame({ ...avatar, pixelOverrides: {} }, category).then((frame) => {
-      const canvas = canvasRef.current
-      if (!canvas) return
-      const ctx = canvas.getContext('2d')!
-      ctx.imageSmoothingEnabled = false
-      ctx.clearRect(0, 0, canvasPx, canvasPx)
-      ctx.drawImage(frame, 0, 0, frameSize, frameSize, 0, 0, canvasPx, canvasPx)
-    })
+    reload()
   }
 
   return (
@@ -122,7 +129,7 @@ export function PixelEditor({ open, category, avatar, onClose, onSave, onClear }
           exit={{ opacity: 0 }}
         >
           <div className="flex items-center justify-between border-b border-ink-700 px-4 py-3">
-            <h2 className="text-sm font-semibold text-ink-50">Pintar {CATEGORY_LABELS[category]}</h2>
+            <h2 className="text-sm font-semibold text-ink-50">{title}</h2>
             <button onClick={onClose} className="text-ink-400 hover:text-ink-50">
               <X size={20} />
             </button>

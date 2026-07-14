@@ -6,6 +6,7 @@ import { useAvatarStore } from '@/store/useAvatarStore'
 import { useGameStore } from '@/store/useGameStore'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { PixelEditor } from '@/components/avatar/PixelEditor'
+import { getEditableFrame, getLayerSilhouette, getEditableBiomeFrame } from '@/lib/avatar/pixelFrame'
 import { lpcProvider, CATEGORY_LABELS } from '@/lib/avatar/providers/lpcProvider'
 import { biomes } from '@/data/biomes'
 import { Button } from '@/components/ui/button'
@@ -25,10 +26,13 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
   const {
     avatar,
     biome: selectedBiome,
+    biomeArt,
     setFigure,
     setOption,
     setColor,
     setBiome,
+    setBiomeArt,
+    clearBiomeArt,
     finishCreation,
     setPixelOverride,
     clearPixelOverride,
@@ -41,6 +45,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
   const [name, setName] = useState(profileName)
   const [categoryIndex, setCategoryIndex] = useState(0)
   const [paintingCategory, setPaintingCategory] = useState<AvatarLayerCategory | null>(null)
+  const [paintingBiome, setPaintingBiome] = useState(false)
   const category = CREATION_CATEGORIES[categoryIndex]
 
   const options = useMemo(() => lpcProvider.listOptions(category, avatar.figure), [category, avatar.figure])
@@ -75,6 +80,20 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
         <h1 className="font-pixel text-lg text-gold-400">¿Dónde comienza tu aventura?</h1>
         <p className="mt-2 text-sm text-ink-400">Elige el bioma inicial de tu mundo.</p>
 
+        {selectedBiome && (
+          <div
+            className="relative mt-4 flex h-40 items-center justify-center overflow-hidden rounded-2xl border border-ink-700"
+            style={{
+              backgroundImage: `url(${biomeArt ?? ''})`,
+              backgroundColor: biomes.find((b) => b.id === selectedBiome)?.color,
+              backgroundSize: 'cover',
+              imageRendering: 'pixelated',
+            }}
+          >
+            <AvatarSprite config={avatar} size={112} />
+          </div>
+        )}
+
         <div className="mt-8 grid grid-cols-2 gap-3">
           {biomes.map((biome) => (
             <motion.button
@@ -92,6 +111,18 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
           ))}
         </div>
 
+        {selectedBiome && (
+          <div className="mt-4 flex justify-center">
+            <button
+              onClick={() => setPaintingBiome(true)}
+              className="flex items-center gap-2 rounded-full border border-ink-600 px-4 py-2 text-xs text-ink-200"
+            >
+              <Paintbrush size={14} />
+              {biomeArt ? 'Editar pintura del bioma' : 'Pintar bioma'}
+            </button>
+          </div>
+        )}
+
         <div className="mt-auto flex gap-3 pt-8">
           {mode === 'create' ? (
             <>
@@ -108,6 +139,19 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
             </Button>
           )}
         </div>
+
+        {selectedBiome && (
+          <PixelEditor
+            open={paintingBiome}
+            title="Pintar bioma"
+            loadFrame={() =>
+              getEditableBiomeFrame(biomeArt, biomes.find((b) => b.id === selectedBiome)?.color ?? '#5a9b5f')
+            }
+            onClose={() => setPaintingBiome(false)}
+            onSave={setBiomeArt}
+            onClear={clearBiomeArt}
+          />
+        )}
       </div>
     )
   }
@@ -204,8 +248,9 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
       {paintingCategory && (
         <PixelEditor
           open
-          category={paintingCategory}
-          avatar={avatar}
+          title={`Pintar ${CATEGORY_LABELS[paintingCategory]}`}
+          loadFrame={() => getEditableFrame(avatar, paintingCategory)}
+          loadSilhouette={() => getLayerSilhouette(avatar, paintingCategory)}
           onClose={() => setPaintingCategory(null)}
           onSave={(dataUrl) => setPixelOverride(paintingCategory, dataUrl)}
           onClear={() => clearPixelOverride(paintingCategory)}
