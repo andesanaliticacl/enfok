@@ -19,7 +19,14 @@ export function AvatarSprite({ config, size = 192, className }: AvatarSpriteProp
         const optionId = config.options[category]
         if (!optionId) return null
         const colorId = config.colors[category]
-        return provider.resolveLayer(category, optionId, colorId, config.figure)
+        const resolved = provider.resolveLayer(category, optionId, colorId, config.figure)
+        if (!resolved) return null
+
+        const override = config.pixelOverrides[category]
+        if (override) {
+          return { ...resolved, imageUrl: override, recolorTargetHex: undefined, singleFrame: true }
+        }
+        return resolved
       })
       .filter((layer) => layer !== null)
       .sort((a, b) => a.zIndex - b.zIndex)

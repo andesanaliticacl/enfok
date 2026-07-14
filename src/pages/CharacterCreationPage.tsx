@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Paintbrush } from 'lucide-react'
 import { useAvatarStore } from '@/store/useAvatarStore'
 import { useGameStore } from '@/store/useGameStore'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
+import { PixelEditor } from '@/components/avatar/PixelEditor'
 import { lpcProvider, CATEGORY_LABELS } from '@/lib/avatar/providers/lpcProvider'
 import { biomes } from '@/data/biomes'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import { cn } from '@/lib/utils'
 import type { AvatarLayerCategory } from '@/lib/avatar/types'
 
 const CREATION_CATEGORIES: AvatarLayerCategory[] = ['body', 'hair', 'eyes', 'mask', 'shirt', 'pants', 'shoes']
+const PAINTABLE_CATEGORIES: AvatarLayerCategory[] = ['shirt', 'pants', 'shoes', 'mask']
 
 interface CharacterCreationPageProps {
   mode?: 'create' | 'edit-avatar' | 'edit-biome'
@@ -20,7 +22,17 @@ interface CharacterCreationPageProps {
 
 export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPageProps) {
   const navigate = useNavigate()
-  const { avatar, biome: selectedBiome, setFigure, setOption, setColor, setBiome, finishCreation } = useAvatarStore()
+  const {
+    avatar,
+    biome: selectedBiome,
+    setFigure,
+    setOption,
+    setColor,
+    setBiome,
+    finishCreation,
+    setPixelOverride,
+    clearPixelOverride,
+  } = useAvatarStore()
   const profileName = useGameStore((s) => s.profile.name)
   const setProfileName = useGameStore((s) => s.setProfileName)
   const startNewProfile = useGameStore((s) => s.startNewProfile)
@@ -28,6 +40,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
   const [step, setStep] = useState<'avatar' | 'biome'>(mode === 'edit-biome' ? 'biome' : 'avatar')
   const [name, setName] = useState(profileName)
   const [categoryIndex, setCategoryIndex] = useState(0)
+  const [paintingCategory, setPaintingCategory] = useState<AvatarLayerCategory | null>(null)
   const category = CREATION_CATEGORIES[categoryIndex]
 
   const options = useMemo(() => lpcProvider.listOptions(category, avatar.figure), [category, avatar.figure])
@@ -162,6 +175,18 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
         </div>
       )}
 
+      {PAINTABLE_CATEGORIES.includes(category) && (
+        <div className="mt-4 flex justify-center">
+          <button
+            onClick={() => setPaintingCategory(category)}
+            className="flex items-center gap-2 rounded-full border border-ink-600 px-4 py-2 text-xs text-ink-200"
+          >
+            <Paintbrush size={14} />
+            {avatar.pixelOverrides[category] ? 'Editar pintura' : 'Pintar píxeles'}
+          </button>
+        </div>
+      )}
+
       <div className="mt-auto flex gap-3 pt-8">
         {mode === 'edit-avatar' && (
           <Button variant="outline" onClick={() => navigate('/perfil')} className="flex-1">
@@ -175,6 +200,17 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
           {mode === 'edit-avatar' ? 'Guardar' : 'Continuar'}
         </Button>
       </div>
+
+      {paintingCategory && (
+        <PixelEditor
+          open
+          category={paintingCategory}
+          avatar={avatar}
+          onClose={() => setPaintingCategory(null)}
+          onSave={(dataUrl) => setPixelOverride(paintingCategory, dataUrl)}
+          onClear={() => clearPixelOverride(paintingCategory)}
+        />
+      )}
     </div>
   )
 }

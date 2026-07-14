@@ -36,12 +36,18 @@ export interface ResolvedLayer {
   zIndex: number
   imageUrl: string
   recolorTargetHex?: string
+  /** True when imageUrl is already just the single down-facing frame (e.g. a hand-painted layer), not a multi-row sheet. */
+  singleFrame?: boolean
 }
+
+/** Layers a user has hand-painted (pixel editor), stored as a 64x64 PNG data URL. Takes priority over the asset provider when present. */
+export type PixelOverrides = Partial<Record<AvatarLayerCategory, string>>
 
 export interface AvatarConfig {
   figure: Figure
   options: Partial<Record<AvatarLayerCategory, string>>
   colors: Partial<Record<AvatarLayerCategory, string>>
+  pixelOverrides: PixelOverrides
 }
 
 /**

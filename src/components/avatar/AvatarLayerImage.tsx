@@ -31,7 +31,7 @@ export function AvatarLayerImage({ layer }: AvatarLayerImageProps) {
       className="absolute inset-0"
       style={{
         backgroundImage: `url(${src})`,
-        backgroundPosition: LPC_DOWN_FRAME_POSITION,
+        backgroundPosition: layer.singleFrame ? '0px 0px' : LPC_DOWN_FRAME_POSITION,
         backgroundRepeat: 'no-repeat',
         imageRendering: 'pixelated',
         zIndex: layer.zIndex,

@@ -26,6 +26,7 @@ const DEFAULT_AVATAR: AvatarConfig = {
     pants: 'gray',
     shoes: 'brown',
   },
+  pixelOverrides: {},
 }
 
 interface AvatarState {
@@ -36,6 +37,8 @@ interface AvatarState {
   setOption: (category: keyof AvatarConfig['options'], optionId: string) => void
   setColor: (category: keyof AvatarConfig['colors'], colorId: string) => void
   setBiome: (biome: BiomeId) => void
+  setPixelOverride: (category: keyof AvatarConfig['options'], dataUrl: string) => void
+  clearPixelOverride: (category: keyof AvatarConfig['options']) => void
   finishCreation: () => void
   deleteCharacter: () => void
 }
@@ -79,6 +82,21 @@ export const useAvatarStore = create<AvatarState>()(
         }),
 
       setBiome: (biome) => set({ biome }),
+
+      setPixelOverride: (category, dataUrl) =>
+        set((state) => ({
+          avatar: {
+            ...state.avatar,
+            pixelOverrides: { ...state.avatar.pixelOverrides, [category]: dataUrl },
+          },
+        })),
+
+      clearPixelOverride: (category) =>
+        set((state) => {
+          const pixelOverrides = { ...state.avatar.pixelOverrides }
+          delete pixelOverrides[category]
+          return { avatar: { ...state.avatar, pixelOverrides } }
+        }),
 
       finishCreation: () => set({ hasCreatedCharacter: true }),
 
