@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
@@ -11,10 +12,16 @@ export function RegionPage() {
   const { regionId } = useParams<{ regionId: RegionId }>()
   const navigate = useNavigate()
 
-  const region = useGameStore((s) => s.regions.find((r) => r.id === regionId))
-  const objectives = useGameStore((s) => s.objectives.filter((o) => o.regionId === regionId))
+  const regions = useGameStore((s) => s.regions)
+  const allObjectives = useGameStore((s) => s.objectives)
   const missions = useGameStore((s) => s.missions)
   const completeMission = useGameStore((s) => s.completeMission)
+
+  const region = useMemo(() => regions.find((r) => r.id === regionId), [regions, regionId])
+  const objectives = useMemo(
+    () => allObjectives.filter((o) => o.regionId === regionId),
+    [allObjectives, regionId],
+  )
 
   if (!region) {
     return (

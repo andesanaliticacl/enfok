@@ -63,6 +63,15 @@ export interface InventoryItem {
   linkedObjectiveIds: string[]
 }
 
+export type BiomeId = 'valle' | 'ciudad' | 'playa' | 'bosque' | 'montana' | 'espacio'
+
+export interface Biome {
+  id: BiomeId
+  name: string
+  emoji: string
+  color: string
+}
+
 export interface PlayerProfile {
   name: string
   level: number
