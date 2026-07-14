@@ -29,6 +29,15 @@ const EYE_COLORS: ColorChoice[] = [
   { id: 'hazel', label: 'Avellana', swatch: '#7a6a3a' },
 ]
 
+const SKIN_COLORS: ColorChoice[] = [
+  { id: 'porcelain', label: 'Porcelana', swatch: '#f2d6bb' },
+  { id: 'light', label: 'Clara', swatch: '#e8b892' },
+  { id: 'medium', label: 'Media', swatch: '#c98a5c' },
+  { id: 'tan', label: 'Trigueña', swatch: '#a86c42' },
+  { id: 'dark', label: 'Morena', swatch: '#7a4a2a' },
+  { id: 'deep', label: 'Oscura', swatch: '#4a2f1c' },
+]
+
 const SHOE_COLORS: ColorChoice[] = [
   { id: 'black', label: 'Negro', swatch: '#1c1c1c' },
   { id: 'brown', label: 'Café', swatch: '#5a3a22' },
@@ -51,8 +60,13 @@ const DOWN_ROW_Y = -(FRAME_SIZE * 2)
 
 const ALL_FIGURES: Figure[] = ['male', 'female', 'muscular']
 
-function bodyLayer(figure: Figure): ResolvedLayer {
-  return { category: 'body', zIndex: 0, imageUrl: `${ASSET_ROOT}/body/${figure}/idle.png` }
+function bodyLayer(figure: Figure, colorId: string | undefined): ResolvedLayer {
+  return {
+    category: 'body',
+    zIndex: 0,
+    imageUrl: `${ASSET_ROOT}/body/${figure}/idle.png`,
+    recolorTargetHex: SKIN_COLORS.find((c) => c.id === colorId)?.swatch ?? SKIN_COLORS[1].swatch,
+  }
 }
 
 export const lpcProvider: AvatarAssetProvider = {
@@ -72,8 +86,8 @@ export const lpcProvider: AvatarAssetProvider = {
           id: f,
           label: f === 'male' ? 'Cuerpo A' : f === 'female' ? 'Cuerpo B' : 'Cuerpo C (atlético)',
           figures: [f],
-          colorMode: 'none',
-          colors: [],
+          colorMode: 'recolor',
+          colors: SKIN_COLORS,
         }))
 
       case 'eyes':
@@ -105,7 +119,7 @@ export const lpcProvider: AvatarAssetProvider = {
   resolveLayer(category, optionId, colorId, figure): ResolvedLayer | null {
     switch (category) {
       case 'body':
-        return bodyLayer(figure)
+        return bodyLayer(figure, colorId)
 
       case 'eyes':
         return {

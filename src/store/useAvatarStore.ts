@@ -14,6 +14,7 @@ const DEFAULT_AVATAR: AvatarConfig = {
     shoes: 'default',
   },
   colors: {
+    body: 'light',
     eyes: 'brown',
     hair: 'brown',
     shirt: 'blue',
