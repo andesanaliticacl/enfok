@@ -7,40 +7,44 @@ export type RegionId =
   | 'mentalidad'
   | 'proyectos'
 
-export type MissionFrequency =
-  | 'unica'
-  | 'repetitiva'
-  | 'diaria'
-  | 'semanal'
-  | 'mensual'
-  | 'flexible'
+export type Priority = 'baja' | 'media' | 'alta'
+
+export type MissionRepeat = 'ninguna' | 'diaria' | 'semanal' | 'mensual' | 'personalizada'
 
 export type MissionStatus = 'pendiente' | 'completada'
 
-export type ObjectivePriority = 'baja' | 'media' | 'alta'
-
-export type ObjectiveStatus = 'no_iniciado' | 'en_progreso' | 'completado'
+export type GoalStatus = 'no_iniciado' | 'en_progreso' | 'completado'
 
 export interface Mission {
   id: string
-  objectiveId: string
+  goalId: string
   title: string
-  frequency: MissionFrequency
+  description: string
+  /** ISO date (yyyy-mm-dd). Mandatory — every mission lives on the calendar. */
+  date: string
+  time?: string
+  priority: Priority
   status: MissionStatus
   xp: number
   coins: number
+  estimatedMinutes?: number
+  tags: string[]
+  repeat: MissionRepeat
   completedAt?: string
 }
 
-export interface Objective {
+export interface Goal {
   id: string
   regionId: RegionId
   name: string
   description: string
+  category: string
+  startDate?: string
   dueDate?: string
-  priority: ObjectivePriority
-  status: ObjectiveStatus
+  priority: Priority
+  status: GoalStatus
   xpReward: number
+  reward?: string
   color: string
   icon: string
   missionIds: string[]
@@ -53,14 +57,14 @@ export interface Region {
   color: string
   level: number
   description: string
-  objectiveIds: string[]
+  goalIds: string[]
 }
 
 export interface InventoryItem {
   id: string
   name: string
   icon: string
-  linkedObjectiveIds: string[]
+  linkedGoalIds: string[]
 }
 
 export type BiomeId = 'valle' | 'ciudad' | 'playa' | 'bosque' | 'montana' | 'espacio'
@@ -70,6 +74,14 @@ export interface Biome {
   name: string
   emoji: string
   color: string
+}
+
+export interface Achievement {
+  id: string
+  name: string
+  description: string
+  icon: string
+  isUnlocked: (ctx: { missionsCompleted: number; streakDays: number; hoursInvested: number; level: number }) => boolean
 }
 
 export interface PlayerProfile {

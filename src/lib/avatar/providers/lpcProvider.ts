@@ -165,8 +165,6 @@ export const lpcProvider: AvatarAssetProvider = {
 
 export const LPC_DOWN_FRAME_POSITION = `0px ${DOWN_ROW_Y}px`
 
-export const AVATAR_LAYER_CATEGORIES: AvatarLayerCategory[] = ['body', 'eyes', 'hair', 'shirt', 'pants', 'shoes']
-
 export const CATEGORY_LABELS: Record<AvatarLayerCategory, string> = {
   body: 'Cuerpo',
   eyes: 'Ojos',

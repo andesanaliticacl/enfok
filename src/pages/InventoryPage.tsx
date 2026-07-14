@@ -14,7 +14,7 @@ export function InventoryPage() {
               <span className="text-3xl">{item.icon}</span>
               <p className="text-sm font-medium text-ink-50">{item.name}</p>
               <p className="text-[11px] text-ink-400">
-                {item.linkedObjectiveIds.length} objetivo(s) asociado(s)
+                {item.linkedGoalIds.length} meta(s) asociada(s)
               </p>
             </CardContent>
           </Card>

@@ -3,28 +3,29 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAvatarStore } from '@/store/useAvatarStore'
+import { useGameStore } from '@/store/useGameStore'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { lpcProvider, CATEGORY_LABELS } from '@/lib/avatar/providers/lpcProvider'
 import { biomes } from '@/data/biomes'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { AvatarLayerCategory } from '@/lib/avatar/types'
 
 const CREATION_CATEGORIES: AvatarLayerCategory[] = ['body', 'hair', 'eyes', 'shirt', 'pants', 'shoes']
 
-export function CharacterCreationPage() {
-  const navigate = useNavigate()
-  const {
-    avatar,
-    biome: selectedBiome,
-    setFigure,
-    setOption,
-    setColor,
-    setBiome,
-    finishCreation,
-  } = useAvatarStore()
+interface CharacterCreationPageProps {
+  mode?: 'create' | 'edit-avatar' | 'edit-biome'
+}
 
-  const [step, setStep] = useState<'avatar' | 'biome'>('avatar')
+export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPageProps) {
+  const navigate = useNavigate()
+  const { avatar, biome: selectedBiome, setFigure, setOption, setColor, setBiome, finishCreation } = useAvatarStore()
+  const profileName = useGameStore((s) => s.profile.name)
+  const setProfileName = useGameStore((s) => s.setProfileName)
+
+  const [step, setStep] = useState<'avatar' | 'biome'>(mode === 'edit-biome' ? 'biome' : 'avatar')
+  const [name, setName] = useState(profileName)
   const [categoryIndex, setCategoryIndex] = useState(0)
   const category = CREATION_CATEGORIES[categoryIndex]
 
@@ -41,6 +42,12 @@ export function CharacterCreationPage() {
     } else {
       setOption(category, next.id)
     }
+  }
+
+  function finishAndExit(destination: string) {
+    setProfileName(name.trim() || 'Aventurero')
+    if (mode === 'create') finishCreation()
+    navigate(destination)
   }
 
   if (step === 'biome') {
@@ -67,18 +74,20 @@ export function CharacterCreationPage() {
         </div>
 
         <div className="mt-auto flex gap-3 pt-8">
-          <Button variant="outline" onClick={() => setStep('avatar')} className="flex-1">
-            Atrás
-          </Button>
-          <Button
-            onClick={() => {
-              finishCreation()
-              navigate('/')
-            }}
-            className="flex-1"
-          >
-            Comenzar aventura
-          </Button>
+          {mode === 'create' ? (
+            <>
+              <Button variant="outline" onClick={() => setStep('avatar')} className="flex-1">
+                Atrás
+              </Button>
+              <Button onClick={() => finishAndExit('/')} className="flex-1">
+                Comenzar aventura
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => finishAndExit('/perfil')} className="w-full">
+              Guardar
+            </Button>
+          )}
         </div>
       </div>
     )
@@ -86,11 +95,18 @@ export function CharacterCreationPage() {
 
   return (
     <div className="flex min-h-full flex-col px-4 pt-10 pb-8">
-      <h1 className="font-pixel text-lg text-gold-400">Crea tu aventurero</h1>
+      <h1 className="font-pixel text-lg text-gold-400">
+        {mode === 'create' ? 'Crea tu aventurero' : 'Editar personaje'}
+      </h1>
 
-      <div className="my-8 flex justify-center">
-        <AvatarSprite config={avatar} size={256} />
+      <div className="my-6 flex justify-center">
+        <AvatarSprite config={avatar} size={224} />
       </div>
+
+      <label className="mb-4 block">
+        <span className="mb-1 block text-xs text-ink-400">Nombre</span>
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre de aventurero" />
+      </label>
 
       <div className="mb-4 flex flex-wrap justify-center gap-2">
         {CREATION_CATEGORIES.map((cat, i) => (
@@ -140,9 +156,17 @@ export function CharacterCreationPage() {
         </div>
       )}
 
-      <div className="mt-auto pt-8">
-        <Button onClick={() => setStep('biome')} className="w-full">
-          Continuar
+      <div className="mt-auto flex gap-3 pt-8">
+        {mode === 'edit-avatar' && (
+          <Button variant="outline" onClick={() => navigate('/perfil')} className="flex-1">
+            Cancelar
+          </Button>
+        )}
+        <Button
+          onClick={() => (mode === 'edit-avatar' ? finishAndExit('/perfil') : setStep('biome'))}
+          className="flex-1"
+        >
+          {mode === 'edit-avatar' ? 'Guardar' : 'Continuar'}
         </Button>
       </div>
     </div>

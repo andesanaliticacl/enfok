@@ -1,12 +1,12 @@
 import { useGameStore } from '@/store/useGameStore'
 import { useAvatarStore } from '@/store/useAvatarStore'
-import { regionProgress } from '@/lib/selectors'
+import { regionProgress } from '@/lib/planning/goalEngine'
 import { RegionNode } from '@/components/map/RegionNode'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 
 export function MapPage() {
   const regions = useGameStore((s) => s.regions)
-  const objectives = useGameStore((s) => s.objectives)
+  const goals = useGameStore((s) => s.goals)
   const missions = useGameStore((s) => s.missions)
   const profile = useGameStore((s) => s.profile)
   const avatar = useAvatarStore((s) => s.avatar)
@@ -33,7 +33,7 @@ export function MapPage() {
           <RegionNode
             key={region.id}
             region={region}
-            progress={regionProgress(region, objectives, missions)}
+            progress={regionProgress(region.id, goals, missions)}
             index={index}
           />
         ))}

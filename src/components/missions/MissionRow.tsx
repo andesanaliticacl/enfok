@@ -1,23 +1,23 @@
 import { motion } from 'framer-motion'
-import { Check } from 'lucide-react'
+import { Check, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Mission } from '@/types'
 
 interface MissionRowProps {
   mission: Mission
   onComplete: (id: string) => void
+  onEdit?: (mission: Mission) => void
 }
 
-const FREQUENCY_LABEL: Record<Mission['frequency'], string> = {
-  unica: 'Única',
-  repetitiva: 'Repetitiva',
+const REPEAT_LABEL: Record<Mission['repeat'], string> = {
+  ninguna: 'Única',
   diaria: 'Diaria',
   semanal: 'Semanal',
   mensual: 'Mensual',
-  flexible: 'Flexible',
+  personalizada: 'Personalizada',
 }
 
-export function MissionRow({ mission, onComplete }: MissionRowProps) {
+export function MissionRow({ mission, onComplete, onEdit }: MissionRowProps) {
   const done = mission.status === 'completada'
 
   return (
@@ -39,15 +39,27 @@ export function MissionRow({ mission, onComplete }: MissionRowProps) {
         {done && <Check size={14} strokeWidth={3} />}
       </button>
 
-      <div className="flex-1">
+      <button
+        className="flex-1 text-left"
+        onClick={() => onEdit?.(mission)}
+        disabled={!onEdit}
+      >
         <p className={cn('text-sm font-medium text-ink-50', done && 'line-through')}>
           {mission.title}
         </p>
-        <p className="text-[11px] text-ink-400">{FREQUENCY_LABEL[mission.frequency]}</p>
-      </div>
+        <p className="text-[11px] text-ink-400">
+          {mission.date}
+          {mission.time ? ` · ${mission.time}` : ''} · {REPEAT_LABEL[mission.repeat]}
+        </p>
+      </button>
 
-      <div className="text-right">
+      <div className="flex items-center gap-2">
         <p className="font-pixel text-[10px] text-gold-400">+{mission.xp} XP</p>
+        {onEdit && (
+          <button onClick={() => onEdit(mission)} className="text-ink-400 hover:text-ink-50">
+            <Pencil size={14} />
+          </button>
+        )}
       </div>
     </motion.div>
   )

@@ -1,4 +1,4 @@
-import type { InventoryItem, Mission, Objective, PlayerProfile, Region } from '@/types'
+import type { Goal, InventoryItem, Mission, PlayerProfile, Region } from '@/types'
 
 export const regions: Region[] = [
   {
@@ -8,7 +8,7 @@ export const regions: Region[] = [
     color: 'var(--color-region-salud)',
     level: 3,
     description: 'Fuerza, energía y descanso.',
-    objectiveIds: ['obj-salud-1', 'obj-salud-2'],
+    goalIds: ['goal-salud-1', 'goal-salud-2'],
   },
   {
     id: 'finanzas',
@@ -17,7 +17,7 @@ export const regions: Region[] = [
     color: 'var(--color-region-finanzas)',
     level: 1,
     description: 'Ahorro, inversión y libertad.',
-    objectiveIds: ['obj-finanzas-1'],
+    goalIds: ['goal-finanzas-1'],
   },
   {
     id: 'trabajo',
@@ -26,7 +26,7 @@ export const regions: Region[] = [
     color: 'var(--color-region-trabajo)',
     level: 2,
     description: 'Carrera y proyectos profesionales.',
-    objectiveIds: ['obj-trabajo-1'],
+    goalIds: ['goal-trabajo-1'],
   },
   {
     id: 'aprendizaje',
@@ -35,7 +35,7 @@ export const regions: Region[] = [
     color: 'var(--color-region-aprendizaje)',
     level: 2,
     description: 'Conocimiento y nuevas habilidades.',
-    objectiveIds: ['obj-aprendizaje-1'],
+    goalIds: ['goal-aprendizaje-1'],
   },
   {
     id: 'relaciones',
@@ -44,7 +44,7 @@ export const regions: Region[] = [
     color: 'var(--color-region-relaciones)',
     level: 1,
     description: 'Familia, amistad y comunidad.',
-    objectiveIds: [],
+    goalIds: [],
   },
   {
     id: 'mentalidad',
@@ -53,7 +53,7 @@ export const regions: Region[] = [
     color: 'var(--color-region-mentalidad)',
     level: 1,
     description: 'Claridad, calma y propósito.',
-    objectiveIds: [],
+    goalIds: [],
   },
   {
     id: 'proyectos',
@@ -62,29 +62,34 @@ export const regions: Region[] = [
     color: 'var(--color-region-proyectos)',
     level: 1,
     description: 'Ideas propias que cobran forma.',
-    objectiveIds: [],
+    goalIds: [],
   },
 ]
 
-export const objectives: Objective[] = [
+export const goals: Goal[] = [
   {
-    id: 'obj-salud-1',
+    id: 'goal-salud-1',
     regionId: 'salud',
     name: 'Entrenar 4 veces por semana',
     description: 'Construir una rutina de fuerza sostenible.',
+    category: 'Hábito',
+    startDate: '2026-07-01',
     dueDate: '2026-07-20',
     priority: 'alta',
     status: 'en_progreso',
     xpReward: 240,
+    reward: 'Un día de descanso activo sin culpa',
     color: 'var(--color-region-salud)',
     icon: '🏋',
     missionIds: ['m-salud-1', 'm-salud-2', 'm-salud-3', 'm-salud-4'],
   },
   {
-    id: 'obj-salud-2',
+    id: 'goal-salud-2',
     regionId: 'salud',
     name: 'Dormir 8 horas',
     description: 'Recuperar energía real, no solo horas en cama.',
+    category: 'Hábito',
+    startDate: '2026-07-01',
     dueDate: '2026-07-16',
     priority: 'media',
     status: 'no_iniciado',
@@ -94,36 +99,44 @@ export const objectives: Objective[] = [
     missionIds: ['m-salud-5'],
   },
   {
-    id: 'obj-finanzas-1',
+    id: 'goal-finanzas-1',
     regionId: 'finanzas',
     name: 'Fondo de emergencia',
     description: 'Ahorrar 3 meses de gastos fijos.',
+    category: 'Meta',
+    startDate: '2026-06-01',
     dueDate: '2026-07-31',
     priority: 'alta',
     status: 'en_progreso',
     xpReward: 300,
+    reward: 'Tranquilidad financiera',
     color: 'var(--color-region-finanzas)',
     icon: '💰',
     missionIds: ['m-fin-1'],
   },
   {
-    id: 'obj-trabajo-1',
+    id: 'goal-trabajo-1',
     regionId: 'trabajo',
     name: 'Aprender React',
     description: 'Dominar lo suficiente para construir proyectos reales.',
+    category: 'Proyecto',
+    startDate: '2026-06-15',
     dueDate: '2026-07-18',
     priority: 'alta',
     status: 'en_progreso',
     xpReward: 200,
+    reward: 'Publicar el primer proyecto propio',
     color: 'var(--color-region-trabajo)',
     icon: '💻',
     missionIds: ['m-trabajo-1', 'm-trabajo-2', 'm-trabajo-3', 'm-trabajo-4'],
   },
   {
-    id: 'obj-aprendizaje-1',
+    id: 'goal-aprendizaje-1',
     regionId: 'aprendizaje',
     name: 'Leer 12 libros este año',
     description: 'Un libro al mes, sin excepciones.',
+    category: 'Hábito',
+    startDate: '2026-01-01',
     dueDate: '2026-07-25',
     priority: 'media',
     status: 'en_progreso',
@@ -135,23 +148,23 @@ export const objectives: Objective[] = [
 ]
 
 export const missions: Mission[] = [
-  { id: 'm-salud-1', objectiveId: 'obj-salud-1', title: 'Entrenar piernas', frequency: 'semanal', status: 'completada', xp: 30, coins: 5, completedAt: '2026-07-08' },
-  { id: 'm-salud-2', objectiveId: 'obj-salud-1', title: 'Entrenar espalda', frequency: 'semanal', status: 'completada', xp: 30, coins: 5, completedAt: '2026-07-10' },
-  { id: 'm-salud-3', objectiveId: 'obj-salud-1', title: 'Entrenar pecho', frequency: 'semanal', status: 'pendiente', xp: 30, coins: 5 },
-  { id: 'm-salud-4', objectiveId: 'obj-salud-1', title: 'Cardio 20 minutos', frequency: 'diaria', status: 'pendiente', xp: 15, coins: 2 },
-  { id: 'm-salud-5', objectiveId: 'obj-salud-2', title: 'Apagar pantallas a las 22:30', frequency: 'diaria', status: 'pendiente', xp: 15, coins: 2 },
-  { id: 'm-fin-1', objectiveId: 'obj-finanzas-1', title: 'Transferir ahorro mensual', frequency: 'mensual', status: 'pendiente', xp: 40, coins: 10 },
-  { id: 'm-trabajo-1', objectiveId: 'obj-trabajo-1', title: 'Terminar curso', frequency: 'unica', status: 'completada', xp: 50, coins: 10, completedAt: '2026-06-20' },
-  { id: 'm-trabajo-2', objectiveId: 'obj-trabajo-1', title: 'Leer documentación', frequency: 'flexible', status: 'completada', xp: 25, coins: 5, completedAt: '2026-06-28' },
-  { id: 'm-trabajo-3', objectiveId: 'obj-trabajo-1', title: 'Crear proyecto', frequency: 'unica', status: 'pendiente', xp: 60, coins: 15 },
-  { id: 'm-trabajo-4', objectiveId: 'obj-trabajo-1', title: 'Subir a GitHub', frequency: 'unica', status: 'pendiente', xp: 20, coins: 5 },
-  { id: 'm-aprend-1', objectiveId: 'obj-aprendizaje-1', title: 'Terminar libro del mes', frequency: 'mensual', status: 'pendiente', xp: 40, coins: 8 },
+  { id: 'm-salud-1', goalId: 'goal-salud-1', title: 'Entrenar piernas', description: 'Sentadillas, prensa y zancadas.', date: '2026-07-08', priority: 'media', status: 'completada', xp: 30, coins: 5, estimatedMinutes: 60, tags: ['gimnasio'], repeat: 'semanal', completedAt: '2026-07-08' },
+  { id: 'm-salud-2', goalId: 'goal-salud-1', title: 'Entrenar espalda', description: 'Dominadas y remo.', date: '2026-07-10', priority: 'media', status: 'completada', xp: 30, coins: 5, estimatedMinutes: 60, tags: ['gimnasio'], repeat: 'semanal', completedAt: '2026-07-10' },
+  { id: 'm-salud-3', goalId: 'goal-salud-1', title: 'Entrenar pecho', description: 'Press banca y fondos.', date: '2026-07-15', priority: 'media', status: 'pendiente', xp: 30, coins: 5, estimatedMinutes: 60, tags: ['gimnasio'], repeat: 'semanal' },
+  { id: 'm-salud-4', goalId: 'goal-salud-1', title: 'Cardio 20 minutos', description: 'Trote suave o bicicleta.', date: '2026-07-14', time: '07:00', priority: 'baja', status: 'pendiente', xp: 15, coins: 2, estimatedMinutes: 20, tags: ['cardio'], repeat: 'diaria' },
+  { id: 'm-salud-5', goalId: 'goal-salud-2', title: 'Apagar pantallas a las 22:30', description: 'Rutina de desconexión nocturna.', date: '2026-07-14', time: '22:30', priority: 'media', status: 'pendiente', xp: 15, coins: 2, tags: ['sueño'], repeat: 'diaria' },
+  { id: 'm-fin-1', goalId: 'goal-finanzas-1', title: 'Transferir ahorro mensual', description: 'Automatizar el traspaso a la cuenta de ahorro.', date: '2026-07-31', priority: 'alta', status: 'pendiente', xp: 40, coins: 10, tags: ['ahorro'], repeat: 'mensual' },
+  { id: 'm-trabajo-1', goalId: 'goal-trabajo-1', title: 'Terminar curso', description: 'Completar el curso online de React.', date: '2026-06-20', priority: 'alta', status: 'completada', xp: 50, coins: 10, estimatedMinutes: 180, tags: ['curso'], repeat: 'ninguna', completedAt: '2026-06-20' },
+  { id: 'm-trabajo-2', goalId: 'goal-trabajo-1', title: 'Leer documentación', description: 'Repasar la documentación oficial de React Router y Zustand.', date: '2026-06-28', priority: 'media', status: 'completada', xp: 25, coins: 5, estimatedMinutes: 45, tags: ['estudio'], repeat: 'ninguna', completedAt: '2026-06-28' },
+  { id: 'm-trabajo-3', goalId: 'goal-trabajo-1', title: 'Crear proyecto', description: 'Construir Questly como proyecto de práctica.', date: '2026-07-16', priority: 'alta', status: 'pendiente', xp: 60, coins: 15, estimatedMinutes: 240, tags: ['proyecto'], repeat: 'ninguna' },
+  { id: 'm-trabajo-4', goalId: 'goal-trabajo-1', title: 'Subir a GitHub', description: 'Publicar el repositorio y escribir el README.', date: '2026-07-18', priority: 'baja', status: 'pendiente', xp: 20, coins: 5, estimatedMinutes: 20, tags: ['proyecto'], repeat: 'ninguna' },
+  { id: 'm-aprend-1', goalId: 'goal-aprendizaje-1', title: 'Terminar libro del mes', description: 'Últimos capítulos pendientes.', date: '2026-07-25', priority: 'media', status: 'pendiente', xp: 40, coins: 8, estimatedMinutes: 90, tags: ['lectura'], repeat: 'mensual' },
 ]
 
 export const inventory: InventoryItem[] = [
-  { id: 'inv-1', name: 'Laptop', icon: '💻', linkedObjectiveIds: ['obj-trabajo-1'] },
-  { id: 'inv-2', name: 'Notebook', icon: '📓', linkedObjectiveIds: ['obj-aprendizaje-1'] },
-  { id: 'inv-3', name: 'Bicicleta', icon: '🚲', linkedObjectiveIds: ['obj-salud-1'] },
+  { id: 'inv-1', name: 'Laptop', icon: '💻', linkedGoalIds: ['goal-trabajo-1'] },
+  { id: 'inv-2', name: 'Notebook', icon: '📓', linkedGoalIds: ['goal-aprendizaje-1'] },
+  { id: 'inv-3', name: 'Bicicleta', icon: '🚲', linkedGoalIds: ['goal-salud-1'] },
 ]
 
 export const playerProfile: PlayerProfile = {

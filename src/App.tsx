@@ -25,6 +25,8 @@ export default function App() {
         <Route path="/calendario" element={<CalendarPage />} />
         <Route path="/inventario" element={<InventoryPage />} />
         <Route path="/perfil" element={<ProfilePage />} />
+        <Route path="/personaje/editar" element={<CharacterCreationPage mode="edit-avatar" />} />
+        <Route path="/personaje/bioma" element={<CharacterCreationPage mode="edit-biome" />} />
       </Routes>
     </AppShell>
   )

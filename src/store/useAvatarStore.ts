@@ -32,7 +32,7 @@ interface AvatarState {
   setColor: (category: keyof AvatarConfig['colors'], colorId: string) => void
   setBiome: (biome: BiomeId) => void
   finishCreation: () => void
-  resetCharacter: () => void
+  deleteCharacter: () => void
 }
 
 export const useAvatarStore = create<AvatarState>()(
@@ -65,7 +65,7 @@ export const useAvatarStore = create<AvatarState>()(
 
       finishCreation: () => set({ hasCreatedCharacter: true }),
 
-      resetCharacter: () => set({ hasCreatedCharacter: false, avatar: DEFAULT_AVATAR, biome: null }),
+      deleteCharacter: () => set({ hasCreatedCharacter: false, avatar: DEFAULT_AVATAR, biome: null }),
     }),
     { name: 'questly-avatar-state' },
   ),

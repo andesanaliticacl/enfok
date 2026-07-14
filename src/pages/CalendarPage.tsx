@@ -1,36 +1,32 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { buildMonthGrid, toDateKey, MONTH_LABELS, WEEKDAY_LABELS } from '@/lib/calendar'
+import { groupMissionsByDate } from '@/lib/planning/calendarEngine'
+import { MissionFormDialog } from '@/components/planning/MissionFormDialog'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import type { Mission } from '@/types'
 
 export function CalendarPage() {
-  const navigate = useNavigate()
-  const objectives = useGameStore((s) => s.objectives)
-  const regions = useGameStore((s) => s.regions)
+  const missions = useGameStore((s) => s.missions)
+  const goals = useGameStore((s) => s.goals)
+  const addMission = useGameStore((s) => s.addMission)
+  const updateMission = useGameStore((s) => s.updateMission)
+  const deleteMission = useGameStore((s) => s.deleteMission)
 
   const today = new Date()
   const todayKey = toDateKey(today.getFullYear(), today.getMonth(), today.getDate())
 
   const [cursor, setCursor] = useState({ year: today.getFullYear(), month: today.getMonth() })
   const [selectedKey, setSelectedKey] = useState(todayKey)
+  const [dialog, setDialog] = useState<{ open: boolean; mission?: Mission; date?: string }>({ open: false })
 
   const grid = useMemo(() => buildMonthGrid(cursor.year, cursor.month), [cursor])
+  const missionsByDate = useMemo(() => groupMissionsByDate(missions), [missions])
 
-  const objectivesByDate = useMemo(() => {
-    const map = new Map<string, typeof objectives>()
-    for (const objective of objectives) {
-      if (!objective.dueDate) continue
-      const list = map.get(objective.dueDate) ?? []
-      list.push(objective)
-      map.set(objective.dueDate, list)
-    }
-    return map
-  }, [objectives])
-
-  function regionColor(regionId: string) {
-    return regions.find((r) => r.id === regionId)?.color ?? 'var(--color-gold-500)'
+  function goalOf(goalId: string) {
+    return goals.find((g) => g.id === goalId)
   }
 
   function changeMonth(delta: 1 | -1) {
@@ -40,11 +36,18 @@ export function CalendarPage() {
     })
   }
 
-  const selectedObjectives = objectivesByDate.get(selectedKey) ?? []
+  const selectedMissions = (missionsByDate.get(selectedKey) ?? []).sort((a, b) =>
+    (a.time ?? '').localeCompare(b.time ?? ''),
+  )
 
   return (
     <div>
-      <h1 className="mb-6 font-pixel text-lg text-gold-400">Calendario</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="font-pixel text-lg text-gold-400">Calendario</h1>
+        <Button size="icon" onClick={() => setDialog({ open: true, date: selectedKey })}>
+          <Plus size={18} />
+        </Button>
+      </div>
 
       <div className="mb-4 flex items-center justify-between">
         <button onClick={() => changeMonth(-1)} className="rounded-full p-2 text-ink-400 hover:text-ink-50">
@@ -66,7 +69,7 @@ export function CalendarPage() {
         ))}
 
         {grid.map((cell, i) => {
-          const dueObjectives = cell.dateKey ? (objectivesByDate.get(cell.dateKey) ?? []) : []
+          const dayMissions = cell.dateKey ? (missionsByDate.get(cell.dateKey) ?? []) : []
           const isToday = cell.dateKey === todayKey
           const isSelected = cell.dateKey === selectedKey
 
@@ -83,13 +86,12 @@ export function CalendarPage() {
               )}
             >
               {cell.day}
-              {dueObjectives.length > 0 && (
+              {dayMissions.length > 0 && (
                 <div className="mt-0.5 flex gap-0.5">
-                  {dueObjectives.slice(0, 3).map((o) => (
+                  {dayMissions.slice(0, 3).map((m) => (
                     <span
-                      key={o.id}
-                      className="h-1 w-1 rounded-full"
-                      style={{ backgroundColor: regionColor(o.regionId) }}
+                      key={m.id}
+                      className={cn('h-1 w-1 rounded-full', m.status === 'completada' ? 'bg-ink-600' : 'bg-gold-500')}
                     />
                   ))}
                 </div>
@@ -100,30 +102,65 @@ export function CalendarPage() {
       </div>
 
       <div className="mt-6">
-        <p className="mb-2 text-xs uppercase tracking-wide text-ink-400">
-          {selectedKey === todayKey ? 'Hoy' : selectedKey}
-        </p>
-        {selectedObjectives.length === 0 && (
-          <p className="text-sm text-ink-400">Sin objetivos con vencimiento este día.</p>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-xs uppercase tracking-wide text-ink-400">
+            {selectedKey === todayKey ? 'Hoy' : selectedKey}
+          </p>
+          <button
+            onClick={() => setDialog({ open: true, date: selectedKey })}
+            className="text-xs text-gold-400"
+          >
+            + Agregar misión
+          </button>
+        </div>
+
+        {selectedMissions.length === 0 && (
+          <p className="text-sm text-ink-400">Sin misiones este día.</p>
         )}
+
         <div className="flex flex-col gap-2">
-          {selectedObjectives.map((objective) => (
-            <button
-              key={objective.id}
-              onClick={() => navigate(`/region/${objective.regionId}`)}
-              className="flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900 p-3 text-left"
-            >
-              <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base"
-                style={{ backgroundColor: `color-mix(in srgb, ${regionColor(objective.regionId)} 25%, transparent)` }}
+          {selectedMissions.map((mission) => {
+            const goal = goalOf(mission.goalId)
+            return (
+              <button
+                key={mission.id}
+                onClick={() => setDialog({ open: true, mission })}
+                className={cn(
+                  'flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900 p-3 text-left',
+                  mission.status === 'completada' && 'opacity-50',
+                )}
               >
-                {objective.icon}
-              </span>
-              <span className="text-sm font-medium text-ink-50">{objective.name}</span>
-            </button>
-          ))}
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base"
+                  style={{
+                    backgroundColor: goal ? `color-mix(in srgb, ${goal.color} 25%, transparent)` : 'var(--color-ink-800)',
+                  }}
+                >
+                  {goal?.icon ?? '📌'}
+                </span>
+                <span className="flex-1">
+                  <p className={cn('text-sm font-medium text-ink-50', mission.status === 'completada' && 'line-through')}>
+                    {mission.title}
+                  </p>
+                  <p className="text-[11px] text-ink-400">
+                    {mission.time ? `${mission.time} · ` : ''}
+                    {goal?.name}
+                  </p>
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
+
+      <MissionFormDialog
+        open={dialog.open}
+        onClose={() => setDialog({ open: false })}
+        defaultDate={dialog.date}
+        mission={dialog.mission}
+        onSubmit={(input) => (dialog.mission ? updateMission(dialog.mission.id, input) : addMission(input))}
+        onDelete={dialog.mission ? () => deleteMission(dialog.mission!.id) : undefined}
+      />
     </div>
   )
 }
