@@ -8,6 +8,7 @@ const DEFAULT_AVATAR: AvatarConfig = {
   figure: 'male',
   options: {
     body: 'male',
+    head: 'male',
     eyes: 'default',
     hair: 'plain',
     mask: 'none',
@@ -17,6 +18,7 @@ const DEFAULT_AVATAR: AvatarConfig = {
   },
   colors: {
     body: 'light',
+    head: 'light',
     eyes: 'brown',
     hair: 'brown',
     mask: 'dark',
@@ -47,7 +49,7 @@ export const useAvatarStore = create<AvatarState>()(
 
       setFigure: (figure) =>
         set((state) => {
-          const options: AvatarConfig['options'] = { ...state.avatar.options, body: figure }
+          const options: AvatarConfig['options'] = { ...state.avatar.options, body: figure, head: figure }
 
           // Some clothing styles (e.g. vest, tunic) only exist for certain
           // figures — fall back to the first valid style instead of showing
@@ -69,9 +71,12 @@ export const useAvatarStore = create<AvatarState>()(
         })),
 
       setColor: (category, colorId) =>
-        set((state) => ({
-          avatar: { ...state.avatar, colors: { ...state.avatar.colors, [category]: colorId } },
-        })),
+        set((state) => {
+          const colors = { ...state.avatar.colors, [category]: colorId }
+          // Head and body are always the same skin tone from the user's perspective.
+          if (category === 'body') colors.head = colorId
+          return { avatar: { ...state.avatar, colors } }
+        }),
 
       setBiome: (biome) => set({ biome }),
 

@@ -2,6 +2,7 @@ export type Figure = 'male' | 'female' | 'muscular'
 
 export type AvatarLayerCategory =
   | 'body'
+  | 'head'
   | 'eyes'
   | 'hair'
   | 'beard'

@@ -74,19 +74,32 @@ const DOWN_ROW_Y = -(FRAME_SIZE * 2)
 
 const ALL_FIGURES: Figure[] = ['male', 'female', 'muscular']
 
+function skinHex(colorId: string | undefined): string {
+  return SKIN_COLORS.find((c) => c.id === colorId)?.swatch ?? SKIN_COLORS[1].swatch
+}
+
 function bodyLayer(figure: Figure, colorId: string | undefined): ResolvedLayer {
   return {
     category: 'body',
     zIndex: 0,
     imageUrl: `${ASSET_ROOT}/body/${figure}/idle.png`,
-    recolorTargetHex: SKIN_COLORS.find((c) => c.id === colorId)?.swatch ?? SKIN_COLORS[1].swatch,
+    recolorTargetHex: skinHex(colorId),
+  }
+}
+
+function headLayer(figure: Figure, colorId: string | undefined): ResolvedLayer {
+  return {
+    category: 'head',
+    zIndex: 2,
+    imageUrl: `${ASSET_ROOT}/head/${figure === 'female' ? 'female' : 'male'}/idle.png`,
+    recolorTargetHex: skinHex(colorId),
   }
 }
 
 export const lpcProvider: AvatarAssetProvider = {
   id: 'lpc-universal',
   frameSize: FRAME_SIZE,
-  categories: ['body', 'eyes', 'hair', 'mask', 'shirt', 'pants', 'shoes'],
+  categories: ['body', 'head', 'eyes', 'hair', 'mask', 'shirt', 'pants', 'shoes'],
   attribution: {
     name: 'Liberated Pixel Cup — Universal LPC Spritesheet Character Generator',
     url: 'https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator/',
@@ -103,6 +116,9 @@ export const lpcProvider: AvatarAssetProvider = {
           colorMode: 'recolor',
           colors: SKIN_COLORS,
         }))
+
+      case 'head':
+        return [{ id: figure, label: 'Cabeza', figures: [figure], colorMode: 'recolor', colors: SKIN_COLORS }]
 
       case 'eyes':
         return [{ id: 'default', label: 'Ojos', figures: ALL_FIGURES, colorMode: 'recolor', colors: EYE_COLORS }]
@@ -148,6 +164,9 @@ export const lpcProvider: AvatarAssetProvider = {
     switch (category) {
       case 'body':
         return bodyLayer(figure, colorId)
+
+      case 'head':
+        return headLayer(figure, colorId)
 
       case 'eyes':
         return {
@@ -217,6 +236,7 @@ export const LPC_DOWN_FRAME_POSITION = `0px ${DOWN_ROW_Y}px`
 
 export const CATEGORY_LABELS: Record<AvatarLayerCategory, string> = {
   body: 'Cuerpo',
+  head: 'Cabeza',
   eyes: 'Ojos',
   hair: 'Pelo',
   beard: 'Barba',
