@@ -25,7 +25,7 @@ export async function getEditableFrame(config: AvatarConfig, category: AvatarLay
   const ctx = canvas.getContext('2d')!
   ctx.imageSmoothingEnabled = false
 
-  const override = config.pixelOverrides[category]
+  const override = config.pixelOverrides?.[category]
   if (override) {
     const img = await loadImage(override)
     ctx.drawImage(img, 0, 0, frameSize, frameSize)

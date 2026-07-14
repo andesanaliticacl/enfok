@@ -102,6 +102,25 @@ export const useAvatarStore = create<AvatarState>()(
 
       deleteCharacter: () => set({ hasCreatedCharacter: false, avatar: DEFAULT_AVATAR, biome: null }),
     }),
-    { name: 'questly-avatar-state' },
+    {
+      name: 'questly-avatar-state',
+      // Deep-merge persisted state onto the defaults so a browser that saved
+      // an older AvatarConfig shape (missing fields we've added since, like
+      // pixelOverrides) doesn't crash the app — it just backfills defaults.
+      merge: (persisted, current) => {
+        const persistedState = (persisted ?? {}) as Partial<AvatarState>
+        return {
+          ...current,
+          ...persistedState,
+          avatar: {
+            ...current.avatar,
+            ...persistedState.avatar,
+            options: { ...current.avatar.options, ...persistedState.avatar?.options },
+            colors: { ...current.avatar.colors, ...persistedState.avatar?.colors },
+            pixelOverrides: { ...current.avatar.pixelOverrides, ...persistedState.avatar?.pixelOverrides },
+          },
+        }
+      },
+    },
   ),
 )

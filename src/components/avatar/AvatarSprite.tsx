@@ -22,7 +22,7 @@ export function AvatarSprite({ config, size = 192, className }: AvatarSpriteProp
         const resolved = provider.resolveLayer(category, optionId, colorId, config.figure)
         if (!resolved) return null
 
-        const override = config.pixelOverrides[category]
+        const override = config.pixelOverrides?.[category]
         if (override) {
           return { ...resolved, imageUrl: override, recolorTargetHex: undefined, singleFrame: true }
         }
