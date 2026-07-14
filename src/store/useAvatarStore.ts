@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { lpcProvider } from '@/lib/avatar/providers/lpcProvider'
 import type { AvatarConfig } from '@/lib/avatar/types'
 import type { BiomeId } from '@/types'
 
@@ -9,7 +10,8 @@ const DEFAULT_AVATAR: AvatarConfig = {
     body: 'male',
     eyes: 'default',
     hair: 'plain',
-    shirt: 'default',
+    mask: 'none',
+    shirt: 'tshirt',
     pants: 'default',
     shoes: 'default',
   },
@@ -17,6 +19,7 @@ const DEFAULT_AVATAR: AvatarConfig = {
     body: 'light',
     eyes: 'brown',
     hair: 'brown',
+    mask: 'dark',
     shirt: 'blue',
     pants: 'gray',
     shoes: 'brown',
@@ -43,13 +46,22 @@ export const useAvatarStore = create<AvatarState>()(
       biome: null,
 
       setFigure: (figure) =>
-        set((state) => ({
-          avatar: {
-            ...state.avatar,
-            figure,
-            options: { ...state.avatar.options, body: figure },
-          },
-        })),
+        set((state) => {
+          const options: AvatarConfig['options'] = { ...state.avatar.options, body: figure }
+
+          // Some clothing styles (e.g. vest, tunic) only exist for certain
+          // figures — fall back to the first valid style instead of showing
+          // mismatched art.
+          for (const category of lpcProvider.categories) {
+            const currentOptionId = options[category]
+            const validOptions = lpcProvider.listOptions(category, figure)
+            if (currentOptionId && !validOptions.some((o) => o.id === currentOptionId)) {
+              options[category] = validOptions[0]?.id
+            }
+          }
+
+          return { avatar: { ...state.avatar, figure, options } }
+        }),
 
       setOption: (category, optionId) =>
         set((state) => ({

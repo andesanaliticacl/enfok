@@ -25,7 +25,12 @@ export function AvatarSprite({ config, size = 192, className }: AvatarSpriteProp
       .sort((a, b) => a.zIndex - b.zIndex)
   }, [config])
 
-  const scale = size / provider.frameSize
+  // Pixel art must scale by a whole number, or subpixel rounding shaves a row
+  // of pixels off one edge (most visible at the top of the head). Snap to the
+  // nearest integer scale and center the result inside the requested box.
+  const scale = Math.max(1, Math.round(size / provider.frameSize))
+  const renderedSize = provider.frameSize * scale
+  const offset = (size - renderedSize) / 2
 
   return (
     <div className={className} style={{ width: size, height: size, position: 'relative', overflow: 'hidden' }}>
@@ -33,9 +38,11 @@ export function AvatarSprite({ config, size = 192, className }: AvatarSpriteProp
         style={{
           width: provider.frameSize,
           height: provider.frameSize,
+          position: 'absolute',
+          top: offset,
+          left: offset,
           transform: `scale(${scale})`,
           transformOrigin: 'top left',
-          position: 'relative',
         }}
       >
         {layers.map((layer) => (

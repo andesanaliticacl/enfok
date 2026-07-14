@@ -5,6 +5,7 @@ export type AvatarLayerCategory =
   | 'eyes'
   | 'hair'
   | 'beard'
+  | 'mask'
   | 'shirt'
   | 'pants'
   | 'shoes'

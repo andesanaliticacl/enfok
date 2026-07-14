@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { AvatarLayerCategory } from '@/lib/avatar/types'
 
-const CREATION_CATEGORIES: AvatarLayerCategory[] = ['body', 'hair', 'eyes', 'shirt', 'pants', 'shoes']
+const CREATION_CATEGORIES: AvatarLayerCategory[] = ['body', 'hair', 'eyes', 'mask', 'shirt', 'pants', 'shoes']
 
 interface CharacterCreationPageProps {
   mode?: 'create' | 'edit-avatar' | 'edit-biome'
@@ -100,7 +100,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
       </h1>
 
       <div className="my-6 flex justify-center">
-        <AvatarSprite config={avatar} size={224} />
+        <AvatarSprite config={avatar} size={256} />
       </div>
 
       <label className="mb-4 block">

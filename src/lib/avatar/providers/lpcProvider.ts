@@ -45,6 +45,11 @@ const SHOE_COLORS: ColorChoice[] = [
   { id: 'gray', label: 'Gris', swatch: '#7a7a7a' },
 ]
 
+const MASK_COLORS: ColorChoice[] = [
+  { id: 'dark', label: 'Oscura', swatch: '#2a2a2a' },
+  { id: 'light', label: 'Clara', swatch: '#e8e8e8' },
+]
+
 const HAIR_STYLES = ['plain', 'bangs', 'pixie', 'long', 'bob', 'curly_short'] as const
 const HAIR_LABELS: Record<(typeof HAIR_STYLES)[number], string> = {
   plain: 'Liso',
@@ -53,6 +58,15 @@ const HAIR_LABELS: Record<(typeof HAIR_STYLES)[number], string> = {
   long: 'Largo',
   bob: 'Bob',
   curly_short: 'Rizado corto',
+}
+
+type ShirtStyle = 'vest' | 'tunic' | 'tshirt' | 'longsleeve'
+
+const SHIRT_STYLES: Record<ShirtStyle, { label: string; figures: Figure[]; colorMode: 'baked' | 'recolor' }> = {
+  vest: { label: 'Chaleco', figures: ['male', 'muscular'], colorMode: 'baked' },
+  tunic: { label: 'Túnica', figures: ['female'], colorMode: 'baked' },
+  tshirt: { label: 'Polera', figures: ['male', 'female', 'muscular'], colorMode: 'recolor' },
+  longsleeve: { label: 'Camisa manga larga', figures: ['male', 'female', 'muscular'], colorMode: 'recolor' },
 }
 
 const FRAME_SIZE = 64
@@ -72,14 +86,14 @@ function bodyLayer(figure: Figure, colorId: string | undefined): ResolvedLayer {
 export const lpcProvider: AvatarAssetProvider = {
   id: 'lpc-universal',
   frameSize: FRAME_SIZE,
-  categories: ['body', 'eyes', 'hair', 'shirt', 'pants', 'shoes'],
+  categories: ['body', 'eyes', 'hair', 'mask', 'shirt', 'pants', 'shoes'],
   attribution: {
     name: 'Liberated Pixel Cup — Universal LPC Spritesheet Character Generator',
     url: 'https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator/',
     license: 'CC-BY-SA 3.0 / GPL 3.0',
   },
 
-  listOptions(category, _figure): LayerOption[] {
+  listOptions(category, figure): LayerOption[] {
     switch (category) {
       case 'body':
         return ALL_FIGURES.map((f) => ({
@@ -102,8 +116,22 @@ export const lpcProvider: AvatarAssetProvider = {
           colors: HAIR_COLORS,
         }))
 
+      case 'mask':
+        return [
+          { id: 'none', label: 'Ninguna', figures: ALL_FIGURES, colorMode: 'none', colors: [] },
+          { id: 'plain', label: 'Máscara', figures: ALL_FIGURES, colorMode: 'baked', colors: MASK_COLORS },
+        ]
+
       case 'shirt':
-        return [{ id: 'default', label: 'Camisa', figures: ALL_FIGURES, colorMode: 'baked', colors: GARMENT_COLORS }]
+        return (Object.entries(SHIRT_STYLES) as [ShirtStyle, (typeof SHIRT_STYLES)[ShirtStyle]][])
+          .filter(([, def]) => def.figures.includes(figure))
+          .map(([id, def]) => ({
+            id,
+            label: def.label,
+            figures: def.figures,
+            colorMode: def.colorMode,
+            colors: GARMENT_COLORS,
+          }))
 
       case 'pants':
         return [{ id: 'default', label: 'Pantalón', figures: ALL_FIGURES, colorMode: 'baked', colors: GARMENT_COLORS }]
@@ -137,10 +165,32 @@ export const lpcProvider: AvatarAssetProvider = {
           recolorTargetHex: HAIR_COLORS.find((c) => c.id === colorId)?.swatch ?? HAIR_COLORS[0].swatch,
         }
 
+      case 'mask':
+        if (optionId !== 'plain') return null
+        return {
+          category,
+          zIndex: 35,
+          imageUrl: `${ASSET_ROOT}/facial/masks_plain/${colorId ?? 'dark'}.png`,
+        }
+
       case 'shirt': {
+        const style = (optionId as ShirtStyle) in SHIRT_STYLES ? (optionId as ShirtStyle) : 'tshirt'
         const color = colorId ?? 'blue'
-        const folder = figure === 'female' ? 'tunic_female' : 'vest_male'
-        return { category, zIndex: 20, imageUrl: `${ASSET_ROOT}/torso/${folder}/${color}.png` }
+
+        if (style === 'vest') {
+          return { category, zIndex: 20, imageUrl: `${ASSET_ROOT}/torso/vest_male/${color}.png` }
+        }
+        if (style === 'tunic') {
+          return { category, zIndex: 20, imageUrl: `${ASSET_ROOT}/torso/tunic_female/${color}.png` }
+        }
+
+        const folder = `${style}_${figure === 'female' ? 'female' : 'male'}`
+        return {
+          category,
+          zIndex: 20,
+          imageUrl: `${ASSET_ROOT}/torso/${folder}/idle.png`,
+          recolorTargetHex: GARMENT_COLORS.find((c) => c.id === color)?.swatch ?? GARMENT_COLORS[0].swatch,
+        }
       }
 
       case 'pants': {
@@ -170,6 +220,7 @@ export const CATEGORY_LABELS: Record<AvatarLayerCategory, string> = {
   eyes: 'Ojos',
   hair: 'Pelo',
   beard: 'Barba',
+  mask: 'Máscara',
   shirt: 'Camisa',
   pants: 'Pantalón',
   shoes: 'Zapatos',
