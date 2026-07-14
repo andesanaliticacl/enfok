@@ -23,6 +23,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
   const { avatar, biome: selectedBiome, setFigure, setOption, setColor, setBiome, finishCreation } = useAvatarStore()
   const profileName = useGameStore((s) => s.profile.name)
   const setProfileName = useGameStore((s) => s.setProfileName)
+  const startNewProfile = useGameStore((s) => s.startNewProfile)
 
   const [step, setStep] = useState<'avatar' | 'biome'>(mode === 'edit-biome' ? 'biome' : 'avatar')
   const [name, setName] = useState(profileName)
@@ -45,8 +46,13 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
   }
 
   function finishAndExit(destination: string) {
-    setProfileName(name.trim() || 'Aventurero')
-    if (mode === 'create') finishCreation()
+    const finalName = name.trim() || 'Aventurero'
+    if (mode === 'create') {
+      startNewProfile(finalName)
+      finishCreation()
+    } else {
+      setProfileName(finalName)
+    }
     navigate(destination)
   }
 

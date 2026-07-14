@@ -30,7 +30,17 @@ interface GameState {
   completeMission: (missionId: string) => void
 
   setProfileName: (name: string) => void
+  startNewProfile: (name: string) => void
   clearLastGainedXp: () => void
+}
+
+const STARTING_PROFILE: Omit<PlayerProfile, 'name'> = {
+  level: 1,
+  xp: 0,
+  xpToNextLevel: 100,
+  coins: 0,
+  streakDays: 0,
+  hoursInvested: 0,
 }
 
 function applyLevelUp(profile: PlayerProfile): PlayerProfile {
@@ -134,6 +144,8 @@ export const useGameStore = create<GameState>()(
       },
 
       setProfileName: (name) => set((state) => ({ profile: { ...state.profile, name } })),
+
+      startNewProfile: (name) => set({ profile: { name, ...STARTING_PROFILE } }),
 
       clearLastGainedXp: () => set({ lastGainedXp: null }),
     }),
