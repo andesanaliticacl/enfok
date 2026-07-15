@@ -81,7 +81,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
 
   if (step === 'biome') {
     return (
-      <div className="flex min-h-full flex-col px-4 pt-10 pb-8">
+      <div className="mx-auto flex min-h-full w-full max-w-xl flex-col px-4 pt-10 pb-8">
         <h1 className="font-pixel text-lg text-gold-400">¿Dónde comienza tu aventura?</h1>
         <p className="mt-2 text-sm text-ink-400">Elige el bioma inicial de tu mundo.</p>
 
@@ -162,7 +162,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
   }
 
   return (
-    <div className="flex min-h-full flex-col px-4 pt-10 pb-8">
+    <div className="mx-auto flex min-h-full w-full max-w-xl flex-col px-4 pt-10 pb-8">
       <h1 className="font-pixel text-lg text-gold-400">
         {mode === 'create' ? 'Crea tu aventurero' : 'Editar personaje'}
       </h1>

@@ -4,6 +4,7 @@ import { ChevronLeft, Plus, Pencil } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { goalProgress } from '@/lib/planning/goalEngine'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { PageContainer } from '@/components/layout/PageContainer'
 import { Button } from '@/components/ui/button'
 import { MissionRow } from '@/components/missions/MissionRow'
 import { XpToast } from '@/components/missions/XpToast'
@@ -36,17 +37,17 @@ export function RegionPage() {
 
   if (!region) {
     return (
-      <div className="text-sm text-ink-400">
+      <PageContainer className="text-sm text-ink-400">
         Región no encontrada.
         <button onClick={() => navigate('/')} className="ml-2 text-gold-400 underline">
           Volver al mapa
         </button>
-      </div>
+      </PageContainer>
     )
   }
 
   return (
-    <div>
+    <PageContainer>
       <XpToast />
 
       <button
@@ -148,6 +149,6 @@ export function RegionPage() {
         }
         onDelete={missionDialog.mission ? () => deleteMission(missionDialog.mission!.id) : undefined}
       />
-    </div>
+    </PageContainer>
   )
 }

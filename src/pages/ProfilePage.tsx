@@ -10,6 +10,7 @@ import { achievements } from '@/data/achievements'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
+import { PageContainer } from '@/components/layout/PageContainer'
 import { cn } from '@/lib/utils'
 
 export function ProfilePage() {
@@ -41,7 +42,7 @@ export function ProfilePage() {
   }
 
   return (
-    <div>
+    <PageContainer>
       <div className="flex items-start gap-2">
         <div className="flex flex-1 flex-col gap-2">
           {stats.map((stat) => (
@@ -135,6 +136,6 @@ export function ProfilePage() {
           </div>
         </div>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }

@@ -1,11 +1,12 @@
 import { useGameStore } from '@/store/useGameStore'
 import { Card, CardContent } from '@/components/ui/card'
+import { PageContainer } from '@/components/layout/PageContainer'
 
 export function InventoryPage() {
   const inventory = useGameStore((s) => s.inventory)
 
   return (
-    <div>
+    <PageContainer>
       <h1 className="mb-6 font-pixel text-lg text-gold-400">Inventario</h1>
       <div className="grid grid-cols-2 gap-3">
         {inventory.map((item) => (
@@ -20,6 +21,6 @@ export function InventoryPage() {
           </Card>
         ))}
       </div>
-    </div>
+    </PageContainer>
   )
 }

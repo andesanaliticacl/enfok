@@ -59,7 +59,7 @@ export function MapPage() {
   }
 
   return (
-    <div className="-mx-4 -mt-6 flex h-[calc(100dvh-136px)] flex-col">
+    <div className="flex h-[calc(100dvh-136px)] w-full flex-col">
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between p-4">
         <div className="pointer-events-auto flex items-center gap-3">
           <AvatarSprite config={avatar} size={48} className="rounded-xl bg-ink-800" />

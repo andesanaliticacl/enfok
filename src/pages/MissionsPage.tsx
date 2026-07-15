@@ -6,6 +6,7 @@ import { CalendarView } from '@/components/planning/CalendarView'
 import { XpToast } from '@/components/missions/XpToast'
 import { MissionFormDialog } from '@/components/planning/MissionFormDialog'
 import { Button } from '@/components/ui/button'
+import { PageContainer } from '@/components/layout/PageContainer'
 import { cn } from '@/lib/utils'
 import type { Mission } from '@/types'
 
@@ -18,7 +19,7 @@ export function MissionsPage() {
   const [dialog, setDialog] = useState<{ open: boolean; mission?: Mission; date?: string }>({ open: false })
 
   return (
-    <div>
+    <PageContainer>
       <XpToast />
 
       <div className="mb-4 flex items-center justify-between">
@@ -66,6 +67,6 @@ export function MissionsPage() {
         onSubmit={(input) => (dialog.mission ? updateMission(dialog.mission.id, input) : addMission(input))}
         onDelete={dialog.mission ? () => deleteMission(dialog.mission!.id) : undefined}
       />
-    </div>
+    </PageContainer>
   )
 }
