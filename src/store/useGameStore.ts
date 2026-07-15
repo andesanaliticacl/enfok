@@ -9,13 +9,14 @@ import {
 } from '@/data/mockData'
 import { createGoal, isGoalComplete, type GoalInput } from '@/lib/planning/goalEngine'
 import { applyCompletion, createMission, type MissionInput } from '@/lib/planning/missionEngine'
-import type { Goal, InventoryItem, Mission, PlayerProfile, Region } from '@/types'
+import type { Goal, InventoryItem, Mission, Place, PlaceCategory, PlayerProfile, Region } from '@/types'
 
 interface GameState {
   regions: Region[]
   goals: Goal[]
   missions: Mission[]
   inventory: InventoryItem[]
+  places: Place[]
   profile: PlayerProfile
   lastGainedXp: number | null
 
@@ -32,6 +33,9 @@ interface GameState {
   setProfileName: (name: string) => void
   startNewProfile: (name: string) => void
   clearLastGainedXp: () => void
+
+  addPlace: (name: string, category: PlaceCategory, lat: number, lng: number) => void
+  deletePlace: (placeId: string) => void
 }
 
 const STARTING_PROFILE: Omit<PlayerProfile, 'name'> = {
@@ -60,6 +64,7 @@ export const useGameStore = create<GameState>()(
       goals: mockGoals,
       missions: mockMissions,
       inventory: mockInventory,
+      places: [],
       profile: mockProfile,
       lastGainedXp: null,
 
@@ -148,7 +153,24 @@ export const useGameStore = create<GameState>()(
       startNewProfile: (name) => set({ profile: { name, ...STARTING_PROFILE } }),
 
       clearLastGainedXp: () => set({ lastGainedXp: null }),
+
+      addPlace: (name, category, lat, lng) =>
+        set((state) => ({
+          places: [...state.places, { id: `place-${crypto.randomUUID()}`, name, category, lat, lng }],
+        })),
+
+      deletePlace: (placeId) =>
+        set((state) => ({ places: state.places.filter((p) => p.id !== placeId) })),
     }),
-    { name: 'questly-game-state-v2' },
+    {
+      name: 'questly-game-state-v2',
+      // Backfill `places` for saves made before this field existed, same
+      // reasoning as the avatar store's merge fix — a missing array here
+      // would crash WorldMap on first render instead of just being empty.
+      merge: (persisted, current) => {
+        const persistedState = (persisted ?? {}) as Partial<GameState>
+        return { ...current, ...persistedState, places: persistedState.places ?? current.places }
+      },
+    },
   ),
 )

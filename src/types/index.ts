@@ -67,6 +67,16 @@ export interface InventoryItem {
   linkedGoalIds: string[]
 }
 
+export type PlaceCategory = 'casa' | 'trabajo' | 'gimnasio' | 'universidad' | 'parque' | 'otro'
+
+export interface Place {
+  id: string
+  name: string
+  category: PlaceCategory
+  lat: number
+  lng: number
+}
+
 export type BiomeId = 'valle' | 'ciudad' | 'playa' | 'bosque' | 'montana' | 'espacio'
 
 export interface Biome {
