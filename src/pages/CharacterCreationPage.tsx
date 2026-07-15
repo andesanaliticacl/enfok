@@ -60,6 +60,9 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
       const nextFigure = figureOfBodyId(next.id)
       if (nextFigure !== avatar.figure) setFigure(nextFigure)
       setOption('body', next.id)
+      // Head sprite depends on race, not just figure (an orc needs an orc
+      // head, not just any male head), so it must track the exact body id.
+      setOption('head', next.id)
     } else {
       setOption(category, next.id)
     }

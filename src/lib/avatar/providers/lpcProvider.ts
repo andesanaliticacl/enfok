@@ -45,6 +45,26 @@ const SHOE_COLORS: ColorChoice[] = [
   { id: 'gray', label: 'Gris', swatch: '#7a7a7a' },
 ]
 
+const ORC_SKIN_COLORS: ColorChoice[] = [
+  { id: 'moss', label: 'Musgo', swatch: '#5a7a3a' },
+  { id: 'swamp', label: 'Pantano', swatch: '#4a6a35' },
+  { id: 'olive', label: 'Oliva', swatch: '#6a7a4a' },
+  { id: 'ash', label: 'Ceniza', swatch: '#7a8a7a' },
+]
+
+const LIZARD_SKIN_COLORS: ColorChoice[] = [
+  { id: 'emerald', label: 'Esmeralda', swatch: '#2f7a4f' },
+  { id: 'jungle', label: 'Selva', swatch: '#3a6a3a' },
+  { id: 'sand', label: 'Arena', swatch: '#8a8a4a' },
+  { id: 'storm', label: 'Tormenta', swatch: '#4a5a6a' },
+]
+
+const SKELETON_SKIN_COLORS: ColorChoice[] = [
+  { id: 'bone', label: 'Hueso', swatch: '#e8e0d0' },
+  { id: 'ash', label: 'Ceniza', swatch: '#a8a49a' },
+  { id: 'charred', label: 'Carbonizado', swatch: '#4a4540' },
+]
+
 const MASK_COLORS: ColorChoice[] = [
   { id: 'dark', label: 'Oscura', swatch: '#2a2a2a' },
   { id: 'light', label: 'Clara', swatch: '#e8e8e8' },
@@ -69,25 +89,35 @@ const EYE_STYLE_LABELS: Record<(typeof EYE_STYLES)[number], string> = {
 }
 
 /**
- * Body id encodes both the figure (male/female/muscular) and, for female,
- * which build variant to render — lets female offer more than one silhouette
- * while everything else (head, hair, shirt, pants) keeps keying off figure.
+ * A body id encodes race + build together (e.g. 'orc_male', 'female_teen',
+ * 'skeleton'). It drives which body AND head sprite render, and which skin
+ * palette applies. `figure` is the clothing silhouette (male/female/muscular)
+ * that id maps to — hair/shirt/pants/shoes keep keying off figure, since
+ * every race reuses the same human clothing meshes.
  */
-const BODY_IDS_BY_FIGURE: Record<Figure, string[]> = {
-  male: ['male'],
-  female: ['female', 'female_teen', 'female_pregnant'],
-  muscular: ['muscular'],
+interface BodyDef {
+  label: string
+  figure: Figure
+  bodyImage: string
+  headImage: string
+  skinColors: ColorChoice[]
 }
-const BODY_LABELS: Record<string, string> = {
-  male: 'Cuerpo A',
-  female: 'Cuerpo B',
-  female_teen: 'Cuerpo B (esbelto)',
-  female_pregnant: 'Cuerpo B (embarazo)',
-  muscular: 'Cuerpo C (atlético)',
+
+const BODY_DEFS: Record<string, BodyDef> = {
+  male: { label: 'Humano A', figure: 'male', bodyImage: 'male/idle.png', headImage: 'male/idle.png', skinColors: SKIN_COLORS },
+  female: { label: 'Humano B', figure: 'female', bodyImage: 'female/idle.png', headImage: 'female/idle.png', skinColors: SKIN_COLORS },
+  female_teen: { label: 'Humano B (esbelto)', figure: 'female', bodyImage: 'female_teen/idle.png', headImage: 'female/idle.png', skinColors: SKIN_COLORS },
+  female_pregnant: { label: 'Humano B (embarazo)', figure: 'female', bodyImage: 'female_pregnant/idle.png', headImage: 'female/idle.png', skinColors: SKIN_COLORS },
+  muscular: { label: 'Humano C (atlético)', figure: 'muscular', bodyImage: 'muscular/idle.png', headImage: 'male/idle.png', skinColors: SKIN_COLORS },
+  orc_male: { label: 'Orco A', figure: 'male', bodyImage: 'male/idle.png', headImage: 'orc_male/idle.png', skinColors: ORC_SKIN_COLORS },
+  orc_female: { label: 'Orco B', figure: 'female', bodyImage: 'female/idle.png', headImage: 'orc_female/idle.png', skinColors: ORC_SKIN_COLORS },
+  lizard_male: { label: 'Argoniano A', figure: 'male', bodyImage: 'male/idle.png', headImage: 'lizard_male/idle.png', skinColors: LIZARD_SKIN_COLORS },
+  lizard_female: { label: 'Argoniano B', figure: 'female', bodyImage: 'female/idle.png', headImage: 'lizard_female/idle.png', skinColors: LIZARD_SKIN_COLORS },
+  skeleton: { label: 'No-muerto', figure: 'male', bodyImage: 'skeleton/walk.png', headImage: 'skeleton/idle.png', skinColors: SKELETON_SKIN_COLORS },
 }
 
 export function figureOfBodyId(id: string): Figure {
-  return id.startsWith('female') ? 'female' : (id as Figure)
+  return BODY_DEFS[id]?.figure ?? 'male'
 }
 
 type ShirtStyle = 'vest' | 'tunic' | 'tshirt' | 'longsleeve'
@@ -104,25 +134,23 @@ const DOWN_ROW_Y = -(FRAME_SIZE * 2)
 
 const ALL_FIGURES: Figure[] = ['male', 'female', 'muscular']
 
-function skinHex(colorId: string | undefined): string {
-  return SKIN_COLORS.find((c) => c.id === colorId)?.swatch ?? SKIN_COLORS[1].swatch
-}
-
 function bodyLayer(bodyId: string, colorId: string | undefined): ResolvedLayer {
+  const def = BODY_DEFS[bodyId] ?? BODY_DEFS.male
   return {
     category: 'body',
     zIndex: 0,
-    imageUrl: `${ASSET_ROOT}/body/${bodyId}/idle.png`,
-    recolorTargetHex: skinHex(colorId),
+    imageUrl: `${ASSET_ROOT}/body/${def.bodyImage}`,
+    recolorTargetHex: def.skinColors.find((c) => c.id === colorId)?.swatch ?? def.skinColors[0].swatch,
   }
 }
 
-function headLayer(figure: Figure, colorId: string | undefined): ResolvedLayer {
+function headLayer(bodyId: string, colorId: string | undefined): ResolvedLayer {
+  const def = BODY_DEFS[bodyId] ?? BODY_DEFS.male
   return {
     category: 'head',
     zIndex: 2,
-    imageUrl: `${ASSET_ROOT}/head/${figure === 'female' ? 'female' : 'male'}/idle.png`,
-    recolorTargetHex: skinHex(colorId),
+    imageUrl: `${ASSET_ROOT}/head/${def.headImage}`,
+    recolorTargetHex: def.skinColors.find((c) => c.id === colorId)?.swatch ?? def.skinColors[0].swatch,
   }
 }
 
@@ -139,15 +167,13 @@ export const lpcProvider: AvatarAssetProvider = {
   listOptions(category, figure): LayerOption[] {
     switch (category) {
       case 'body':
-        return ALL_FIGURES.flatMap((f) =>
-          BODY_IDS_BY_FIGURE[f].map((id) => ({
-            id,
-            label: BODY_LABELS[id],
-            figures: [f],
-            colorMode: 'recolor' as const,
-            colors: SKIN_COLORS,
-          })),
-        )
+        return Object.entries(BODY_DEFS).map(([id, def]) => ({
+          id,
+          label: def.label,
+          figures: [def.figure],
+          colorMode: 'recolor' as const,
+          colors: def.skinColors,
+        }))
 
       case 'head':
         return [{ id: figure, label: 'Cabeza', figures: [figure], colorMode: 'recolor', colors: SKIN_COLORS }]
@@ -204,7 +230,7 @@ export const lpcProvider: AvatarAssetProvider = {
         return bodyLayer(optionId, colorId)
 
       case 'head':
-        return headLayer(figure, colorId)
+        return headLayer(optionId, colorId)
 
       case 'eyes':
         return {
@@ -273,7 +299,7 @@ export const lpcProvider: AvatarAssetProvider = {
 export const LPC_DOWN_FRAME_POSITION = `0px ${DOWN_ROW_Y}px`
 
 export const CATEGORY_LABELS: Record<AvatarLayerCategory, string> = {
-  body: 'Cuerpo',
+  body: 'Raza y cuerpo',
   head: 'Cabeza',
   eyes: 'Ojos',
   hair: 'Pelo',
