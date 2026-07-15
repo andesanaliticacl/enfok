@@ -42,53 +42,53 @@ export function ProfilePage() {
 
   return (
     <div>
-      <header className="mb-6 flex flex-col items-center text-center">
-        <div
-          className="flex items-center justify-center rounded-2xl border border-ink-700"
-          style={{
-            backgroundImage: biomeArt ? `url(${biomeArt})` : undefined,
-            backgroundColor: biome?.color ?? 'var(--color-ink-800)',
-            backgroundSize: 'cover',
-            imageRendering: 'pixelated',
-          }}
-        >
-          <AvatarSprite config={avatar} size={128} />
+      <div className="flex items-start gap-2">
+        <div className="flex flex-1 flex-col gap-2">
+          {stats.map((stat) => (
+            <Card key={stat.label}>
+              <CardContent className="p-2.5">
+                <p className="text-[9px] leading-tight text-ink-400">{stat.label}</p>
+                <p className="text-sm font-semibold text-ink-50">{stat.value}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-        <h1 className="mt-3 text-lg font-semibold text-ink-50">{profile.name}</h1>
-        <p className="font-pixel text-[10px] text-gold-400">Nivel {profile.level}</p>
-        {biome && (
-          <p className="mt-1 text-xs text-ink-400">
-            {biome.emoji} Mundo: {biome.name}
-          </p>
-        )}
 
-        <div className="mt-4 flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate('/personaje/editar')}>
-            <Pencil size={14} /> Editar personaje
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate('/personaje/bioma')}>
-            <Globe2 size={14} /> Cambiar bioma
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
-            <Settings size={16} />
-          </Button>
-        </div>
-      </header>
+        <header className="flex w-[44%] max-w-[230px] flex-shrink-0 flex-col items-center text-center">
+          <div
+            className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl border border-ink-700"
+            style={{
+              backgroundImage: biomeArt ? `url(${biomeArt})` : undefined,
+              backgroundColor: biome?.color ?? 'var(--color-ink-800)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              imageRendering: 'pixelated',
+            }}
+          >
+            <AvatarSprite config={avatar} size={168} />
+          </div>
+          <h1 className="mt-3 text-base font-semibold text-ink-50">{profile.name}</h1>
+          <p className="font-pixel text-[10px] text-gold-400">Nivel {profile.level}</p>
+          {biome && (
+            <p className="mt-1 text-[10px] text-ink-400">
+              {biome.emoji} {biome.name}
+            </p>
+          )}
 
-      <div className="grid grid-cols-2 gap-3">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="p-4">
-              <p className="text-[11px] text-ink-400">{stat.label}</p>
-              <p className="mt-1 text-lg font-semibold text-ink-50">{stat.value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+          <div className="mt-4 flex w-full flex-col gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/personaje/editar')} className="w-full">
+              <Pencil size={14} /> Editar
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/personaje/bioma')} className="w-full">
+              <Globe2 size={14} /> Bioma
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSettingsOpen(true)} className="w-full">
+              <Settings size={14} /> Ajustes
+            </Button>
+          </div>
+        </header>
 
-      <section className="mt-6">
-        <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-400">Logros</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="flex flex-1 flex-col gap-2">
           {achievements.map((achievement) => {
             const unlocked = achievement.isUnlocked({
               missionsCompleted,
@@ -100,18 +100,18 @@ export function ProfilePage() {
               <div
                 key={achievement.id}
                 className={cn(
-                  'flex flex-col items-center gap-1 rounded-xl border border-ink-700 bg-ink-900 p-3 text-center',
+                  'flex items-center gap-1.5 rounded-xl border border-ink-700 bg-ink-900 px-2 py-2',
                   !unlocked && 'opacity-30',
                 )}
                 title={achievement.description}
               >
-                <span className="text-2xl">{achievement.icon}</span>
-                <span className="text-[10px] text-ink-200">{achievement.name}</span>
+                <span className="text-base leading-none">{achievement.icon}</span>
+                <span className="text-[9px] leading-tight text-ink-200">{achievement.name}</span>
               </div>
             )
           })}
         </div>
-      </section>
+      </div>
 
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Configuración">
         <div className="flex flex-col gap-4">

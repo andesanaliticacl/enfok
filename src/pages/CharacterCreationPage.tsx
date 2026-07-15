@@ -7,7 +7,7 @@ import { useGameStore } from '@/store/useGameStore'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { PixelEditor } from '@/components/avatar/PixelEditor'
 import { getEditableFrame, getLayerSilhouette, getEditableBiomeFrame } from '@/lib/avatar/pixelFrame'
-import { lpcProvider, CATEGORY_LABELS } from '@/lib/avatar/providers/lpcProvider'
+import { lpcProvider, CATEGORY_LABELS, figureOfBodyId } from '@/lib/avatar/providers/lpcProvider'
 import { biomes } from '@/data/biomes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -57,7 +57,9 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
     const idx = options.findIndex((o) => o.id === currentOptionId)
     const next = options[(idx + direction + options.length) % options.length]
     if (category === 'body') {
-      setFigure(next.id as typeof avatar.figure)
+      const nextFigure = figureOfBodyId(next.id)
+      if (nextFigure !== avatar.figure) setFigure(nextFigure)
+      setOption('body', next.id)
     } else {
       setOption(category, next.id)
     }

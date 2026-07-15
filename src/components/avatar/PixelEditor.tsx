@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Eraser, Paintbrush, X, RotateCcw } from 'lucide-react'
+import { Eraser, Paintbrush, X, RotateCcw, Undo2 } from 'lucide-react'
 import { lpcProvider } from '@/lib/avatar/providers/lpcProvider'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -23,10 +23,14 @@ const QUICK_COLORS = ['#1c1c1c', '#ffffff', '#e8b892', '#2f5fa8', '#6e2632', '#2
 export function PixelEditor({ open, title, loadFrame, loadSilhouette, onClose, onSave, onClear }: PixelEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const silhouetteRef = useRef<boolean[][] | null>(null)
+  const undoStackRef = useRef<ImageData[]>([])
   const [tool, setTool] = useState<'brush' | 'eraser'>('brush')
   const [color, setColor] = useState('#2f5fa8')
   const [isPainting, setIsPainting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [canUndo, setCanUndo] = useState(false)
+
+  const MAX_UNDO_STEPS = 50
 
   const frameSize = lpcProvider.frameSize
   const canvasPx = frameSize * CELL_SIZE
@@ -55,6 +59,8 @@ export function PixelEditor({ open, title, loadFrame, loadSilhouette, onClose, o
     // Any pre-existing paint that fell outside the shape (e.g. from before
     // this constraint existed) gets cleaned up the moment it's reopened.
     clipToSilhouette(ctx)
+    undoStackRef.current = []
+    setCanUndo(false)
     setLoading(false)
   }
 
@@ -85,8 +91,27 @@ export function PixelEditor({ open, title, loadFrame, loadSilhouette, onClose, o
     }
   }
 
+  function pushUndoSnapshot() {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    undoStackRef.current.push(ctx.getImageData(0, 0, canvasPx, canvasPx))
+    if (undoStackRef.current.length > MAX_UNDO_STEPS) undoStackRef.current.shift()
+    setCanUndo(true)
+  }
+
+  function handleUndo() {
+    const canvas = canvasRef.current
+    const snapshot = undoStackRef.current.pop()
+    if (!canvas || !snapshot) return
+    const ctx = canvas.getContext('2d')!
+    ctx.putImageData(snapshot, 0, 0)
+    setCanUndo(undoStackRef.current.length > 0)
+  }
+
   function handlePointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
     e.currentTarget.setPointerCapture(e.pointerId)
+    pushUndoSnapshot()
     setIsPainting(true)
     paintAt(e.clientX, e.clientY)
   }
@@ -185,7 +210,19 @@ export function PixelEditor({ open, title, loadFrame, loadSilhouette, onClose, o
                 }}
                 className="h-10 w-10 cursor-pointer rounded-xl border border-ink-600 bg-transparent p-1"
               />
-              <button onClick={handleReset} className="flex h-10 w-10 items-center justify-center rounded-xl border border-ink-600 text-ink-400">
+              <button
+                onClick={handleUndo}
+                disabled={!canUndo}
+                title="Deshacer último trazo"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-ink-600 text-ink-400 disabled:opacity-30"
+              >
+                <Undo2 size={16} />
+              </button>
+              <button
+                onClick={handleReset}
+                title="Borrar toda la pintura"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-ink-600 text-ink-400"
+              >
                 <RotateCcw size={16} />
               </button>
             </div>

@@ -50,7 +50,7 @@ const MASK_COLORS: ColorChoice[] = [
   { id: 'light', label: 'Clara', swatch: '#e8e8e8' },
 ]
 
-const HAIR_STYLES = ['plain', 'bangs', 'pixie', 'long', 'bob', 'curly_short'] as const
+const HAIR_STYLES = ['plain', 'bangs', 'pixie', 'long', 'bob', 'curly_short', 'afro', 'jewfro'] as const
 const HAIR_LABELS: Record<(typeof HAIR_STYLES)[number], string> = {
   plain: 'Liso',
   bangs: 'Con flequillo',
@@ -58,6 +58,36 @@ const HAIR_LABELS: Record<(typeof HAIR_STYLES)[number], string> = {
   long: 'Largo',
   bob: 'Bob',
   curly_short: 'Rizado corto',
+  afro: 'Afro',
+  jewfro: 'Afro rizado',
+}
+
+const EYE_STYLES = ['default', 'round'] as const
+const EYE_STYLE_LABELS: Record<(typeof EYE_STYLES)[number], string> = {
+  default: 'Ojos',
+  round: 'Ojos grandes',
+}
+
+/**
+ * Body id encodes both the figure (male/female/muscular) and, for female,
+ * which build variant to render — lets female offer more than one silhouette
+ * while everything else (head, hair, shirt, pants) keeps keying off figure.
+ */
+const BODY_IDS_BY_FIGURE: Record<Figure, string[]> = {
+  male: ['male'],
+  female: ['female', 'female_teen', 'female_pregnant'],
+  muscular: ['muscular'],
+}
+const BODY_LABELS: Record<string, string> = {
+  male: 'Cuerpo A',
+  female: 'Cuerpo B',
+  female_teen: 'Cuerpo B (esbelto)',
+  female_pregnant: 'Cuerpo B (embarazo)',
+  muscular: 'Cuerpo C (atlético)',
+}
+
+export function figureOfBodyId(id: string): Figure {
+  return id.startsWith('female') ? 'female' : (id as Figure)
 }
 
 type ShirtStyle = 'vest' | 'tunic' | 'tshirt' | 'longsleeve'
@@ -78,11 +108,11 @@ function skinHex(colorId: string | undefined): string {
   return SKIN_COLORS.find((c) => c.id === colorId)?.swatch ?? SKIN_COLORS[1].swatch
 }
 
-function bodyLayer(figure: Figure, colorId: string | undefined): ResolvedLayer {
+function bodyLayer(bodyId: string, colorId: string | undefined): ResolvedLayer {
   return {
     category: 'body',
     zIndex: 0,
-    imageUrl: `${ASSET_ROOT}/body/${figure}/idle.png`,
+    imageUrl: `${ASSET_ROOT}/body/${bodyId}/idle.png`,
     recolorTargetHex: skinHex(colorId),
   }
 }
@@ -109,19 +139,27 @@ export const lpcProvider: AvatarAssetProvider = {
   listOptions(category, figure): LayerOption[] {
     switch (category) {
       case 'body':
-        return ALL_FIGURES.map((f) => ({
-          id: f,
-          label: f === 'male' ? 'Cuerpo A' : f === 'female' ? 'Cuerpo B' : 'Cuerpo C (atlético)',
-          figures: [f],
-          colorMode: 'recolor',
-          colors: SKIN_COLORS,
-        }))
+        return ALL_FIGURES.flatMap((f) =>
+          BODY_IDS_BY_FIGURE[f].map((id) => ({
+            id,
+            label: BODY_LABELS[id],
+            figures: [f],
+            colorMode: 'recolor' as const,
+            colors: SKIN_COLORS,
+          })),
+        )
 
       case 'head':
         return [{ id: figure, label: 'Cabeza', figures: [figure], colorMode: 'recolor', colors: SKIN_COLORS }]
 
       case 'eyes':
-        return [{ id: 'default', label: 'Ojos', figures: ALL_FIGURES, colorMode: 'recolor', colors: EYE_COLORS }]
+        return EYE_STYLES.map((style) => ({
+          id: style,
+          label: EYE_STYLE_LABELS[style],
+          figures: ALL_FIGURES,
+          colorMode: 'recolor',
+          colors: EYE_COLORS,
+        }))
 
       case 'hair':
         return HAIR_STYLES.map((style) => ({
@@ -163,7 +201,7 @@ export const lpcProvider: AvatarAssetProvider = {
   resolveLayer(category, optionId, colorId, figure): ResolvedLayer | null {
     switch (category) {
       case 'body':
-        return bodyLayer(figure, colorId)
+        return bodyLayer(optionId, colorId)
 
       case 'head':
         return headLayer(figure, colorId)
@@ -172,7 +210,7 @@ export const lpcProvider: AvatarAssetProvider = {
         return {
           category,
           zIndex: 5,
-          imageUrl: `${ASSET_ROOT}/eyes/default/idle.png`,
+          imageUrl: `${ASSET_ROOT}/eyes/${optionId}/idle.png`,
           recolorTargetHex: EYE_COLORS.find((c) => c.id === colorId)?.swatch ?? EYE_COLORS[0].swatch,
         }
 
