@@ -1,65 +1,67 @@
-import { useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { useState } from 'react'
+import { List, Calendar as CalendarIcon, Plus } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
-import { MissionRow } from '@/components/missions/MissionRow'
+import { MissionsListView } from '@/components/planning/MissionsListView'
+import { CalendarView } from '@/components/planning/CalendarView'
 import { XpToast } from '@/components/missions/XpToast'
 import { MissionFormDialog } from '@/components/planning/MissionFormDialog'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import type { Mission } from '@/types'
 
 export function MissionsPage() {
-  const missions = useGameStore((s) => s.missions)
-  const completeMission = useGameStore((s) => s.completeMission)
   const addMission = useGameStore((s) => s.addMission)
   const updateMission = useGameStore((s) => s.updateMission)
   const deleteMission = useGameStore((s) => s.deleteMission)
 
-  const [dialog, setDialog] = useState<{ open: boolean; mission?: Mission }>({ open: false })
-
-  const pending = useMemo(
-    () => [...missions].filter((m) => m.status === 'pendiente').sort((a, b) => a.date.localeCompare(b.date)),
-    [missions],
-  )
-  const completed = useMemo(() => missions.filter((m) => m.status === 'completada'), [missions])
+  const [view, setView] = useState<'lista' | 'calendario'>('lista')
+  const [dialog, setDialog] = useState<{ open: boolean; mission?: Mission; date?: string }>({ open: false })
 
   return (
     <div>
       <XpToast />
 
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <h1 className="font-pixel text-lg text-gold-400">Misiones</h1>
         <Button size="icon" onClick={() => setDialog({ open: true })}>
           <Plus size={18} />
         </Button>
       </div>
 
-      <section className="mb-6">
-        <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-400">Pendientes</h2>
-        {pending.length === 0 && <p className="text-sm text-ink-400">No tienes misiones pendientes.</p>}
-        <div className="flex flex-col gap-2">
-          {pending.map((mission) => (
-            <MissionRow
-              key={mission.id}
-              mission={mission}
-              onComplete={completeMission}
-              onEdit={(m) => setDialog({ open: true, mission: m })}
-            />
-          ))}
-        </div>
-      </section>
+      <div className="mb-6 flex gap-2">
+        <button
+          onClick={() => setView('lista')}
+          className={cn(
+            'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
+            view === 'lista' && 'bg-ink-800 text-gold-400',
+          )}
+        >
+          <List size={14} /> Lista
+        </button>
+        <button
+          onClick={() => setView('calendario')}
+          className={cn(
+            'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
+            view === 'calendario' && 'bg-ink-800 text-gold-400',
+          )}
+        >
+          <CalendarIcon size={14} /> Calendario
+        </button>
+      </div>
 
-      <section>
-        <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-400">Completadas</h2>
-        <div className="flex flex-col gap-2">
-          {completed.map((mission) => (
-            <MissionRow key={mission.id} mission={mission} onComplete={completeMission} />
-          ))}
-        </div>
-      </section>
+      {view === 'lista' ? (
+        <MissionsListView onEdit={(mission) => setDialog({ open: true, mission })} />
+      ) : (
+        <CalendarView
+          onCreateOnDate={(date) => setDialog({ open: true, date })}
+          onEdit={(mission) => setDialog({ open: true, mission })}
+        />
+      )}
 
       <MissionFormDialog
         open={dialog.open}
         onClose={() => setDialog({ open: false })}
+        defaultDate={dialog.date}
         mission={dialog.mission}
         onSubmit={(input) => (dialog.mission ? updateMission(dialog.mission.id, input) : addMission(input))}
         onDelete={dialog.mission ? () => deleteMission(dialog.mission!.id) : undefined}

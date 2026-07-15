@@ -1,26 +1,25 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { buildMonthGrid, toDateKey, MONTH_LABELS, WEEKDAY_LABELS } from '@/lib/calendar'
 import { groupMissionsByDate } from '@/lib/planning/calendarEngine'
-import { MissionFormDialog } from '@/components/planning/MissionFormDialog'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Mission } from '@/types'
 
-export function CalendarPage() {
+interface CalendarViewProps {
+  onCreateOnDate: (date: string) => void
+  onEdit: (mission: Mission) => void
+}
+
+export function CalendarView({ onCreateOnDate, onEdit }: CalendarViewProps) {
   const missions = useGameStore((s) => s.missions)
   const goals = useGameStore((s) => s.goals)
-  const addMission = useGameStore((s) => s.addMission)
-  const updateMission = useGameStore((s) => s.updateMission)
-  const deleteMission = useGameStore((s) => s.deleteMission)
 
   const today = new Date()
   const todayKey = toDateKey(today.getFullYear(), today.getMonth(), today.getDate())
 
   const [cursor, setCursor] = useState({ year: today.getFullYear(), month: today.getMonth() })
   const [selectedKey, setSelectedKey] = useState(todayKey)
-  const [dialog, setDialog] = useState<{ open: boolean; mission?: Mission; date?: string }>({ open: false })
 
   const grid = useMemo(() => buildMonthGrid(cursor.year, cursor.month), [cursor])
   const missionsByDate = useMemo(() => groupMissionsByDate(missions), [missions])
@@ -42,13 +41,6 @@ export function CalendarPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-pixel text-lg text-gold-400">Calendario</h1>
-        <Button size="icon" onClick={() => setDialog({ open: true, date: selectedKey })}>
-          <Plus size={18} />
-        </Button>
-      </div>
-
       <div className="mb-4 flex items-center justify-between">
         <button onClick={() => changeMonth(-1)} className="rounded-full p-2 text-ink-400 hover:text-ink-50">
           <ChevronLeft size={18} />
@@ -106,17 +98,12 @@ export function CalendarPage() {
           <p className="text-xs uppercase tracking-wide text-ink-400">
             {selectedKey === todayKey ? 'Hoy' : selectedKey}
           </p>
-          <button
-            onClick={() => setDialog({ open: true, date: selectedKey })}
-            className="text-xs text-gold-400"
-          >
+          <button onClick={() => onCreateOnDate(selectedKey)} className="text-xs text-gold-400">
             + Agregar misión
           </button>
         </div>
 
-        {selectedMissions.length === 0 && (
-          <p className="text-sm text-ink-400">Sin misiones este día.</p>
-        )}
+        {selectedMissions.length === 0 && <p className="text-sm text-ink-400">Sin misiones este día.</p>}
 
         <div className="flex flex-col gap-2">
           {selectedMissions.map((mission) => {
@@ -124,7 +111,7 @@ export function CalendarPage() {
             return (
               <button
                 key={mission.id}
-                onClick={() => setDialog({ open: true, mission })}
+                onClick={() => onEdit(mission)}
                 className={cn(
                   'flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900 p-3 text-left',
                   mission.status === 'completada' && 'opacity-50',
@@ -152,15 +139,6 @@ export function CalendarPage() {
           })}
         </div>
       </div>
-
-      <MissionFormDialog
-        open={dialog.open}
-        onClose={() => setDialog({ open: false })}
-        defaultDate={dialog.date}
-        mission={dialog.mission}
-        onSubmit={(input) => (dialog.mission ? updateMission(dialog.mission.id, input) : addMission(input))}
-        onDelete={dialog.mission ? () => deleteMission(dialog.mission!.id) : undefined}
-      />
     </div>
   )
 }
