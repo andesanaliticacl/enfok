@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Settings, Pencil, Globe2, Map, Swords, Star, Sparkles, Coins, Flame, Hourglass, Compass } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { useAvatarStore } from '@/store/useAvatarStore'
+import { useAuthStore } from '@/store/useAuthStore'
+import { isSupabaseConfigured } from '@/lib/supabase/client'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { BiomaComponent } from '@/components/biome/BiomaComponent'
 import { lpcProvider } from '@/lib/avatar/providers/lpcProvider'
@@ -21,6 +23,7 @@ export function ProfilePage() {
   const missions = useGameStore((s) => s.missions)
   const inventory = useGameStore((s) => s.inventory)
   const { avatar, biome: biomeId, biomeArt, biomeVariant, deleteCharacter } = useAvatarStore()
+  const { user, signOut } = useAuthStore()
 
   const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -194,6 +197,16 @@ export function ProfilePage() {
 
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Configuración">
         <div className="flex flex-col gap-4">
+          {isSupabaseConfigured && user && (
+            <div className="rounded-xl border border-ink-700 bg-ink-800 p-4">
+              <p className="mb-1 text-[11px] text-ink-400">Sesión iniciada como</p>
+              <p className="mb-3 text-sm font-medium text-ink-50">{user.email}</p>
+              <Button variant="outline" size="sm" onClick={() => signOut()}>
+                Cerrar sesión
+              </Button>
+            </div>
+          )}
+
           <p className="text-[11px] leading-relaxed text-ink-400">
             Avatar creado con assets de{' '}
             <a href={lpcProvider.attribution.url} target="_blank" rel="noreferrer" className="underline">

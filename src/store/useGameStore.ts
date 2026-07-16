@@ -33,6 +33,7 @@ interface GameState {
   setProfileName: (name: string) => void
   startNewProfile: (name: string) => void
   clearLastGainedXp: () => void
+  resetToFreshStart: () => void
 
   addPlace: (name: string, category: PlaceCategory, lat: number, lng: number) => void
   deletePlace: (placeId: string) => void
@@ -153,6 +154,20 @@ export const useGameStore = create<GameState>()(
       startNewProfile: (name) => set({ profile: { name, ...STARTING_PROFILE } }),
 
       clearLastGainedXp: () => set({ lastGainedXp: null }),
+
+      // The initial regions/goals/missions/inventory above are demo content
+      // for local, account-less exploration — a brand new cloud account
+      // should never silently inherit someone else's example goals.
+      resetToFreshStart: () =>
+        set({
+          regions: mockRegions.map((r) => ({ ...r, level: 0, goalIds: [] })),
+          goals: [],
+          missions: [],
+          inventory: [],
+          places: [],
+          profile: { name: 'Aventurero', ...STARTING_PROFILE },
+          lastGainedXp: null,
+        }),
 
       addPlace: (name, category, lat, lng) =>
         set((state) => ({
