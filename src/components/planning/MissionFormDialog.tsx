@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
+import { useJsApiLoader } from '@react-google-maps/api'
+import { MapPin, X } from 'lucide-react'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { useGameStore } from '@/store/useGameStore'
+import { GOOGLE_MAPS_API_KEY, geocodeAddress } from '@/lib/world/geocode'
 import type { MissionInput } from '@/lib/planning/missionEngine'
-import type { Mission, MissionRepeat, Priority } from '@/types'
+import type { Mission, MissionLocation, MissionRepeat, Priority } from '@/types'
 
 interface MissionFormDialogProps {
   open: boolean
@@ -31,6 +34,8 @@ function emptyForm(defaultGoalId?: string, defaultDate?: string) {
     estimatedMinutes: '',
     tags: '',
     repeat: 'ninguna' as MissionRepeat,
+    locationQuery: '',
+    location: undefined as MissionLocation | undefined,
   }
 }
 
@@ -45,9 +50,14 @@ export function MissionFormDialog({
 }: MissionFormDialogProps) {
   const goals = useGameStore((s) => s.goals)
   const [form, setForm] = useState(emptyForm(defaultGoalId, defaultDate))
+  const [geocoding, setGeocoding] = useState(false)
+  const [geocodeError, setGeocodeError] = useState<string | null>(null)
+
+  const { isLoaded: mapsLoaded } = useJsApiLoader({ googleMapsApiKey: GOOGLE_MAPS_API_KEY ?? '' })
 
   useEffect(() => {
     if (!open) return
+    setGeocodeError(null)
     if (mission) {
       setForm({
         goalId: mission.goalId,
@@ -61,11 +71,34 @@ export function MissionFormDialog({
         estimatedMinutes: mission.estimatedMinutes ? String(mission.estimatedMinutes) : '',
         tags: mission.tags.join(', '),
         repeat: mission.repeat,
+        locationQuery: mission.location?.address ?? '',
+        location: mission.location,
       })
     } else {
       setForm(emptyForm(defaultGoalId, defaultDate))
     }
   }, [open, mission, defaultGoalId, defaultDate])
+
+  function handleAddressChange(value: string) {
+    setGeocodeError(null)
+    setForm((f) => ({ ...f, locationQuery: value, location: undefined }))
+  }
+
+  async function handleGeocode() {
+    if (!form.locationQuery.trim()) return
+    setGeocoding(true)
+    setGeocodeError(null)
+    try {
+      const result = await geocodeAddress(form.locationQuery.trim())
+      if (!result) {
+        setGeocodeError('No encontramos esa dirección. Probá con más detalle (calle, ciudad, país).')
+        return
+      }
+      setForm((f) => ({ ...f, locationQuery: result.address, location: result }))
+    } finally {
+      setGeocoding(false)
+    }
+  }
 
   function handleSubmit() {
     if (!form.title.trim() || !form.goalId || !form.date) return
@@ -84,6 +117,7 @@ export function MissionFormDialog({
         .map((t) => t.trim())
         .filter(Boolean),
       repeat: form.repeat,
+      location: form.location,
     })
     onClose()
   }
@@ -180,6 +214,51 @@ export function MissionFormDialog({
           value={form.tags}
           onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
         />
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs text-ink-400">Ubicación (opcional)</label>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Dirección (ej. Av. Providencia 123, Santiago)"
+              value={form.locationQuery}
+              onChange={(e) => handleAddressChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  handleGeocode()
+                }
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleGeocode}
+              disabled={!GOOGLE_MAPS_API_KEY || !mapsLoaded || geocoding || !form.locationQuery.trim()}
+            >
+              <MapPin size={14} />
+            </Button>
+          </div>
+
+          {!GOOGLE_MAPS_API_KEY && (
+            <p className="text-[11px] text-ink-500">Configura VITE_GOOGLE_MAPS_API_KEY para ubicar direcciones.</p>
+          )}
+          {geocoding && <p className="text-[11px] text-ink-400">Buscando dirección...</p>}
+          {geocodeError && <p className="text-[11px] text-red-400">{geocodeError}</p>}
+          {form.location && (
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-ink-700 bg-ink-800/50 px-2.5 py-1.5">
+              <p className="truncate text-[11px] text-emerald-400">
+                📍 {form.location.address} ({form.location.lat.toFixed(5)}, {form.location.lng.toFixed(5)})
+              </p>
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, location: undefined, locationQuery: '' }))}
+                className="shrink-0 text-ink-400 hover:text-ink-50"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="mt-2 flex gap-3">
           {mission && onDelete && (

@@ -1,4 +1,4 @@
-import type { Mission, MissionRepeat, Priority } from '@/types'
+import type { Mission, MissionLocation, MissionRepeat, Priority } from '@/types'
 
 export interface MissionInput {
   goalId: string
@@ -12,6 +12,7 @@ export interface MissionInput {
   estimatedMinutes?: number
   tags: string[]
   repeat: MissionRepeat
+  location?: MissionLocation
 }
 
 export function createMission(input: MissionInput): Mission {

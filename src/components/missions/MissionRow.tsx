@@ -50,6 +50,7 @@ export function MissionRow({ mission, onComplete, onEdit }: MissionRowProps) {
         <p className="text-[11px] text-ink-400">
           {mission.date}
           {mission.time ? ` · ${mission.time}` : ''} · {REPEAT_LABEL[mission.repeat]}
+          {mission.location ? ' · 📍' : ''}
         </p>
       </button>
 

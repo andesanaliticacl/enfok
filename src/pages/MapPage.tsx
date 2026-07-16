@@ -5,16 +5,16 @@ import { useGameStore } from '@/store/useGameStore'
 import { useAvatarStore } from '@/store/useAvatarStore'
 import { regionProgress } from '@/lib/planning/goalEngine'
 import { layoutRegions, DEFAULT_WORLD_CENTER, type LatLng } from '@/lib/world/layout'
+import { GOOGLE_MAPS_API_KEY } from '@/lib/world/geocode'
 import { WORLD_MAP_STYLE } from '@/data/mapStyle'
 import { RegionMarker } from '@/components/world/RegionMarker'
 import { PlaceMarker } from '@/components/world/PlaceMarker'
 import { PlaceFormDialog } from '@/components/world/PlaceFormDialog'
+import { MissionMarker } from '@/components/world/MissionMarker'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { Goal, Mission, Place, PlaceCategory, Region } from '@/types'
-
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined
 
 export function MapPage() {
   const regions = useGameStore((s) => s.regions)
@@ -23,6 +23,7 @@ export function MapPage() {
   const places = useGameStore((s) => s.places)
   const addPlace = useGameStore((s) => s.addPlace)
   const deletePlace = useGameStore((s) => s.deletePlace)
+  const completeMission = useGameStore((s) => s.completeMission)
   const profile = useGameStore((s) => s.profile)
   const avatar = useAvatarStore((s) => s.avatar)
 
@@ -34,6 +35,7 @@ export function MapPage() {
   const [addingPlace, setAddingPlace] = useState(false)
   const [pendingLocation, setPendingLocation] = useState<LatLng | null>(null)
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null)
+  const [selectedMission, setSelectedMission] = useState<Mission | null>(null)
 
   useEffect(() => {
     if (!navigator.geolocation) return
@@ -45,6 +47,7 @@ export function MapPage() {
   }, [])
 
   const regionMarkers = useMemo(() => layoutRegions(regions, center), [regions, center])
+  const missionsWithLocation = useMemo(() => missions.filter((m) => m.location), [missions])
 
   function handleMapClick(e: google.maps.MapMouseEvent) {
     if (!addingPlace || !e.latLng) return
@@ -101,6 +104,10 @@ export function MapPage() {
             {places.map((place) => (
               <PlaceMarker key={place.id} place={place} onClick={setSelectedPlace} />
             ))}
+
+            {missionsWithLocation.map((mission) => (
+              <MissionMarker key={mission.id} mission={mission} onClick={setSelectedMission} />
+            ))}
           </GoogleMap>
         )}
 
@@ -141,6 +148,31 @@ export function MapPage() {
               Eliminar
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setSelectedPlace(null)}>
+              Cerrar
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {selectedMission && (
+        <div className="absolute inset-x-4 bottom-20 z-20 flex items-center justify-between gap-2 rounded-xl border border-ink-700 bg-ink-900 p-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm text-ink-50">{selectedMission.title}</p>
+            <p className="truncate text-[10px] text-ink-400">{selectedMission.location?.address}</p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            {selectedMission.status !== 'completada' && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  completeMission(selectedMission.id)
+                  setSelectedMission(null)
+                }}
+              >
+                Completar
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => setSelectedMission(null)}>
               Cerrar
             </Button>
           </div>

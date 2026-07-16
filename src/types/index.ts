@@ -15,6 +15,12 @@ export type MissionStatus = 'pendiente' | 'completada'
 
 export type GoalStatus = 'no_iniciado' | 'en_progreso' | 'completado'
 
+export interface MissionLocation {
+  address: string
+  lat: number
+  lng: number
+}
+
 export interface Mission {
   id: string
   goalId: string
@@ -31,6 +37,7 @@ export interface Mission {
   tags: string[]
   repeat: MissionRepeat
   completedAt?: string
+  location?: MissionLocation
 }
 
 export interface Goal {
