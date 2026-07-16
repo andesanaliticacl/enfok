@@ -35,6 +35,10 @@ export function AvatarLayerImage({ layer }: AvatarLayerImageProps) {
         backgroundRepeat: 'no-repeat',
         imageRendering: 'pixelated',
         zIndex: layer.zIndex,
+        // Centered on the head rather than the whole frame, so resizing a
+        // helmet doesn't shift it off the character.
+        transform: layer.scale && layer.scale !== 1 ? `scale(${layer.scale})` : undefined,
+        transformOrigin: '50% 32%',
       }}
     />
   )

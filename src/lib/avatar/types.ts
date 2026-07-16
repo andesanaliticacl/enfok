@@ -38,6 +38,8 @@ export interface ResolvedLayer {
   recolorTargetHex?: string
   /** True when imageUrl is already just the single down-facing frame (e.g. a hand-painted layer), not a multi-row sheet. */
   singleFrame?: boolean
+  /** Uniform scale for this layer only (e.g. resizing a helmet to fit different head shapes), centered on the layer's own art rather than the whole frame. */
+  scale?: number
 }
 
 /** Layers a user has hand-painted (pixel editor), stored as a 64x64 PNG data URL. Takes priority over the asset provider when present. */
@@ -48,6 +50,8 @@ export interface AvatarConfig {
   options: Partial<Record<AvatarLayerCategory, string>>
   colors: Partial<Record<AvatarLayerCategory, string>>
   pixelOverrides: PixelOverrides
+  /** Uniform size adjustment for the "hat" slot (helmets etc.), 1 = the art's native size. */
+  hatScale: number
 }
 
 /**

@@ -1,21 +1,21 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Paintbrush, Sun, Moon } from 'lucide-react'
-import { useAvatarStore } from '@/store/useAvatarStore'
+import { ChevronLeft, ChevronRight, Minus, Plus, Paintbrush, Sun, Moon } from 'lucide-react'
+import { useAvatarStore, HAT_SCALE_MIN, HAT_SCALE_MAX, HAT_SCALE_STEP } from '@/store/useAvatarStore'
 import { useGameStore } from '@/store/useGameStore'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { PixelEditor } from '@/components/avatar/PixelEditor'
 import { getEditableFrame, getLayerSilhouette, getEditableBiomeFrame } from '@/lib/avatar/pixelFrame'
-import { lpcProvider, CATEGORY_LABELS, figureOfBodyId, bodyHidesClothing } from '@/lib/avatar/providers/lpcProvider'
+import { lpcProvider, CATEGORY_LABELS, figureOfBodyId, isHatResizable } from '@/lib/avatar/providers/lpcProvider'
 import { biomes, biomeBackgroundUrl } from '@/data/biomes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { AvatarLayerCategory } from '@/lib/avatar/types'
 
-const CREATION_CATEGORIES: AvatarLayerCategory[] = ['body', 'hair', 'eyes', 'mask', 'shirt', 'pants', 'shoes', 'pet']
-const PAINTABLE_CATEGORIES: AvatarLayerCategory[] = ['shirt', 'pants', 'shoes', 'mask']
+const CREATION_CATEGORIES: AvatarLayerCategory[] = ['body', 'hair', 'eyes', 'shirt', 'pants', 'shoes', 'hat', 'pet']
+const PAINTABLE_CATEGORIES: AvatarLayerCategory[] = ['shirt', 'pants', 'shoes']
 
 interface CharacterCreationPageProps {
   mode?: 'create' | 'edit-avatar' | 'edit-biome'
@@ -31,6 +31,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
     setFigure,
     setOption,
     setColor,
+    setHatScale,
     setBiome,
     setBiomeArt,
     clearBiomeArt,
@@ -65,16 +66,6 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
       // Head sprite depends on race, not just figure (an orc needs an orc
       // head, not just any male head), so it must track the exact body id.
       setOption('head', next.id)
-      // Costume bodies (penguin, astronaut) draw their own full silhouette —
-      // human clothing doesn't fit them, so clear those slots automatically.
-      if (bodyHidesClothing(next.id)) {
-        setOption('hair', 'none')
-        setOption('shirt', 'none')
-        setOption('pants', 'none')
-        setOption('shoes', 'none')
-        setOption('eyes', 'none')
-        setOption('mask', 'none')
-      }
     } else {
       setOption(category, next.id)
     }
@@ -264,7 +255,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
         </div>
       )}
 
-      {PAINTABLE_CATEGORIES.includes(category) && (
+      {(PAINTABLE_CATEGORIES.includes(category) || (category === 'hat' && currentOptionId === 'mask')) && (
         <div className="mt-4 flex justify-center">
           <button
             onClick={() => setPaintingCategory(category)}
@@ -272,6 +263,27 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
           >
             <Paintbrush size={14} />
             {avatar.pixelOverrides[category] ? 'Editar pintura' : 'Pintar píxeles'}
+          </button>
+        </div>
+      )}
+
+      {category === 'hat' && currentOptionId && isHatResizable(currentOptionId) && (
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <span className="text-xs text-ink-400">Tamaño</span>
+          <button
+            onClick={() => setHatScale(Math.round((avatar.hatScale - HAT_SCALE_STEP) * 100) / 100)}
+            disabled={avatar.hatScale <= HAT_SCALE_MIN}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-ink-600 text-ink-50 disabled:opacity-40"
+          >
+            <Minus size={14} />
+          </button>
+          <span className="w-12 text-center text-xs font-medium text-ink-50">{Math.round(avatar.hatScale * 100)}%</span>
+          <button
+            onClick={() => setHatScale(Math.round((avatar.hatScale + HAT_SCALE_STEP) * 100) / 100)}
+            disabled={avatar.hatScale >= HAT_SCALE_MAX}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-ink-600 text-ink-50 disabled:opacity-40"
+          >
+            <Plus size={14} />
           </button>
         </div>
       )}

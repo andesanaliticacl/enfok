@@ -11,10 +11,10 @@ const DEFAULT_AVATAR: AvatarConfig = {
     head: 'male',
     eyes: 'default',
     hair: 'plain',
-    mask: 'none',
     shirt: 'tshirt',
     pants: 'default',
     shoes: 'default',
+    hat: 'none',
     pet: 'none',
   },
   colors: {
@@ -22,13 +22,18 @@ const DEFAULT_AVATAR: AvatarConfig = {
     head: 'light',
     eyes: 'brown',
     hair: 'brown',
-    mask: 'dark',
+    hat: 'dark',
     shirt: 'blue',
     pants: 'gray',
     shoes: 'brown',
   },
   pixelOverrides: {},
+  hatScale: 1,
 }
+
+export const HAT_SCALE_MIN = 0.6
+export const HAT_SCALE_MAX = 1.5
+export const HAT_SCALE_STEP = 0.1
 
 export type BiomeVariant = 'light' | 'dark'
 
@@ -41,6 +46,7 @@ interface AvatarState {
   setFigure: (figure: AvatarConfig['figure']) => void
   setOption: (category: keyof AvatarConfig['options'], optionId: string) => void
   setColor: (category: keyof AvatarConfig['colors'], colorId: string) => void
+  setHatScale: (scale: number) => void
   setBiome: (biome: BiomeId) => void
   setBiomeArt: (dataUrl: string) => void
   clearBiomeArt: () => void
@@ -99,6 +105,11 @@ export const useAvatarStore = create<AvatarState>()(
           if (category === 'body') colors.head = colorId
           return { avatar: { ...state.avatar, colors } }
         }),
+
+      setHatScale: (scale) =>
+        set((state) => ({
+          avatar: { ...state.avatar, hatScale: Math.min(HAT_SCALE_MAX, Math.max(HAT_SCALE_MIN, scale)) },
+        })),
 
       setBiome: (biome) => set({ biome }),
 

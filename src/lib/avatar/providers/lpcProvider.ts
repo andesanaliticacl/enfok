@@ -91,11 +91,21 @@ const PET_LABELS: Record<(typeof PET_STYLES)[number], string> = {
   cartera: 'Cartera',
 }
 
-const EYE_STYLES = ['none', 'default', 'round'] as const
+const EYE_STYLES = ['default', 'round'] as const
 const EYE_STYLE_LABELS: Record<(typeof EYE_STYLES)[number], string> = {
-  none: 'Sin ojos humanos',
   default: 'Ojos',
   round: 'Ojos grandes',
+}
+
+// "Máscara" and the helmets are both head accessories and share a single
+// slot — wearing a helmet wouldn't leave room for a mask underneath anyway.
+type HatStyle = 'none' | 'mask' | 'astronaut_helmet' | 'penguin_helmet'
+
+const HAT_STYLES: Record<HatStyle, { label: string; colorMode: 'baked' | 'none'; colors: ColorChoice[] }> = {
+  none: { label: 'Ninguno', colorMode: 'none', colors: [] },
+  mask: { label: 'Máscara', colorMode: 'baked', colors: MASK_COLORS },
+  astronaut_helmet: { label: 'Casco de astronauta', colorMode: 'none', colors: [] },
+  penguin_helmet: { label: 'Casco de pingüino', colorMode: 'none', colors: [] },
 }
 
 const SHOE_STYLES = ['none', 'default', 'heels'] as const
@@ -122,10 +132,6 @@ interface BodyDef {
   bodyImage: string
   headImage: string
   skinColors: ColorChoice[]
-  /** 'none' skips recoloring entirely — for bodies with fixed, non-skin-tone art (e.g. a penguin's black/white plumage). */
-  colorMode?: 'recolor' | 'none'
-  /** Non-humanoid costume bodies (penguin, astronaut) render their own full silhouette — human hair/shirt/pants/shoes don't fit, so those slots auto-clear to "none" when this body is picked. */
-  hidesClothing?: boolean
 }
 
 const BODY_DEFS: Record<string, BodyDef> = {
@@ -138,16 +144,15 @@ const BODY_DEFS: Record<string, BodyDef> = {
   lizard_male: { label: 'Argoniano A', figure: 'male', bodyImage: 'male/idle.png', headImage: 'lizard_male/idle.png', skinColors: LIZARD_SKIN_COLORS },
   lizard_female: { label: 'Argoniano B', figure: 'female', bodyImage: 'female/idle.png', headImage: 'lizard_female/idle.png', skinColors: LIZARD_SKIN_COLORS },
   skeleton: { label: 'No-muerto', figure: 'male', bodyImage: 'skeleton/walk.png', headImage: 'skeleton/idle.png', skinColors: SKELETON_SKIN_COLORS },
-  penguin: { label: 'Pingüino', figure: 'male', bodyImage: 'penguin/idle.png', headImage: 'penguin/idle.png', skinColors: [], colorMode: 'none', hidesClothing: true },
-  astronaut: { label: 'Astronauta', figure: 'male', bodyImage: 'astronaut/idle.png', headImage: 'astronaut/idle.png', skinColors: [], colorMode: 'none', hidesClothing: true },
 }
 
 export function figureOfBodyId(id: string): Figure {
   return BODY_DEFS[id]?.figure ?? 'male'
 }
 
-export function bodyHidesClothing(id: string): boolean {
-  return BODY_DEFS[id]?.hidesClothing ?? false
+/** Helmets are full pre-shaded head art that may need resizing to fit different head shapes — the flat mask doesn't. */
+export function isHatResizable(optionId: string): boolean {
+  return optionId !== 'none' && optionId !== 'mask'
 }
 
 type ShirtStyle = 'none' | 'vest' | 'tunic' | 'tshirt' | 'longsleeve'
@@ -180,8 +185,7 @@ function bodyLayer(bodyId: string, colorId: string | undefined): ResolvedLayer {
     category: 'body',
     zIndex: 0,
     imageUrl: `${ASSET_ROOT}/body/${def.bodyImage}`,
-    recolorTargetHex:
-      def.colorMode === 'none' ? undefined : def.skinColors.find((c) => c.id === colorId)?.swatch ?? def.skinColors[0].swatch,
+    recolorTargetHex: def.skinColors.find((c) => c.id === colorId)?.swatch ?? def.skinColors[0].swatch,
   }
 }
 
@@ -191,15 +195,14 @@ function headLayer(bodyId: string, colorId: string | undefined): ResolvedLayer {
     category: 'head',
     zIndex: 2,
     imageUrl: `${ASSET_ROOT}/head/${def.headImage}`,
-    recolorTargetHex:
-      def.colorMode === 'none' ? undefined : def.skinColors.find((c) => c.id === colorId)?.swatch ?? def.skinColors[0].swatch,
+    recolorTargetHex: def.skinColors.find((c) => c.id === colorId)?.swatch ?? def.skinColors[0].swatch,
   }
 }
 
 export const lpcProvider: AvatarAssetProvider = {
   id: 'lpc-universal',
   frameSize: FRAME_SIZE,
-  categories: ['body', 'head', 'eyes', 'hair', 'mask', 'shirt', 'pants', 'shoes', 'pet'],
+  categories: ['body', 'head', 'eyes', 'hair', 'shirt', 'pants', 'shoes', 'hat', 'pet'],
   attribution: {
     name: 'Liberated Pixel Cup — Universal LPC Spritesheet Character Generator',
     url: 'https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator/',
@@ -213,7 +216,7 @@ export const lpcProvider: AvatarAssetProvider = {
           id,
           label: def.label,
           figures: [def.figure],
-          colorMode: def.colorMode ?? 'recolor',
+          colorMode: 'recolor',
           colors: def.skinColors,
         }))
 
@@ -225,8 +228,8 @@ export const lpcProvider: AvatarAssetProvider = {
           id: style,
           label: EYE_STYLE_LABELS[style],
           figures: ALL_FIGURES,
-          colorMode: style === 'none' ? 'none' : 'recolor',
-          colors: style === 'none' ? [] : EYE_COLORS,
+          colorMode: 'recolor',
+          colors: EYE_COLORS,
         }))
 
       case 'hair':
@@ -237,12 +240,6 @@ export const lpcProvider: AvatarAssetProvider = {
           colorMode: style === 'none' ? 'none' : 'recolor',
           colors: style === 'none' ? [] : HAIR_COLORS,
         }))
-
-      case 'mask':
-        return [
-          { id: 'none', label: 'Ninguna', figures: ALL_FIGURES, colorMode: 'none', colors: [] },
-          { id: 'plain', label: 'Máscara', figures: ALL_FIGURES, colorMode: 'baked', colors: MASK_COLORS },
-        ]
 
       case 'shirt':
         return (Object.entries(SHIRT_STYLES) as [ShirtStyle, (typeof SHIRT_STYLES)[ShirtStyle]][])
@@ -275,6 +272,15 @@ export const lpcProvider: AvatarAssetProvider = {
           colors: style === 'none' ? [] : SHOE_COLORS,
         }))
 
+      case 'hat':
+        return (Object.entries(HAT_STYLES) as [HatStyle, (typeof HAT_STYLES)[HatStyle]][]).map(([id, def]) => ({
+          id,
+          label: def.label,
+          figures: ALL_FIGURES,
+          colorMode: def.colorMode,
+          colors: def.colors,
+        }))
+
       case 'pet':
         return PET_STYLES.map((style) => ({
           id: style,
@@ -298,7 +304,6 @@ export const lpcProvider: AvatarAssetProvider = {
         return headLayer(optionId, colorId)
 
       case 'eyes':
-        if (optionId === 'none') return null
         return {
           category,
           zIndex: 5,
@@ -313,14 +318,6 @@ export const lpcProvider: AvatarAssetProvider = {
           zIndex: 30,
           imageUrl: `${ASSET_ROOT}/hair/${optionId}/idle.png`,
           recolorTargetHex: HAIR_COLORS.find((c) => c.id === colorId)?.swatch ?? HAIR_COLORS[0].swatch,
-        }
-
-      case 'mask':
-        if (optionId !== 'plain') return null
-        return {
-          category,
-          zIndex: 35,
-          imageUrl: `${ASSET_ROOT}/facial/masks_plain/${colorId ?? 'dark'}.png`,
         }
 
       case 'shirt': {
@@ -374,6 +371,21 @@ export const lpcProvider: AvatarAssetProvider = {
         }
       }
 
+      case 'hat':
+        if (optionId === 'none') return null
+        if (optionId === 'mask') {
+          return {
+            category,
+            zIndex: 35,
+            imageUrl: `${ASSET_ROOT}/facial/masks_plain/${colorId ?? 'dark'}.png`,
+          }
+        }
+        return {
+          category,
+          zIndex: 40,
+          imageUrl: `${ASSET_ROOT}/hat/${optionId}/idle.png`,
+        }
+
       case 'pet':
         if (optionId === 'none') return null
         return {
@@ -401,7 +413,7 @@ export const CATEGORY_LABELS: Record<AvatarLayerCategory, string> = {
   pants: 'Pantalón',
   shoes: 'Zapatos',
   cape: 'Capa',
-  hat: 'Sombrero',
+  hat: 'Máscara y casco',
   backpack: 'Mochila',
   weapon: 'Arma',
   pet: 'Mascota',

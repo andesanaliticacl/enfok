@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { lpcProvider } from '@/lib/avatar/providers/lpcProvider'
+import { lpcProvider, isHatResizable } from '@/lib/avatar/providers/lpcProvider'
 import { AvatarLayerImage } from './AvatarLayerImage'
 import type { AvatarConfig } from '@/lib/avatar/types'
 
@@ -25,6 +25,9 @@ export function AvatarSprite({ config, size = 192, className }: AvatarSpriteProp
         const override = config.pixelOverrides?.[category]
         if (override) {
           return { ...resolved, imageUrl: override, recolorTargetHex: undefined, singleFrame: true }
+        }
+        if (category === 'hat' && isHatResizable(optionId)) {
+          return { ...resolved, scale: config.hatScale }
         }
         return resolved
       })
