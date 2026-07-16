@@ -11,6 +11,12 @@ import { GOOGLE_MAPS_API_KEY, geocodeAddress } from '@/lib/world/geocode'
 import type { MissionInput } from '@/lib/planning/missionEngine'
 import type { Mission, MissionLocation, MissionRepeat, Priority } from '@/types'
 
+const DIFFICULTY_PRESETS = [
+  { id: 'facil', label: 'Fácil', icon: '🟢', xp: 10, coins: 2 },
+  { id: 'media', label: 'Media', icon: '🟡', xp: 20, coins: 5 },
+  { id: 'dificil', label: 'Difícil', icon: '🔴', xp: 40, coins: 10 },
+] as const
+
 interface MissionFormDialogProps {
   open: boolean
   onClose: () => void
@@ -188,25 +194,51 @@ export function MissionFormDialog({
           </Select>
         </div>
 
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-ink-400">Dificultad sugerida:</span>
+          {DIFFICULTY_PRESETS.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, xp: d.xp, coins: d.coins }))}
+              className="rounded-full border border-ink-600 px-3 py-1 text-xs text-ink-200 hover:border-gold-400"
+            >
+              {d.icon} {d.label}
+            </button>
+          ))}
+        </div>
+
         <div className="grid grid-cols-3 gap-3">
-          <Input
-            type="number"
-            placeholder="XP"
-            value={form.xp}
-            onChange={(e) => setForm((f) => ({ ...f, xp: Number(e.target.value) }))}
-          />
-          <Input
-            type="number"
-            placeholder="Monedas"
-            value={form.coins}
-            onChange={(e) => setForm((f) => ({ ...f, coins: Number(e.target.value) }))}
-          />
-          <Input
-            type="number"
-            placeholder="Minutos"
-            value={form.estimatedMinutes}
-            onChange={(e) => setForm((f) => ({ ...f, estimatedMinutes: e.target.value }))}
-          />
+          <label className="text-xs text-ink-400">
+            XP al completar
+            <Input
+              type="number"
+              placeholder="XP"
+              className="mt-1"
+              value={form.xp}
+              onChange={(e) => setForm((f) => ({ ...f, xp: Number(e.target.value) }))}
+            />
+          </label>
+          <label className="text-xs text-ink-400">
+            Monedas al completar
+            <Input
+              type="number"
+              placeholder="Monedas"
+              className="mt-1"
+              value={form.coins}
+              onChange={(e) => setForm((f) => ({ ...f, coins: Number(e.target.value) }))}
+            />
+          </label>
+          <label className="text-xs text-ink-400">
+            Duración estimada
+            <Input
+              type="number"
+              placeholder="Minutos"
+              className="mt-1"
+              value={form.estimatedMinutes}
+              onChange={(e) => setForm((f) => ({ ...f, estimatedMinutes: e.target.value }))}
+            />
+          </label>
         </div>
 
         <Input
