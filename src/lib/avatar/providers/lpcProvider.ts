@@ -91,8 +91,9 @@ const PET_LABELS: Record<(typeof PET_STYLES)[number], string> = {
   cartera: 'Cartera',
 }
 
-const EYE_STYLES = ['default', 'round'] as const
+const EYE_STYLES = ['none', 'default', 'round'] as const
 const EYE_STYLE_LABELS: Record<(typeof EYE_STYLES)[number], string> = {
+  none: 'Sin ojos humanos',
   default: 'Ojos',
   round: 'Ojos grandes',
 }
@@ -123,6 +124,8 @@ interface BodyDef {
   skinColors: ColorChoice[]
   /** 'none' skips recoloring entirely — for bodies with fixed, non-skin-tone art (e.g. a penguin's black/white plumage). */
   colorMode?: 'recolor' | 'none'
+  /** Non-humanoid costume bodies (penguin, astronaut) render their own full silhouette — human hair/shirt/pants/shoes don't fit, so those slots auto-clear to "none" when this body is picked. */
+  hidesClothing?: boolean
 }
 
 const BODY_DEFS: Record<string, BodyDef> = {
@@ -135,11 +138,16 @@ const BODY_DEFS: Record<string, BodyDef> = {
   lizard_male: { label: 'Argoniano A', figure: 'male', bodyImage: 'male/idle.png', headImage: 'lizard_male/idle.png', skinColors: LIZARD_SKIN_COLORS },
   lizard_female: { label: 'Argoniano B', figure: 'female', bodyImage: 'female/idle.png', headImage: 'lizard_female/idle.png', skinColors: LIZARD_SKIN_COLORS },
   skeleton: { label: 'No-muerto', figure: 'male', bodyImage: 'skeleton/walk.png', headImage: 'skeleton/idle.png', skinColors: SKELETON_SKIN_COLORS },
-  penguin: { label: 'Pingüino', figure: 'male', bodyImage: 'penguin/idle.png', headImage: 'penguin/idle.png', skinColors: [], colorMode: 'none' },
+  penguin: { label: 'Pingüino', figure: 'male', bodyImage: 'penguin/idle.png', headImage: 'penguin/idle.png', skinColors: [], colorMode: 'none', hidesClothing: true },
+  astronaut: { label: 'Astronauta', figure: 'male', bodyImage: 'astronaut/idle.png', headImage: 'astronaut/idle.png', skinColors: [], colorMode: 'none', hidesClothing: true },
 }
 
 export function figureOfBodyId(id: string): Figure {
   return BODY_DEFS[id]?.figure ?? 'male'
+}
+
+export function bodyHidesClothing(id: string): boolean {
+  return BODY_DEFS[id]?.hidesClothing ?? false
 }
 
 type ShirtStyle = 'none' | 'vest' | 'tunic' | 'tshirt' | 'longsleeve'
@@ -217,8 +225,8 @@ export const lpcProvider: AvatarAssetProvider = {
           id: style,
           label: EYE_STYLE_LABELS[style],
           figures: ALL_FIGURES,
-          colorMode: 'recolor',
-          colors: EYE_COLORS,
+          colorMode: style === 'none' ? 'none' : 'recolor',
+          colors: style === 'none' ? [] : EYE_COLORS,
         }))
 
       case 'hair':
@@ -290,6 +298,7 @@ export const lpcProvider: AvatarAssetProvider = {
         return headLayer(optionId, colorId)
 
       case 'eyes':
+        if (optionId === 'none') return null
         return {
           category,
           zIndex: 5,

@@ -7,7 +7,7 @@ import { useGameStore } from '@/store/useGameStore'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { PixelEditor } from '@/components/avatar/PixelEditor'
 import { getEditableFrame, getLayerSilhouette, getEditableBiomeFrame } from '@/lib/avatar/pixelFrame'
-import { lpcProvider, CATEGORY_LABELS, figureOfBodyId } from '@/lib/avatar/providers/lpcProvider'
+import { lpcProvider, CATEGORY_LABELS, figureOfBodyId, bodyHidesClothing } from '@/lib/avatar/providers/lpcProvider'
 import { biomes, biomeBackgroundUrl } from '@/data/biomes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -65,6 +65,16 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
       // Head sprite depends on race, not just figure (an orc needs an orc
       // head, not just any male head), so it must track the exact body id.
       setOption('head', next.id)
+      // Costume bodies (penguin, astronaut) draw their own full silhouette —
+      // human clothing doesn't fit them, so clear those slots automatically.
+      if (bodyHidesClothing(next.id)) {
+        setOption('hair', 'none')
+        setOption('shirt', 'none')
+        setOption('pants', 'none')
+        setOption('shoes', 'none')
+        setOption('eyes', 'none')
+        setOption('mask', 'none')
+      }
     } else {
       setOption(category, next.id)
     }
