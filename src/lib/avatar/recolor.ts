@@ -73,7 +73,12 @@ async function recolorImage(src: string, targetHex: string): Promise<string> {
     const max = Math.max(r, g, b)
     const min = Math.min(r, g, b)
     const l = (max + min) / 2
-    const [nr, ng, nb] = hslToRgb(target.h, target.s, l)
+    // Hue can't tell two achromatic targets apart (black/gray/white all have
+    // s=0), so without this they'd all render identically off the original
+    // shading alone. Blend in the target's own lightness for those — colored
+    // targets keep the original hue-shift-only behavior untouched.
+    const outL = target.s < 0.05 ? l * 0.35 + target.l * 0.65 : l
+    const [nr, ng, nb] = hslToRgb(target.h, target.s, outL)
     data[i] = nr
     data[i + 1] = ng
     data[i + 2] = nb

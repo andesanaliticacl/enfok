@@ -88,6 +88,16 @@ const EYE_STYLE_LABELS: Record<(typeof EYE_STYLES)[number], string> = {
   round: 'Ojos grandes',
 }
 
+const SHOE_STYLES = ['default', 'heels'] as const
+const SHOE_STYLE_LABELS: Record<(typeof SHOE_STYLES)[number], string> = {
+  default: 'Zapatos',
+  heels: 'Tacones',
+}
+const SHOE_STYLE_FOLDERS: Record<(typeof SHOE_STYLES)[number], string> = {
+  default: 'shoes_male',
+  heels: 'shoes_heels',
+}
+
 /**
  * A body id encodes race + build together (e.g. 'orc_male', 'female_teen',
  * 'skeleton'). It drives which body AND head sprite render, and which skin
@@ -107,7 +117,6 @@ const BODY_DEFS: Record<string, BodyDef> = {
   male: { label: 'Humano A', figure: 'male', bodyImage: 'male/idle.png', headImage: 'male/idle.png', skinColors: SKIN_COLORS },
   female: { label: 'Humano B', figure: 'female', bodyImage: 'female/idle.png', headImage: 'female/idle.png', skinColors: SKIN_COLORS },
   female_teen: { label: 'Humano B (esbelto)', figure: 'female', bodyImage: 'female_teen/idle.png', headImage: 'female/idle.png', skinColors: SKIN_COLORS },
-  female_pregnant: { label: 'Humano B (embarazo)', figure: 'female', bodyImage: 'female_pregnant/idle.png', headImage: 'female/idle.png', skinColors: SKIN_COLORS },
   muscular: { label: 'Humano C (atlético)', figure: 'muscular', bodyImage: 'muscular/idle.png', headImage: 'male/idle.png', skinColors: SKIN_COLORS },
   orc_male: { label: 'Orco A', figure: 'male', bodyImage: 'male/idle.png', headImage: 'orc_male/idle.png', skinColors: ORC_SKIN_COLORS },
   orc_female: { label: 'Orco B', figure: 'female', bodyImage: 'female/idle.png', headImage: 'orc_female/idle.png', skinColors: ORC_SKIN_COLORS },
@@ -124,7 +133,7 @@ type ShirtStyle = 'vest' | 'tunic' | 'tshirt' | 'longsleeve'
 
 const SHIRT_STYLES: Record<ShirtStyle, { label: string; figures: Figure[]; colorMode: 'baked' | 'recolor' }> = {
   vest: { label: 'Chaleco', figures: ['male', 'muscular'], colorMode: 'baked' },
-  tunic: { label: 'Túnica', figures: ['female'], colorMode: 'baked' },
+  tunic: { label: 'Túnica', figures: ['female'], colorMode: 'recolor' },
   tshirt: { label: 'Polera', figures: ['male', 'female', 'muscular'], colorMode: 'recolor' },
   longsleeve: { label: 'Camisa manga larga', figures: ['male', 'female', 'muscular'], colorMode: 'recolor' },
 }
@@ -217,7 +226,13 @@ export const lpcProvider: AvatarAssetProvider = {
         return [{ id: 'default', label: 'Pantalón', figures: ALL_FIGURES, colorMode: 'baked', colors: GARMENT_COLORS }]
 
       case 'shoes':
-        return [{ id: 'default', label: 'Zapatos', figures: ALL_FIGURES, colorMode: 'recolor', colors: SHOE_COLORS }]
+        return SHOE_STYLES.map((style) => ({
+          id: style,
+          label: SHOE_STYLE_LABELS[style],
+          figures: ALL_FIGURES,
+          colorMode: 'recolor',
+          colors: SHOE_COLORS,
+        }))
 
       default:
         return []
@@ -263,9 +278,6 @@ export const lpcProvider: AvatarAssetProvider = {
         if (style === 'vest') {
           return { category, zIndex: 20, imageUrl: `${ASSET_ROOT}/torso/vest_male/${color}.png` }
         }
-        if (style === 'tunic') {
-          return { category, zIndex: 20, imageUrl: `${ASSET_ROOT}/torso/tunic_female/${color}.png` }
-        }
 
         const folder = `${style}_${figure === 'female' ? 'female' : 'male'}`
         return {
@@ -282,13 +294,17 @@ export const lpcProvider: AvatarAssetProvider = {
         return { category, zIndex: 10, imageUrl: `${ASSET_ROOT}/legs/${folder}/${color}.png` }
       }
 
-      case 'shoes':
+      case 'shoes': {
+        type ShoeStyle = (typeof SHOE_STYLES)[number]
+        const style = (optionId as ShoeStyle) in SHOE_STYLE_FOLDERS ? (optionId as ShoeStyle) : 'default'
+        const folder = SHOE_STYLE_FOLDERS[style]
         return {
           category,
           zIndex: 8,
-          imageUrl: `${ASSET_ROOT}/feet/shoes_male/idle.png`,
+          imageUrl: `${ASSET_ROOT}/feet/${folder}/idle.png`,
           recolorTargetHex: SHOE_COLORS.find((c) => c.id === colorId)?.swatch ?? SHOE_COLORS[0].swatch,
         }
+      }
 
       default:
         return null

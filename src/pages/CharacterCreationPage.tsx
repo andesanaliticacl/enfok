@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Paintbrush } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Paintbrush, Sun, Moon } from 'lucide-react'
 import { useAvatarStore } from '@/store/useAvatarStore'
 import { useGameStore } from '@/store/useGameStore'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { PixelEditor } from '@/components/avatar/PixelEditor'
 import { getEditableFrame, getLayerSilhouette, getEditableBiomeFrame } from '@/lib/avatar/pixelFrame'
 import { lpcProvider, CATEGORY_LABELS, figureOfBodyId } from '@/lib/avatar/providers/lpcProvider'
-import { biomes } from '@/data/biomes'
+import { biomes, biomeBackgroundUrl } from '@/data/biomes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -27,12 +27,14 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
     avatar,
     biome: selectedBiome,
     biomeArt,
+    biomeVariant,
     setFigure,
     setOption,
     setColor,
     setBiome,
     setBiomeArt,
     clearBiomeArt,
+    setBiomeVariant,
     finishCreation,
     setPixelOverride,
     clearPixelOverride,
@@ -87,15 +89,38 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
 
         {selectedBiome && (
           <div
-            className="relative mt-4 flex h-40 items-center justify-center overflow-hidden rounded-2xl border border-ink-700"
+            className="relative mt-4 flex h-56 items-center justify-center overflow-hidden rounded-2xl border border-ink-700"
             style={{
-              backgroundImage: `url(${biomeArt ?? ''})`,
+              backgroundImage: `url(${biomeArt || biomeBackgroundUrl(selectedBiome, biomeVariant)})`,
               backgroundColor: biomes.find((b) => b.id === selectedBiome)?.color,
               backgroundSize: 'cover',
+              backgroundPosition: 'center',
               imageRendering: 'pixelated',
             }}
           >
-            <AvatarSprite config={avatar} size={112} />
+            <div className="absolute right-2 top-2 flex gap-1">
+              <button
+                onClick={() => setBiomeVariant('light')}
+                className={cn(
+                  'flex h-8 w-8 items-center justify-center rounded-full border border-ink-600 bg-ink-950/70 text-ink-200',
+                  biomeVariant === 'light' && 'border-gold-400 text-gold-400',
+                )}
+                title="Claro"
+              >
+                <Sun size={14} />
+              </button>
+              <button
+                onClick={() => setBiomeVariant('dark')}
+                className={cn(
+                  'flex h-8 w-8 items-center justify-center rounded-full border border-ink-600 bg-ink-950/70 text-ink-200',
+                  biomeVariant === 'dark' && 'border-gold-400 text-gold-400',
+                )}
+                title="Oscuro"
+              >
+                <Moon size={14} />
+              </button>
+            </div>
+            <AvatarSprite config={avatar} size={128} />
           </div>
         )}
 
@@ -105,13 +130,18 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
               key={biome.id}
               onClick={() => setBiome(biome.id)}
               whileTap={{ scale: 0.96 }}
-              className="flex flex-col items-center gap-2 rounded-2xl border-2 bg-ink-900 p-5 transition-colors"
+              className="relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl border-2 p-5 transition-colors"
               style={{
                 borderColor: selectedBiome === biome.id ? biome.color : 'var(--color-ink-700)',
+                backgroundImage: `url(${biomeBackgroundUrl(biome.id, biomeVariant)})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                imageRendering: 'pixelated',
               }}
             >
-              <span className="text-4xl">{biome.emoji}</span>
-              <span className="text-sm font-medium text-ink-50">{biome.name}</span>
+              <div className="absolute inset-0 bg-ink-950/40" />
+              <span className="relative text-4xl">{biome.emoji}</span>
+              <span className="relative font-pixel text-[10px] text-ink-50">{biome.name}</span>
             </motion.button>
           ))}
         </div>

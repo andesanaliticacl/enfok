@@ -1,11 +1,10 @@
 import { NavLink } from 'react-router-dom'
-import { Map, Swords, Backpack, User } from 'lucide-react'
+import { Map, Swords, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Mundo', icon: Map },
   { to: '/misiones', label: 'Misiones', icon: Swords },
-  { to: '/inventario', label: 'Inventario', icon: Backpack },
   { to: '/perfil', label: 'Perfil', icon: User },
 ]
 

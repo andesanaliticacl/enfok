@@ -29,17 +29,21 @@ const DEFAULT_AVATAR: AvatarConfig = {
   pixelOverrides: {},
 }
 
+export type BiomeVariant = 'light' | 'dark'
+
 interface AvatarState {
   hasCreatedCharacter: boolean
   avatar: AvatarConfig
   biome: BiomeId | null
   biomeArt: string | null
+  biomeVariant: BiomeVariant
   setFigure: (figure: AvatarConfig['figure']) => void
   setOption: (category: keyof AvatarConfig['options'], optionId: string) => void
   setColor: (category: keyof AvatarConfig['colors'], colorId: string) => void
   setBiome: (biome: BiomeId) => void
   setBiomeArt: (dataUrl: string) => void
   clearBiomeArt: () => void
+  setBiomeVariant: (variant: BiomeVariant) => void
   setPixelOverride: (category: keyof AvatarConfig['options'], dataUrl: string) => void
   clearPixelOverride: (category: keyof AvatarConfig['options']) => void
   finishCreation: () => void
@@ -53,6 +57,7 @@ export const useAvatarStore = create<AvatarState>()(
       avatar: DEFAULT_AVATAR,
       biome: null,
       biomeArt: null,
+      biomeVariant: 'light',
 
       setFigure: (figure) =>
         set((state) => {
@@ -90,6 +95,8 @@ export const useAvatarStore = create<AvatarState>()(
       setBiomeArt: (dataUrl) => set({ biomeArt: dataUrl }),
 
       clearBiomeArt: () => set({ biomeArt: null }),
+
+      setBiomeVariant: (variant) => set({ biomeVariant: variant }),
 
       setPixelOverride: (category, dataUrl) =>
         set((state) => ({

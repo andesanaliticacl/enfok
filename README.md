@@ -12,16 +12,14 @@ En lugar de una lista de tareas plana, tu vida se organiza como un **mapa de reg
 - **Personaje y progreso:** el jugador tiene nivel, XP, XP para el siguiente nivel (con curva de crecimiento ×1.15), monedas, racha de días (streak) y horas invertidas.
 - **Logros (Achievements):** se desbloquean por hitos — primera misión, 10/100 misiones completadas, racha de 30 días, 100 horas invertidas, nivel 10, etc.
 - **Avatar y biomas:** creación de personaje estilo pixel-art (basado en sprites LPC), con editor propio para pintar prendas (camisa, pantalón, zapatos, máscara) pixel a pixel, respetando la silueta de la prenda. El jugador también elige un bioma (valle, ciudad, playa, bosque, montaña, espacio) que ambienta su experiencia.
-- **Inventario:** objetos vinculados a las metas logradas.
+- **Inventario:** objetos vinculados a las metas logradas, visible dentro del Perfil.
 
 ## Estructura de la app
 
 - **Mapa** (`/`): vista general de las regiones y su progreso.
 - **Región** (`/region/:regionId`): metas y misiones de una región específica.
-- **Misiones** (`/misiones`): listado/gestión de misiones.
-- **Calendario** (`/calendario`): las misiones organizadas por fecha.
-- **Inventario** (`/inventario`): objetos desbloqueados.
-- **Perfil** (`/perfil`): nivel, XP, racha, logros.
+- **Misiones** (`/misiones`): listado y vista de calendario de misiones.
+- **Perfil** (`/perfil`): personaje, nivel, XP, estadísticas, logros e inventario, con accesos rápidos a Mundo y Misiones.
 - **Creación/edición de personaje** (`/personaje/editar`, `/personaje/bioma`): editor de avatar y bioma.
 
 ## Stack técnico
