@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
-import { MapPin, Plus } from 'lucide-react'
+import { MapPin, Plus, LocateFixed } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { useAvatarStore } from '@/store/useAvatarStore'
 import { regionProgress } from '@/lib/planning/goalEngine'
@@ -36,6 +36,8 @@ export function MapPage() {
   const [pendingLocation, setPendingLocation] = useState<LatLng | null>(null)
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null)
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null)
+  const [locating, setLocating] = useState(false)
+  const [locateError, setLocateError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!navigator.geolocation) return
@@ -45,6 +47,26 @@ export function MapPage() {
       { timeout: 5000 },
     )
   }, [])
+
+  function handleLocateMe() {
+    if (!navigator.geolocation) {
+      setLocateError('Tu navegador no soporta geolocalización.')
+      return
+    }
+    setLocating(true)
+    setLocateError(null)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setLocating(false)
+      },
+      () => {
+        setLocateError('No pudimos obtener tu ubicación. Revisá los permisos del navegador.')
+        setLocating(false)
+      },
+      { timeout: 8000, enableHighAccuracy: true },
+    )
+  }
 
   const regionMarkers = useMemo(() => layoutRegions(regions, center), [regions, center])
   const missionsWithLocation = useMemo(() => missions.filter((m) => m.location), [missions])
@@ -112,20 +134,37 @@ export function MapPage() {
         )}
 
         {GOOGLE_MAPS_API_KEY && isLoaded && (
-          <button
-            onClick={() => setAddingPlace((v) => !v)}
-            className={cn(
-              'absolute bottom-4 right-4 flex h-12 w-12 items-center justify-center rounded-full border border-ink-600 bg-ink-900 shadow-lg',
-              addingPlace && 'border-gold-400 text-gold-400',
-            )}
-          >
-            {addingPlace ? <MapPin size={20} /> : <Plus size={20} />}
-          </button>
+          <>
+            <button
+              onClick={() => setAddingPlace((v) => !v)}
+              className={cn(
+                'absolute bottom-4 right-4 flex h-12 w-12 items-center justify-center rounded-full border border-ink-600 bg-ink-900 shadow-lg',
+                addingPlace && 'border-gold-400 text-gold-400',
+              )}
+            >
+              {addingPlace ? <MapPin size={20} /> : <Plus size={20} />}
+            </button>
+
+            <button
+              onClick={handleLocateMe}
+              disabled={locating}
+              title="Dónde estoy"
+              className="absolute bottom-4 left-4 flex h-12 w-12 items-center justify-center rounded-full border border-ink-600 bg-ink-900 shadow-lg disabled:opacity-50"
+            >
+              <LocateFixed size={20} className={cn(locating && 'animate-pulse')} />
+            </button>
+          </>
         )}
 
         {addingPlace && (
           <p className="absolute inset-x-0 top-16 z-10 mx-auto w-fit rounded-full bg-ink-950/90 px-3 py-1.5 text-[11px] text-gold-400">
             Toca el mapa para marcar tu lugar
+          </p>
+        )}
+
+        {locateError && (
+          <p className="absolute inset-x-0 top-16 z-10 mx-auto w-fit rounded-full bg-ink-950/90 px-3 py-1.5 text-[11px] text-red-400">
+            {locateError}
           </p>
         )}
       </div>
