@@ -1,4 +1,4 @@
-import type { Goal, Mission, Priority, RegionId } from '@/types'
+import type { Goal, Mission, MissionLocation, Priority, RegionId } from '@/types'
 
 export interface GoalInput {
   regionId: RegionId
@@ -12,6 +12,7 @@ export interface GoalInput {
   reward?: string
   color: string
   icon: string
+  location?: MissionLocation
 }
 
 export function createGoal(input: GoalInput): Goal {

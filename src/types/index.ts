@@ -55,6 +55,7 @@ export interface Goal {
   color: string
   icon: string
   missionIds: string[]
+  location?: MissionLocation
 }
 
 export interface Region {

@@ -70,8 +70,9 @@ const MASK_COLORS: ColorChoice[] = [
   { id: 'light', label: 'Clara', swatch: '#e8e8e8' },
 ]
 
-const HAIR_STYLES = ['plain', 'bangs', 'pixie', 'long', 'bob', 'curly_short', 'afro', 'jewfro'] as const
+const HAIR_STYLES = ['none', 'plain', 'bangs', 'pixie', 'long', 'bob', 'curly_short', 'afro', 'jewfro'] as const
 const HAIR_LABELS: Record<(typeof HAIR_STYLES)[number], string> = {
+  none: 'Sin pelo',
   plain: 'Liso',
   bangs: 'Con flequillo',
   pixie: 'Pixie',
@@ -82,18 +83,27 @@ const HAIR_LABELS: Record<(typeof HAIR_STYLES)[number], string> = {
   jewfro: 'Afro rizado',
 }
 
+const PET_STYLES = ['none', 'peluche', 'rosa', 'cartera'] as const
+const PET_LABELS: Record<(typeof PET_STYLES)[number], string> = {
+  none: 'Ninguna',
+  peluche: 'Peluche',
+  rosa: 'Rosa',
+  cartera: 'Cartera',
+}
+
 const EYE_STYLES = ['default', 'round'] as const
 const EYE_STYLE_LABELS: Record<(typeof EYE_STYLES)[number], string> = {
   default: 'Ojos',
   round: 'Ojos grandes',
 }
 
-const SHOE_STYLES = ['default', 'heels'] as const
+const SHOE_STYLES = ['none', 'default', 'heels'] as const
 const SHOE_STYLE_LABELS: Record<(typeof SHOE_STYLES)[number], string> = {
+  none: 'Sin zapatos',
   default: 'Zapatos',
   heels: 'Tacones',
 }
-const SHOE_STYLE_FOLDERS: Record<(typeof SHOE_STYLES)[number], string> = {
+const SHOE_STYLE_FOLDERS: Partial<Record<(typeof SHOE_STYLES)[number], string>> = {
   default: 'shoes_male',
   heels: 'shoes_heels',
 }
@@ -132,18 +142,20 @@ export function figureOfBodyId(id: string): Figure {
   return BODY_DEFS[id]?.figure ?? 'male'
 }
 
-type ShirtStyle = 'vest' | 'tunic' | 'tshirt' | 'longsleeve'
+type ShirtStyle = 'none' | 'vest' | 'tunic' | 'tshirt' | 'longsleeve'
 
-const SHIRT_STYLES: Record<ShirtStyle, { label: string; figures: Figure[]; colorMode: 'baked' | 'recolor' }> = {
+const SHIRT_STYLES: Record<ShirtStyle, { label: string; figures: Figure[]; colorMode: 'baked' | 'recolor' | 'none' }> = {
+  none: { label: 'Sin camisa', figures: ['male', 'female', 'muscular'], colorMode: 'none' },
   vest: { label: 'Chaleco', figures: ['male', 'muscular'], colorMode: 'baked' },
   tunic: { label: 'Túnica', figures: ['female'], colorMode: 'recolor' },
   tshirt: { label: 'Polera', figures: ['male', 'female', 'muscular'], colorMode: 'recolor' },
   longsleeve: { label: 'Camisa manga larga', figures: ['male', 'female', 'muscular'], colorMode: 'recolor' },
 }
 
-type PantsStyle = 'default' | 'shorts' | 'skirt'
+type PantsStyle = 'none' | 'default' | 'shorts' | 'skirt'
 
-const PANTS_STYLES: Record<PantsStyle, { label: string; figures: Figure[]; colorMode: 'baked' | 'recolor' }> = {
+const PANTS_STYLES: Record<PantsStyle, { label: string; figures: Figure[]; colorMode: 'baked' | 'recolor' | 'none' }> = {
+  none: { label: 'Sin pantalón', figures: ['male', 'female', 'muscular'], colorMode: 'none' },
   default: { label: 'Pantalón', figures: ['male', 'female', 'muscular'], colorMode: 'baked' },
   shorts: { label: 'Short', figures: ['male', 'female', 'muscular'], colorMode: 'recolor' },
   skirt: { label: 'Falda', figures: ['female'], colorMode: 'recolor' },
@@ -179,7 +191,7 @@ function headLayer(bodyId: string, colorId: string | undefined): ResolvedLayer {
 export const lpcProvider: AvatarAssetProvider = {
   id: 'lpc-universal',
   frameSize: FRAME_SIZE,
-  categories: ['body', 'head', 'eyes', 'hair', 'mask', 'shirt', 'pants', 'shoes'],
+  categories: ['body', 'head', 'eyes', 'hair', 'mask', 'shirt', 'pants', 'shoes', 'pet'],
   attribution: {
     name: 'Liberated Pixel Cup — Universal LPC Spritesheet Character Generator',
     url: 'https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator/',
@@ -214,8 +226,8 @@ export const lpcProvider: AvatarAssetProvider = {
           id: style,
           label: HAIR_LABELS[style],
           figures: ALL_FIGURES,
-          colorMode: 'recolor',
-          colors: HAIR_COLORS,
+          colorMode: style === 'none' ? 'none' : 'recolor',
+          colors: style === 'none' ? [] : HAIR_COLORS,
         }))
 
       case 'mask':
@@ -251,8 +263,17 @@ export const lpcProvider: AvatarAssetProvider = {
           id: style,
           label: SHOE_STYLE_LABELS[style],
           figures: ALL_FIGURES,
-          colorMode: 'recolor',
-          colors: SHOE_COLORS,
+          colorMode: style === 'none' ? 'none' : 'recolor',
+          colors: style === 'none' ? [] : SHOE_COLORS,
+        }))
+
+      case 'pet':
+        return PET_STYLES.map((style) => ({
+          id: style,
+          label: PET_LABELS[style],
+          figures: ALL_FIGURES,
+          colorMode: 'none',
+          colors: [],
         }))
 
       default:
@@ -277,6 +298,7 @@ export const lpcProvider: AvatarAssetProvider = {
         }
 
       case 'hair':
+        if (optionId === 'none') return null
         return {
           category,
           zIndex: 30,
@@ -296,6 +318,8 @@ export const lpcProvider: AvatarAssetProvider = {
         const style = (optionId as ShirtStyle) in SHIRT_STYLES ? (optionId as ShirtStyle) : 'tshirt'
         const color = colorId ?? 'blue'
 
+        if (style === 'none') return null
+
         if (style === 'vest') {
           return { category, zIndex: 20, imageUrl: `${ASSET_ROOT}/torso/vest_male/${color}.png` }
         }
@@ -313,6 +337,8 @@ export const lpcProvider: AvatarAssetProvider = {
         const style = (optionId as PantsStyle) in PANTS_STYLES ? (optionId as PantsStyle) : 'default'
         const color = colorId ?? 'blue'
 
+        if (style === 'none') return null
+
         if (style === 'default') {
           const folder = figure === 'female' ? 'pants_female' : figure === 'muscular' ? 'pants_muscular' : 'pants_male'
           return { category, zIndex: 10, imageUrl: `${ASSET_ROOT}/legs/${folder}/${color}.png` }
@@ -327,6 +353,7 @@ export const lpcProvider: AvatarAssetProvider = {
       }
 
       case 'shoes': {
+        if (optionId === 'none') return null
         type ShoeStyle = (typeof SHOE_STYLES)[number]
         const style = (optionId as ShoeStyle) in SHOE_STYLE_FOLDERS ? (optionId as ShoeStyle) : 'default'
         const folder = SHOE_STYLE_FOLDERS[style]
@@ -337,6 +364,14 @@ export const lpcProvider: AvatarAssetProvider = {
           recolorTargetHex: SHOE_COLORS.find((c) => c.id === colorId)?.swatch ?? SHOE_COLORS[0].swatch,
         }
       }
+
+      case 'pet':
+        if (optionId === 'none') return null
+        return {
+          category,
+          zIndex: 25,
+          imageUrl: `${ASSET_ROOT}/pet/${optionId}/idle.png`,
+        }
 
       default:
         return null

@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { AvatarLayerCategory } from '@/lib/avatar/types'
 
-const CREATION_CATEGORIES: AvatarLayerCategory[] = ['body', 'hair', 'eyes', 'mask', 'shirt', 'pants', 'shoes']
+const CREATION_CATEGORIES: AvatarLayerCategory[] = ['body', 'hair', 'eyes', 'mask', 'shirt', 'pants', 'shoes', 'pet']
 const PAINTABLE_CATEGORIES: AvatarLayerCategory[] = ['shirt', 'pants', 'shoes', 'mask']
 
 interface CharacterCreationPageProps {
