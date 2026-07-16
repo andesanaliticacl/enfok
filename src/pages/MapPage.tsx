@@ -4,7 +4,7 @@ import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { MapPin, Plus, LocateFixed } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { useAvatarStore } from '@/store/useAvatarStore'
-import { regionProgress } from '@/lib/planning/goalEngine'
+import { regionProgress, goalProgress } from '@/lib/planning/goalEngine'
 import { layoutRegions, DEFAULT_WORLD_CENTER, type LatLng } from '@/lib/world/layout'
 import { GOOGLE_MAPS_API_KEY } from '@/lib/world/geocode'
 import { WORLD_MAP_STYLE } from '@/data/mapStyle'
@@ -12,6 +12,7 @@ import { RegionMarker } from '@/components/world/RegionMarker'
 import { PlaceMarker } from '@/components/world/PlaceMarker'
 import { PlaceFormDialog } from '@/components/world/PlaceFormDialog'
 import { MissionMarker } from '@/components/world/MissionMarker'
+import { GoalMarker } from '@/components/world/GoalMarker'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -28,26 +29,40 @@ export function MapPage() {
   const completeMission = useGameStore((s) => s.completeMission)
   const profile = useGameStore((s) => s.profile)
   const avatar = useAvatarStore((s) => s.avatar)
+  const worldAnchor = useGameStore((s) => s.worldAnchor)
+  const setWorldAnchor = useGameStore((s) => s.setWorldAnchor)
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY ?? '',
   })
 
-  const [center, setCenter] = useState<LatLng>(DEFAULT_WORLD_CENTER)
+  // `center` only drives what part of the map the camera is looking at — the
+  // regions are laid out around `worldAnchor` instead, a fixed point set once
+  // from the first real location fix, so panning/recentering (e.g. "Dónde
+  // estoy") never reshuffles where the regions are.
+  const [center, setCenter] = useState<LatLng>(worldAnchor ?? DEFAULT_WORLD_CENTER)
   const [addingPlace, setAddingPlace] = useState(false)
   const [pendingLocation, setPendingLocation] = useState<LatLng | null>(null)
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null)
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null)
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [locating, setLocating] = useState(false)
   const [locateError, setLocateError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!navigator.geolocation) return
+    if (worldAnchor || !navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
-      (pos) => setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (pos) => {
+        const here = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setWorldAnchor(here)
+        setCenter(here)
+      },
       () => {},
       { timeout: 5000 },
     )
+    // Only ever runs to establish the anchor once — re-running on every
+    // worldAnchor change would defeat the point.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function handleLocateMe() {
@@ -70,8 +85,12 @@ export function MapPage() {
     )
   }
 
-  const regionMarkers = useMemo(() => layoutRegions(regions, center), [regions, center])
+  const regionMarkers = useMemo(
+    () => layoutRegions(regions, worldAnchor ?? DEFAULT_WORLD_CENTER),
+    [regions, worldAnchor],
+  )
   const missionsWithLocation = useMemo(() => missions.filter((m) => m.location), [missions])
+  const goalsWithLocation = useMemo(() => goals.filter((g) => g.location), [goals])
 
   function handleMapClick(e: google.maps.MapMouseEvent) {
     if (!addingPlace || !e.latLng) return
@@ -135,6 +154,10 @@ export function MapPage() {
 
             {missionsWithLocation.map((mission) => (
               <MissionMarker key={mission.id} mission={mission} onClick={setSelectedMission} />
+            ))}
+
+            {goalsWithLocation.map((goal) => (
+              <GoalMarker key={goal.id} goal={goal} progress={goalProgress(goal, missions)} onClick={setSelectedGoal} />
             ))}
           </GoogleMap>
         )}
@@ -218,6 +241,31 @@ export function MapPage() {
               </Button>
             )}
             <Button variant="ghost" size="sm" onClick={() => setSelectedMission(null)}>
+              Cerrar
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {selectedGoal && (
+        <div className="absolute inset-x-4 bottom-20 z-20 flex items-center justify-between gap-2 rounded-xl border border-ink-700 bg-ink-900 p-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm text-ink-50">
+              {selectedGoal.icon} {selectedGoal.name}
+            </p>
+            <p className="truncate text-[10px] text-ink-400">{selectedGoal.location?.address}</p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Button
+              size="sm"
+              onClick={() => {
+                navigate('/misiones')
+                setSelectedGoal(null)
+              }}
+            >
+              Ver misiones
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedGoal(null)}>
               Cerrar
             </Button>
           </div>

@@ -9,6 +9,7 @@ import {
 } from '@/data/mockData'
 import { createGoal, isGoalComplete, type GoalInput } from '@/lib/planning/goalEngine'
 import { applyCompletion, createMission, type MissionInput } from '@/lib/planning/missionEngine'
+import type { LatLng } from '@/lib/world/layout'
 import type { Goal, InventoryItem, Mission, Place, PlaceCategory, PlayerProfile, Region } from '@/types'
 
 interface GameState {
@@ -19,6 +20,9 @@ interface GameState {
   places: Place[]
   profile: PlayerProfile
   lastGainedXp: number | null
+  /** Fixed point the region "world" is laid out around — set once from the first real location fix, so recentering the map (e.g. "Dónde estoy") never reshuffles the regions. */
+  worldAnchor: LatLng | null
+  setWorldAnchor: (anchor: LatLng) => void
 
   addGoal: (input: GoalInput) => string
   updateGoal: (goalId: string, input: GoalInput) => void
@@ -68,6 +72,9 @@ export const useGameStore = create<GameState>()(
       places: [],
       profile: mockProfile,
       lastGainedXp: null,
+      worldAnchor: null,
+
+      setWorldAnchor: (anchor) => set((state) => (state.worldAnchor ? {} : { worldAnchor: anchor })),
 
       addGoal: (input) => {
         const goal = createGoal(input)
@@ -167,6 +174,7 @@ export const useGameStore = create<GameState>()(
           places: [],
           profile: { name: 'Aventurero', ...STARTING_PROFILE },
           lastGainedXp: null,
+          worldAnchor: null,
         }),
 
       addPlace: (name, category, lat, lng) =>

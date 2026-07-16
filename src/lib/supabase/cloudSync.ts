@@ -17,6 +17,7 @@ function pickGameState() {
     inventory: s.inventory,
     places: s.places,
     profile: s.profile,
+    worldAnchor: s.worldAnchor,
   }
 }
 
