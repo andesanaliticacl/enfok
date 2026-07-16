@@ -138,6 +138,14 @@ const SHIRT_STYLES: Record<ShirtStyle, { label: string; figures: Figure[]; color
   longsleeve: { label: 'Camisa manga larga', figures: ['male', 'female', 'muscular'], colorMode: 'recolor' },
 }
 
+type PantsStyle = 'default' | 'shorts' | 'skirt'
+
+const PANTS_STYLES: Record<PantsStyle, { label: string; figures: Figure[]; colorMode: 'baked' | 'recolor' }> = {
+  default: { label: 'Pantalón', figures: ['male', 'female', 'muscular'], colorMode: 'baked' },
+  shorts: { label: 'Short', figures: ['male', 'female', 'muscular'], colorMode: 'recolor' },
+  skirt: { label: 'Falda', figures: ['female'], colorMode: 'recolor' },
+}
+
 const FRAME_SIZE = 64
 const DOWN_ROW_Y = -(FRAME_SIZE * 2)
 
@@ -223,7 +231,15 @@ export const lpcProvider: AvatarAssetProvider = {
           }))
 
       case 'pants':
-        return [{ id: 'default', label: 'Pantalón', figures: ALL_FIGURES, colorMode: 'baked', colors: GARMENT_COLORS }]
+        return (Object.entries(PANTS_STYLES) as [PantsStyle, (typeof PANTS_STYLES)[PantsStyle]][])
+          .filter(([, def]) => def.figures.includes(figure))
+          .map(([id, def]) => ({
+            id,
+            label: def.label,
+            figures: def.figures,
+            colorMode: def.colorMode,
+            colors: GARMENT_COLORS,
+          }))
 
       case 'shoes':
         return SHOE_STYLES.map((style) => ({
@@ -289,9 +305,20 @@ export const lpcProvider: AvatarAssetProvider = {
       }
 
       case 'pants': {
+        const style = (optionId as PantsStyle) in PANTS_STYLES ? (optionId as PantsStyle) : 'default'
         const color = colorId ?? 'blue'
-        const folder = figure === 'female' ? 'pants_female' : figure === 'muscular' ? 'pants_muscular' : 'pants_male'
-        return { category, zIndex: 10, imageUrl: `${ASSET_ROOT}/legs/${folder}/${color}.png` }
+
+        if (style === 'default') {
+          const folder = figure === 'female' ? 'pants_female' : figure === 'muscular' ? 'pants_muscular' : 'pants_male'
+          return { category, zIndex: 10, imageUrl: `${ASSET_ROOT}/legs/${folder}/${color}.png` }
+        }
+
+        return {
+          category,
+          zIndex: 10,
+          imageUrl: `${ASSET_ROOT}/legs/${style}/idle.png`,
+          recolorTargetHex: GARMENT_COLORS.find((c) => c.id === color)?.swatch ?? GARMENT_COLORS[0].swatch,
+        }
       }
 
       case 'shoes': {

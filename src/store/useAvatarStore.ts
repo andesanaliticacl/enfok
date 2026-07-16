@@ -78,9 +78,18 @@ export const useAvatarStore = create<AvatarState>()(
         }),
 
       setOption: (category, optionId) =>
-        set((state) => ({
-          avatar: { ...state.avatar, options: { ...state.avatar.options, [category]: optionId } },
-        })),
+        set((state) => {
+          // Painted pixels are shape-specific to whichever style was active when
+          // painted (e.g. a t-shirt's short sleeves) — carrying them over to a
+          // different style (e.g. long sleeves) shows a mismatched silhouette,
+          // so switching styles drops any custom paint for that slot.
+          const pixelOverrides = { ...state.avatar.pixelOverrides }
+          if (state.avatar.options[category] !== optionId) delete pixelOverrides[category]
+
+          return {
+            avatar: { ...state.avatar, options: { ...state.avatar.options, [category]: optionId }, pixelOverrides },
+          }
+        }),
 
       setColor: (category, colorId) =>
         set((state) => {
