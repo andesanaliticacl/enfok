@@ -111,6 +111,8 @@ interface BodyDef {
   bodyImage: string
   headImage: string
   skinColors: ColorChoice[]
+  /** 'none' skips recoloring entirely — for bodies with fixed, non-skin-tone art (e.g. a penguin's black/white plumage). */
+  colorMode?: 'recolor' | 'none'
 }
 
 const BODY_DEFS: Record<string, BodyDef> = {
@@ -123,6 +125,7 @@ const BODY_DEFS: Record<string, BodyDef> = {
   lizard_male: { label: 'Argoniano A', figure: 'male', bodyImage: 'male/idle.png', headImage: 'lizard_male/idle.png', skinColors: LIZARD_SKIN_COLORS },
   lizard_female: { label: 'Argoniano B', figure: 'female', bodyImage: 'female/idle.png', headImage: 'lizard_female/idle.png', skinColors: LIZARD_SKIN_COLORS },
   skeleton: { label: 'No-muerto', figure: 'male', bodyImage: 'skeleton/walk.png', headImage: 'skeleton/idle.png', skinColors: SKELETON_SKIN_COLORS },
+  penguin: { label: 'Pingüino', figure: 'male', bodyImage: 'penguin/idle.png', headImage: 'penguin/idle.png', skinColors: [], colorMode: 'none' },
 }
 
 export function figureOfBodyId(id: string): Figure {
@@ -157,7 +160,8 @@ function bodyLayer(bodyId: string, colorId: string | undefined): ResolvedLayer {
     category: 'body',
     zIndex: 0,
     imageUrl: `${ASSET_ROOT}/body/${def.bodyImage}`,
-    recolorTargetHex: def.skinColors.find((c) => c.id === colorId)?.swatch ?? def.skinColors[0].swatch,
+    recolorTargetHex:
+      def.colorMode === 'none' ? undefined : def.skinColors.find((c) => c.id === colorId)?.swatch ?? def.skinColors[0].swatch,
   }
 }
 
@@ -167,7 +171,8 @@ function headLayer(bodyId: string, colorId: string | undefined): ResolvedLayer {
     category: 'head',
     zIndex: 2,
     imageUrl: `${ASSET_ROOT}/head/${def.headImage}`,
-    recolorTargetHex: def.skinColors.find((c) => c.id === colorId)?.swatch ?? def.skinColors[0].swatch,
+    recolorTargetHex:
+      def.colorMode === 'none' ? undefined : def.skinColors.find((c) => c.id === colorId)?.swatch ?? def.skinColors[0].swatch,
   }
 }
 
@@ -188,7 +193,7 @@ export const lpcProvider: AvatarAssetProvider = {
           id,
           label: def.label,
           figures: [def.figure],
-          colorMode: 'recolor' as const,
+          colorMode: def.colorMode ?? 'recolor',
           colors: def.skinColors,
         }))
 
