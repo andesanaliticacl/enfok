@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { MapPin, Plus, LocateFixed } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
@@ -17,6 +18,7 @@ import { cn } from '@/lib/utils'
 import type { Goal, Mission, Place, PlaceCategory, Region } from '@/types'
 
 export function MapPage() {
+  const navigate = useNavigate()
   const regions = useGameStore((s) => s.regions)
   const goals = useGameStore((s) => s.goals)
   const missions = useGameStore((s) => s.missions)
@@ -86,13 +88,16 @@ export function MapPage() {
   return (
     <div className="flex h-[calc(100dvh-136px)] w-full flex-col">
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between p-4">
-        <div className="pointer-events-auto flex items-center gap-3">
+        <button
+          onClick={() => navigate('/perfil')}
+          className="pointer-events-auto flex items-center gap-3 text-left"
+        >
           <AvatarSprite config={avatar} size={48} className="rounded-xl bg-ink-800" />
           <div className="rounded-xl bg-ink-950/80 px-3 py-1.5">
             <h1 className="font-pixel text-xs text-gold-400">Questly</h1>
             <p className="mt-0.5 text-[10px] text-ink-400">Nivel {profile.level} · {profile.xp} XP</p>
           </div>
-        </div>
+        </button>
       </header>
 
       <div className="relative flex-1">
@@ -110,6 +115,7 @@ export function MapPage() {
               styles: WORLD_MAP_STYLE,
               disableDefaultUI: true,
               zoomControl: true,
+              zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_TOP },
               gestureHandling: 'greedy',
             }}
           >
