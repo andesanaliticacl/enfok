@@ -93,18 +93,20 @@ export async function getLayerSilhouette(config: AvatarConfig, category: AvatarL
   return grid
 }
 
-/** Biome background art: whatever the user already painted, or a flat fill of the biome's color. */
-export async function getEditableBiomeFrame(biomeArt: string | null, biomeColor: string): Promise<HTMLCanvasElement> {
-  const frameSize = lpcProvider.frameSize
-  const { canvas, ctx } = newFrameCanvas()
+/** The generated biome scenery is a 160x90 landscape, not the avatar's square frame. */
+export const BIOME_ART_WIDTH = 160
+export const BIOME_ART_HEIGHT = 90
 
-  if (biomeArt) {
-    const img = await loadImage(biomeArt)
-    ctx.drawImage(img, 0, 0, frameSize, frameSize)
-  } else {
-    ctx.fillStyle = biomeColor
-    ctx.fillRect(0, 0, frameSize, frameSize)
-  }
+/** Biome background art: whatever the user already painted, or the current generated scenery for that biome/variant. */
+export async function getEditableBiomeFrame(biomeArt: string | null, fallbackImageUrl: string): Promise<HTMLCanvasElement> {
+  const canvas = document.createElement('canvas')
+  canvas.width = BIOME_ART_WIDTH
+  canvas.height = BIOME_ART_HEIGHT
+  const ctx = canvas.getContext('2d')!
+  ctx.imageSmoothingEnabled = false
+
+  const img = await loadImage(biomeArt || fallbackImageUrl)
+  ctx.drawImage(img, 0, 0, BIOME_ART_WIDTH, BIOME_ART_HEIGHT)
 
   return canvas
 }

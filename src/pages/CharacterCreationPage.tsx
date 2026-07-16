@@ -6,9 +6,9 @@ import { useAvatarStore, HAT_SCALE_MIN, HAT_SCALE_MAX, HAT_SCALE_STEP } from '@/
 import { useGameStore } from '@/store/useGameStore'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { PixelEditor } from '@/components/avatar/PixelEditor'
-import { getEditableFrame, getLayerSilhouette, getEditableBiomeFrame } from '@/lib/avatar/pixelFrame'
+import { getEditableFrame, getLayerSilhouette, getEditableBiomeFrame, BIOME_ART_WIDTH, BIOME_ART_HEIGHT } from '@/lib/avatar/pixelFrame'
 import { lpcProvider, CATEGORY_LABELS, figureOfBodyId, isHatResizable } from '@/lib/avatar/providers/lpcProvider'
-import { biomes } from '@/data/biomes'
+import { biomes, biomeBackgroundUrl } from '@/data/biomes'
 import { BiomaComponent } from '@/components/biome/BiomaComponent'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -178,9 +178,10 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
           <PixelEditor
             open={paintingBiome}
             title="Pintar bioma"
-            loadFrame={() =>
-              getEditableBiomeFrame(biomeArt, biomes.find((b) => b.id === selectedBiome)?.color ?? '#5a9b5f')
-            }
+            frameWidth={BIOME_ART_WIDTH}
+            frameHeight={BIOME_ART_HEIGHT}
+            cellSize={3}
+            loadFrame={() => getEditableBiomeFrame(biomeArt, biomeBackgroundUrl(selectedBiome, biomeVariant))}
             onClose={() => setPaintingBiome(false)}
             onSave={setBiomeArt}
             onClear={clearBiomeArt}

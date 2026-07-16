@@ -15,12 +15,27 @@ interface PixelEditorProps {
   onClose: () => void
   onSave: (dataUrl: string) => void
   onClear: () => void
+  /** Pixel grid size — defaults to the avatar sprite's square frame. Pass the real dimensions for non-square art (e.g. a 160x90 biome background). */
+  frameWidth?: number
+  frameHeight?: number
+  /** On-screen size of each pixel cell. */
+  cellSize?: number
 }
 
-const CELL_SIZE = 6
 const QUICK_COLORS = ['#1c1c1c', '#ffffff', '#e8b892', '#2f5fa8', '#6e2632', '#2f5a3a', '#d4af6a', '#7a4a2a']
 
-export function PixelEditor({ open, title, loadFrame, loadSilhouette, onClose, onSave, onClear }: PixelEditorProps) {
+export function PixelEditor({
+  open,
+  title,
+  loadFrame,
+  loadSilhouette,
+  onClose,
+  onSave,
+  onClear,
+  frameWidth = lpcProvider.frameSize,
+  frameHeight = lpcProvider.frameSize,
+  cellSize = 6,
+}: PixelEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const silhouetteRef = useRef<boolean[][] | null>(null)
   const undoStackRef = useRef<ImageData[]>([])
@@ -32,15 +47,15 @@ export function PixelEditor({ open, title, loadFrame, loadSilhouette, onClose, o
 
   const MAX_UNDO_STEPS = 50
 
-  const frameSize = lpcProvider.frameSize
-  const canvasPx = frameSize * CELL_SIZE
+  const canvasPxWidth = frameWidth * cellSize
+  const canvasPxHeight = frameHeight * cellSize
 
   function clipToSilhouette(ctx: CanvasRenderingContext2D) {
     const silhouette = silhouetteRef.current
     if (!silhouette) return
-    for (let y = 0; y < frameSize; y++) {
-      for (let x = 0; x < frameSize; x++) {
-        if (!silhouette[y][x]) ctx.clearRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+    for (let y = 0; y < frameHeight; y++) {
+      for (let x = 0; x < frameWidth; x++) {
+        if (!silhouette[y][x]) ctx.clearRect(x * cellSize, y * cellSize, cellSize, cellSize)
       }
     }
   }
@@ -54,8 +69,8 @@ export function PixelEditor({ open, title, loadFrame, loadSilhouette, onClose, o
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
     ctx.imageSmoothingEnabled = false
-    ctx.clearRect(0, 0, canvasPx, canvasPx)
-    ctx.drawImage(frame, 0, 0, frameSize, frameSize, 0, 0, canvasPx, canvasPx)
+    ctx.clearRect(0, 0, canvasPxWidth, canvasPxHeight)
+    ctx.drawImage(frame, 0, 0, frameWidth, frameHeight, 0, 0, canvasPxWidth, canvasPxHeight)
     // Any pre-existing paint that fell outside the shape (e.g. from before
     // this constraint existed) gets cleaned up the moment it's reopened.
     clipToSilhouette(ctx)
@@ -74,20 +89,20 @@ export function PixelEditor({ open, title, loadFrame, loadSilhouette, onClose, o
     const canvas = canvasRef.current
     if (!canvas) return
     const rect = canvas.getBoundingClientRect()
-    const x = Math.floor(((clientX - rect.left) / rect.width) * frameSize)
-    const y = Math.floor(((clientY - rect.top) / rect.height) * frameSize)
-    if (x < 0 || y < 0 || x >= frameSize || y >= frameSize) return
+    const x = Math.floor(((clientX - rect.left) / rect.width) * frameWidth)
+    const y = Math.floor(((clientY - rect.top) / rect.height) * frameHeight)
+    if (x < 0 || y < 0 || x >= frameWidth || y >= frameHeight) return
     if (silhouetteRef.current && !silhouetteRef.current[y][x]) return
 
     const ctx = canvas.getContext('2d')!
-    const px = x * CELL_SIZE
-    const py = y * CELL_SIZE
+    const px = x * cellSize
+    const py = y * cellSize
 
     if (tool === 'eraser') {
-      ctx.clearRect(px, py, CELL_SIZE, CELL_SIZE)
+      ctx.clearRect(px, py, cellSize, cellSize)
     } else {
       ctx.fillStyle = color
-      ctx.fillRect(px, py, CELL_SIZE, CELL_SIZE)
+      ctx.fillRect(px, py, cellSize, cellSize)
     }
   }
 
@@ -95,7 +110,7 @@ export function PixelEditor({ open, title, loadFrame, loadSilhouette, onClose, o
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
-    undoStackRef.current.push(ctx.getImageData(0, 0, canvasPx, canvasPx))
+    undoStackRef.current.push(ctx.getImageData(0, 0, canvasPxWidth, canvasPxHeight))
     if (undoStackRef.current.length > MAX_UNDO_STEPS) undoStackRef.current.shift()
     setCanUndo(true)
   }
@@ -130,11 +145,11 @@ export function PixelEditor({ open, title, loadFrame, loadSilhouette, onClose, o
     const canvas = canvasRef.current
     if (!canvas) return
     const out = document.createElement('canvas')
-    out.width = frameSize
-    out.height = frameSize
+    out.width = frameWidth
+    out.height = frameHeight
     const ctx = out.getContext('2d')!
     ctx.imageSmoothingEnabled = false
-    ctx.drawImage(canvas, 0, 0, canvasPx, canvasPx, 0, 0, frameSize, frameSize)
+    ctx.drawImage(canvas, 0, 0, canvasPxWidth, canvasPxHeight, 0, 0, frameWidth, frameHeight)
     onSave(out.toDataURL('image/png'))
     onClose()
   }
@@ -163,14 +178,14 @@ export function PixelEditor({ open, title, loadFrame, loadSilhouette, onClose, o
           <div className="flex flex-1 flex-col items-center justify-center gap-4 overflow-auto p-4">
             <div
               className="relative border border-ink-700"
-              style={{ width: canvasPx, height: canvasPx, imageRendering: 'pixelated' }}
+              style={{ width: canvasPxWidth, height: canvasPxHeight, imageRendering: 'pixelated' }}
             >
               <canvas
                 ref={canvasRef}
-                width={canvasPx}
-                height={canvasPx}
+                width={canvasPxWidth}
+                height={canvasPxHeight}
                 className="touch-none"
-                style={{ width: canvasPx, height: canvasPx }}
+                style={{ width: canvasPxWidth, height: canvasPxHeight }}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
