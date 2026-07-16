@@ -8,7 +8,8 @@ import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { PixelEditor } from '@/components/avatar/PixelEditor'
 import { getEditableFrame, getLayerSilhouette, getEditableBiomeFrame } from '@/lib/avatar/pixelFrame'
 import { lpcProvider, CATEGORY_LABELS, figureOfBodyId, isHatResizable } from '@/lib/avatar/providers/lpcProvider'
-import { biomes, biomeBackgroundUrl } from '@/data/biomes'
+import { biomes } from '@/data/biomes'
+import { BiomaComponent } from '@/components/biome/BiomaComponent'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -89,15 +90,11 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
         <p className="mt-2 text-sm text-ink-400">Elige el bioma inicial de tu mundo.</p>
 
         {selectedBiome && (
-          <div
-            className="relative mt-4 flex h-56 items-center justify-center overflow-hidden rounded-2xl border border-ink-700"
-            style={{
-              backgroundImage: `url(${biomeArt || biomeBackgroundUrl(selectedBiome, biomeVariant)})`,
-              backgroundColor: biomes.find((b) => b.id === selectedBiome)?.color,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              imageRendering: 'pixelated',
-            }}
+          <BiomaComponent
+            biomeId={selectedBiome}
+            variant={biomeVariant}
+            customArt={biomeArt}
+            className="panel-bevel mt-4 flex h-56 items-center justify-center rounded-2xl border border-ink-700"
           >
             <div className="absolute right-2 top-2 flex gap-1">
               <button
@@ -122,7 +119,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
               </button>
             </div>
             <AvatarSprite config={avatar} size={128} />
-          </div>
+          </BiomaComponent>
         )}
 
         <div className="mt-8 grid grid-cols-2 gap-3">
@@ -131,18 +128,19 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
               key={biome.id}
               onClick={() => setBiome(biome.id)}
               whileTap={{ scale: 0.96 }}
-              className="relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl border-2 p-5 transition-colors"
-              style={{
-                borderColor: selectedBiome === biome.id ? biome.color : 'var(--color-ink-700)',
-                backgroundImage: `url(${biomeBackgroundUrl(biome.id, biomeVariant)})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                imageRendering: 'pixelated',
-              }}
+              className="relative overflow-hidden rounded-2xl border-2 transition-colors"
+              style={{ borderColor: selectedBiome === biome.id ? biome.color : 'var(--color-ink-700)' }}
             >
-              <div className="absolute inset-0 bg-ink-950/40" />
-              <span className="relative text-4xl">{biome.emoji}</span>
-              <span className="relative font-pixel text-[10px] text-ink-50">{biome.name}</span>
+              <BiomaComponent
+                biomeId={biome.id}
+                variant={biomeVariant}
+                vignette={false}
+                className="flex h-full flex-col items-center justify-center gap-2 p-5"
+              >
+                <div className="absolute inset-0 bg-ink-950/40" />
+                <span className="relative text-4xl">{biome.emoji}</span>
+                <span className="relative font-pixel text-[10px] text-ink-50">{biome.name}</span>
+              </BiomaComponent>
             </motion.button>
           ))}
         </div>

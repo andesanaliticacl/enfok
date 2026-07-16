@@ -4,8 +4,9 @@ import { Settings, Pencil, Globe2, Map, Swords, Star, Sparkles, Coins, Flame, Ho
 import { useGameStore } from '@/store/useGameStore'
 import { useAvatarStore } from '@/store/useAvatarStore'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
+import { BiomaComponent } from '@/components/biome/BiomaComponent'
 import { lpcProvider } from '@/lib/avatar/providers/lpcProvider'
-import { biomes, biomeBackgroundUrl } from '@/data/biomes'
+import { biomes } from '@/data/biomes'
 import { achievements } from '@/data/achievements'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -49,14 +50,18 @@ export function ProfilePage() {
           the full width of the screen into three columns with the character anchored dead-center. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px_minmax(0,1fr)] lg:items-start lg:gap-10">
         <div className="order-2 flex flex-col gap-6 lg:order-1">
-          <section>
+          <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/60 p-4">
             <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-400">Estadísticas</h2>
             <div className="grid grid-cols-3 gap-3">
               {stats.map((stat) => (
                 <Card key={stat.label}>
                   <CardContent className="flex flex-col items-center gap-1 p-3 text-center">
                     <stat.icon size={16} className="text-gold-400" />
-                    <p className="text-sm font-semibold text-ink-50">{stat.value}</p>
+                    <p
+                      className={cn('text-sm font-semibold text-ink-50', (stat.label === 'Nivel' || stat.label === 'XP') && 'text-glow-gold')}
+                    >
+                      {stat.value}
+                    </p>
                     <p className="text-[9px] leading-tight text-ink-400">{stat.label}</p>
                   </CardContent>
                 </Card>
@@ -66,25 +71,19 @@ export function ProfilePage() {
         </div>
 
         <div className="order-1 flex flex-col lg:order-2">
-          {/* Hero: the character is the centerpiece, staged on its biome */}
-          <div
-            className="relative overflow-hidden rounded-3xl border border-ink-700"
-            style={{
-              backgroundImage: `url(${biomeArt || (biome ? biomeBackgroundUrl(biome.id, biomeVariant) : '')})`,
-              backgroundColor: biome?.color ?? 'var(--color-ink-800)',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              imageRendering: 'pixelated',
-            }}
+          {/* Hero: the character is the centerpiece, staged on its living biome */}
+          <BiomaComponent
+            biomeId={biomeId}
+            variant={biomeVariant}
+            customArt={biomeArt}
+            className="min-h-[360px] rounded-3xl border border-ink-700 panel-bevel lg:min-h-[460px]"
           >
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-ink-950/90" />
-
-            <div className="relative flex flex-col items-center pt-6">
+            <div className="relative flex h-full flex-col items-center justify-center pb-2 pt-6">
               <AvatarSprite config={avatar} size={192} />
 
               <div className="relative z-10 -mt-2 flex flex-col items-center gap-1 pb-5 text-center">
                 <h1 className="text-lg font-semibold text-ink-50">{profile.name}</h1>
-                <p className="font-pixel text-[10px] text-gold-400">Nivel {profile.level}</p>
+                <p className="font-pixel text-[10px] text-gold-400 text-glow-gold">Nivel {profile.level}</p>
                 {biome && (
                   <p className="font-pixel text-[9px] text-ink-200">
                     {biome.emoji} {biome.name}
@@ -93,7 +92,12 @@ export function ProfilePage() {
 
                 <div className="mt-2 w-40">
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink-950/60">
-                    <div className="h-full rounded-full bg-gold-400" style={{ width: `${xpProgress}%` }} />
+                    <div
+                      className="relative h-full overflow-hidden rounded-full bg-gold-400 shadow-[0_0_8px_2px_rgba(242,204,109,0.55)]"
+                      style={{ width: `${xpProgress}%` }}
+                    >
+                      <div className="anim-shine absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+                    </div>
                   </div>
                   <p className="mt-1 text-[9px] text-ink-300">
                     {profile.xp}/{profile.xpToNextLevel} XP
@@ -101,7 +105,7 @@ export function ProfilePage() {
                 </div>
               </div>
             </div>
-          </div>
+          </BiomaComponent>
 
           <div className="mt-3 grid grid-cols-3 gap-2">
             <Button variant="outline" size="sm" onClick={() => navigate('/personaje/editar')}>
@@ -119,7 +123,7 @@ export function ProfilePage() {
           <div className="mt-6 grid grid-cols-2 gap-3">
             <button
               onClick={() => navigate('/')}
-              className="flex flex-col items-start gap-2 rounded-2xl border border-ink-700 bg-ink-900 p-4 text-left transition-colors hover:border-gold-400"
+              className="panel-bevel flex flex-col items-start gap-2 rounded-2xl border border-ink-700 bg-ink-900 p-4 text-left transition-colors hover:border-gold-400"
             >
               <Map className="text-gold-400" size={22} />
               <span className="text-sm font-semibold text-ink-50">Mundo</span>
@@ -127,7 +131,7 @@ export function ProfilePage() {
             </button>
             <button
               onClick={() => navigate('/misiones')}
-              className="flex flex-col items-start gap-2 rounded-2xl border border-ink-700 bg-ink-900 p-4 text-left transition-colors hover:border-gold-400"
+              className="panel-bevel flex flex-col items-start gap-2 rounded-2xl border border-ink-700 bg-ink-900 p-4 text-left transition-colors hover:border-gold-400"
             >
               <Swords className="text-gold-400" size={22} />
               <span className="text-sm font-semibold text-ink-50">Misiones</span>
@@ -137,7 +141,7 @@ export function ProfilePage() {
         </div>
 
         <div className="order-3 flex flex-col gap-6">
-          <section>
+          <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/60 p-4">
             <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-400">Logros</h2>
             <div className="grid grid-cols-3 gap-3">
               {achievements.map((achievement) => {
@@ -151,7 +155,7 @@ export function ProfilePage() {
                   <div
                     key={achievement.id}
                     className={cn(
-                      'flex flex-col items-center gap-1 rounded-xl border border-ink-700 bg-ink-900 p-3 text-center',
+                      'panel-bevel flex flex-col items-center gap-1 rounded-xl border border-ink-700 bg-ink-900 p-3 text-center',
                       !unlocked && 'opacity-30',
                     )}
                     title={achievement.description}
@@ -164,7 +168,7 @@ export function ProfilePage() {
             </div>
           </section>
 
-          <section>
+          <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/60 p-4">
             <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-400">Inventario</h2>
             <div className="grid grid-cols-2 gap-3">
               {inventory.map((item) => {
