@@ -115,9 +115,9 @@ export function MissionFormDialog({
       date: form.date,
       time: form.time || undefined,
       priority: form.priority,
-      xp: Number(form.xp) || 0,
-      coins: Number(form.coins) || 0,
-      estimatedMinutes: form.estimatedMinutes ? Number(form.estimatedMinutes) : undefined,
+      xp: Math.max(0, Number(form.xp) || 0),
+      coins: Math.max(0, Number(form.coins) || 0),
+      estimatedMinutes: form.estimatedMinutes ? Math.max(0, Number(form.estimatedMinutes)) : undefined,
       tags: form.tags
         .split(',')
         .map((t) => t.trim())

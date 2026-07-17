@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Settings, Pencil, Globe2, Map, Swords, Star, Sparkles, Coins, Flame, Hourglass, Compass } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
+import { countCompletions } from '@/lib/planning/missionEngine'
+import { effectiveStreak } from '@/lib/planning/profileEngine'
 import { useAvatarStore } from '@/store/useAvatarStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { isSupabaseConfigured } from '@/lib/supabase/client'
@@ -29,15 +31,17 @@ export function ProfilePage() {
 
   const unlockedRegions = regions.filter((r) => r.level > 0).length
   const biome = biomes.find((b) => b.id === biomeId)
-  const missionsCompleted = useMemo(() => missions.filter((m) => m.status === 'completada').length, [missions])
+  // Repeating missions count every completed occurrence, not just their status.
+  const missionsCompleted = useMemo(() => countCompletions(missions), [missions])
+  const streak = effectiveStreak(profile)
   const xpProgress = Math.min(100, Math.round((profile.xp / profile.xpToNextLevel) * 100))
 
   const stats = [
     { label: 'Nivel', value: profile.level, icon: Star },
     { label: 'XP', value: profile.xp, icon: Sparkles },
     { label: 'Monedas', value: profile.coins, icon: Coins },
-    { label: 'Racha', value: `${profile.streakDays}d`, icon: Flame },
-    { label: 'Horas', value: profile.hoursInvested, icon: Hourglass },
+    { label: 'Racha', value: `${streak}d`, icon: Flame },
+    { label: 'Horas', value: Math.round(profile.hoursInvested), icon: Hourglass },
     { label: 'Regiones', value: `${unlockedRegions}/${regions.length}`, icon: Compass },
   ]
 
@@ -150,7 +154,7 @@ export function ProfilePage() {
               {achievements.map((achievement) => {
                 const unlocked = achievement.isUnlocked({
                   missionsCompleted,
-                  streakDays: profile.streakDays,
+                  streakDays: streak,
                   hoursInvested: profile.hoursInvested,
                   level: profile.level,
                 })

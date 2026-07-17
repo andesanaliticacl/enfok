@@ -7,8 +7,15 @@ import {
   playerProfile as mockProfile,
   regions as mockRegions,
 } from '@/data/mockData'
-import { createGoal, isGoalComplete, type GoalInput } from '@/lib/planning/goalEngine'
-import { applyCompletion, createMission, type MissionInput } from '@/lib/planning/missionEngine'
+import { todayKey } from '@/lib/calendar'
+import {
+  createGoal,
+  recomputeGoalStatuses,
+  syncRegionLevels,
+  type GoalInput,
+} from '@/lib/planning/goalEngine'
+import { applyCompletion, createMission, isDoneForNow, type MissionInput } from '@/lib/planning/missionEngine'
+import { applyMissionReward } from '@/lib/planning/profileEngine'
 import type { LatLng } from '@/lib/world/layout'
 import type { Goal, InventoryItem, Mission, Place, PlaceCategory, PlayerProfile, Region } from '@/types'
 
@@ -35,6 +42,7 @@ interface GameState {
   completeMission: (missionId: string) => void
 
   setProfileName: (name: string) => void
+  setDailyXpGoal: (xp: number) => void
   startNewProfile: (name: string) => void
   clearLastGainedXp: () => void
   resetToFreshStart: () => void
@@ -52,14 +60,10 @@ const STARTING_PROFILE: Omit<PlayerProfile, 'name'> = {
   hoursInvested: 0,
 }
 
-function applyLevelUp(profile: PlayerProfile): PlayerProfile {
-  let { level, xp, xpToNextLevel } = profile
-  while (xp >= xpToNextLevel) {
-    xp -= xpToNextLevel
-    level += 1
-    xpToNextLevel = Math.round(xpToNextLevel * 1.15)
-  }
-  return { ...profile, level, xp, xpToNextLevel }
+/** Goal statuses and region levels are always derived from missions — recompute after any change that touches them. */
+function deriveAfterMissionChange(goals: GameState['goals'], missions: GameState['missions'], regions: GameState['regions']) {
+  const nextGoals = recomputeGoalStatuses(goals, missions)
+  return { goals: nextGoals, regions: syncRegionLevels(regions, nextGoals) }
 }
 
 export const useGameStore = create<GameState>()(
@@ -78,51 +82,66 @@ export const useGameStore = create<GameState>()(
 
       addGoal: (input) => {
         const goal = createGoal(input)
-        set((state) => ({
-          goals: [...state.goals, goal],
-          regions: state.regions.map((r) =>
+        set((state) => {
+          const goals = [...state.goals, goal]
+          const regions = state.regions.map((r) =>
             r.id === goal.regionId ? { ...r, goalIds: [...r.goalIds, goal.id] } : r,
-          ),
-        }))
+          )
+          return { goals, regions: syncRegionLevels(regions, goals) }
+        })
         return goal.id
       },
 
       updateGoal: (goalId, input) => {
-        set((state) => ({
-          goals: state.goals.map((g) => (g.id === goalId ? { ...g, ...input } : g)),
-        }))
+        set((state) => {
+          const goals = state.goals.map((g) => (g.id === goalId ? { ...g, ...input } : g))
+          // If the goal moved to another region, its id has to move between the
+          // regions' goalIds too — otherwise the old region keeps a ghost entry.
+          const regions = state.regions.map((r) => {
+            const listed = r.goalIds.includes(goalId)
+            if (r.id === input.regionId) return listed ? r : { ...r, goalIds: [...r.goalIds, goalId] }
+            return listed ? { ...r, goalIds: r.goalIds.filter((id) => id !== goalId) } : r
+          })
+          return deriveAfterMissionChange(goals, state.missions, regions)
+        })
       },
 
       deleteGoal: (goalId) => {
-        set((state) => ({
-          goals: state.goals.filter((g) => g.id !== goalId),
-          missions: state.missions.filter((m) => m.goalId !== goalId),
-          regions: state.regions.map((r) => ({ ...r, goalIds: r.goalIds.filter((id) => id !== goalId) })),
-        }))
+        set((state) => {
+          const goals = state.goals.filter((g) => g.id !== goalId)
+          const missions = state.missions.filter((m) => m.goalId !== goalId)
+          const regions = state.regions.map((r) => ({ ...r, goalIds: r.goalIds.filter((id) => id !== goalId) }))
+          return { missions, ...deriveAfterMissionChange(goals, missions, regions) }
+        })
       },
 
       addMission: (input) => {
         const mission = createMission(input)
-        set((state) => ({
-          missions: [...state.missions, mission],
-          goals: state.goals.map((g) =>
+        set((state) => {
+          const missions = [...state.missions, mission]
+          const goals = state.goals.map((g) =>
             g.id === mission.goalId ? { ...g, missionIds: [...g.missionIds, mission.id] } : g,
-          ),
-        }))
+          )
+          // Adding a mission to a finished goal reopens it.
+          return { missions, ...deriveAfterMissionChange(goals, missions, state.regions) }
+        })
         return mission.id
       },
 
       updateMission: (missionId, input) => {
-        set((state) => ({
-          missions: state.missions.map((m) => (m.id === missionId ? { ...m, ...input } : m)),
-        }))
+        set((state) => {
+          const missions = state.missions.map((m) => (m.id === missionId ? { ...m, ...input } : m))
+          return { missions, ...deriveAfterMissionChange(state.goals, missions, state.regions) }
+        })
       },
 
       deleteMission: (missionId) => {
-        set((state) => ({
-          missions: state.missions.filter((m) => m.id !== missionId),
-          goals: state.goals.map((g) => ({ ...g, missionIds: g.missionIds.filter((id) => id !== missionId) })),
-        }))
+        set((state) => {
+          const missions = state.missions.filter((m) => m.id !== missionId)
+          const goals = state.goals.map((g) => ({ ...g, missionIds: g.missionIds.filter((id) => id !== missionId) }))
+          // Deleting the last pending mission can complete its goal.
+          return { missions, ...deriveAfterMissionChange(goals, missions, state.regions) }
+        })
       },
 
       moveMission: (missionId, date) => {
@@ -132,31 +151,27 @@ export const useGameStore = create<GameState>()(
       },
 
       completeMission: (missionId) => {
+        const today = todayKey()
         const mission = get().missions.find((m) => m.id === missionId)
-        if (!mission || mission.status === 'completada') return
+        // isDoneForNow also blocks re-completing a repeating mission whose next
+        // occurrence is in the future — no double XP for the same cycle.
+        if (!mission || isDoneForNow(mission, today)) return
 
         set((state) => {
-          const updatedMissions = state.missions.map((m) => (m.id === missionId ? applyCompletion(m) : m))
-          const goal = state.goals.find((g) => g.id === mission.goalId)
-          const goals =
-            goal && goal.status !== 'completado' && isGoalComplete(goal, updatedMissions)
-              ? state.goals.map((g) => (g.id === goal.id ? { ...g, status: 'completado' as const } : g))
-              : state.goals
-
+          const missions = state.missions.map((m) => (m.id === missionId ? applyCompletion(m, today) : m))
           return {
-            missions: updatedMissions,
-            goals,
-            profile: applyLevelUp({
-              ...state.profile,
-              xp: state.profile.xp + mission.xp,
-              coins: state.profile.coins + mission.coins,
-            }),
+            missions,
+            ...deriveAfterMissionChange(state.goals, missions, state.regions),
+            profile: applyMissionReward(state.profile, mission, today),
             lastGainedXp: mission.xp,
           }
         })
       },
 
       setProfileName: (name) => set((state) => ({ profile: { ...state.profile, name } })),
+
+      setDailyXpGoal: (xp) =>
+        set((state) => ({ profile: { ...state.profile, dailyXpGoal: Math.max(10, Math.round(xp)) } })),
 
       startNewProfile: (name) => set({ profile: { name, ...STARTING_PROFILE } }),
 
@@ -190,9 +205,12 @@ export const useGameStore = create<GameState>()(
       // Backfill `places` for saves made before this field existed, same
       // reasoning as the avatar store's merge fix — a missing array here
       // would crash WorldMap on first render instead of just being empty.
+      // Goal statuses and region levels are derived state, so recompute them
+      // on load: saves from before they were derived carry stale values.
       merge: (persisted, current) => {
         const persistedState = (persisted ?? {}) as Partial<GameState>
-        return { ...current, ...persistedState, places: persistedState.places ?? current.places }
+        const merged = { ...current, ...persistedState, places: persistedState.places ?? current.places }
+        return { ...merged, ...deriveAfterMissionChange(merged.goals, merged.missions, merged.regions) }
       },
     },
   ),

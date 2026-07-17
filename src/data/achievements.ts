@@ -23,6 +23,13 @@ export const achievements: Achievement[] = [
     isUnlocked: (ctx) => ctx.missionsCompleted >= 100,
   },
   {
+    id: 'streak-7',
+    name: 'Semana perfecta',
+    description: 'Alcanza una racha de 7 días.',
+    icon: '⚡',
+    isUnlocked: (ctx) => ctx.streakDays >= 7,
+  },
+  {
     id: 'streak-30',
     name: 'Constancia',
     description: 'Alcanza una racha de 30 días.',

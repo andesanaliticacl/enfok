@@ -37,6 +37,10 @@ export interface Mission {
   tags: string[]
   repeat: MissionRepeat
   completedAt?: string
+  /** Total times this mission was completed — a repeating habit accumulates one per occurrence. */
+  completedCount?: number
+  /** ISO date (yyyy-mm-dd) of the most recent completion. */
+  lastCompletedOn?: string
   location?: MissionLocation
 }
 
@@ -110,4 +114,11 @@ export interface PlayerProfile {
   coins: number
   streakDays: number
   hoursInvested: number
+  /** ISO date (yyyy-mm-dd) of the last day a mission was completed — anchors the streak. */
+  lastActivityDate?: string
+  /** XP earned on `xpTodayDate`; stale when the date rolls over (read via xpEarnedToday). */
+  xpToday?: number
+  xpTodayDate?: string
+  /** Daily XP target, Duolingo-style. */
+  dailyXpGoal?: number
 }

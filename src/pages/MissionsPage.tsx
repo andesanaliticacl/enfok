@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { List, Calendar as CalendarIcon, GitBranch, Plus } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { MissionsListView } from '@/components/planning/MissionsListView'
+import { TodayHeader } from '@/components/planning/TodayHeader'
 import { CalendarView } from '@/components/planning/CalendarView'
 import { GoalTreeView } from '@/components/planning/GoalTreeView'
 import { XpToast } from '@/components/missions/XpToast'
@@ -42,6 +43,8 @@ export function MissionsPage() {
           <Plus size={18} />
         </Button>
       </div>
+
+      <TodayHeader />
 
       <div className="mb-6 flex gap-2">
         <button
