@@ -1,15 +1,25 @@
-/** Dark, minimal Google Maps style — strips away the "Google Maps" feel (POI clutter, labels, icons) so the map reads as a game world backdrop. */
+/**
+ * Dark night-mode map style (based on Google's official night style) — keeps the
+ * game's dark look but shows everything the real map has: street names, POIs,
+ * transit/metro stations, parks. Nothing is hidden; only colors are themed.
+ */
 export const WORLD_MAP_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#12151c' }] },
-  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#6b7284' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0b0d12' }] },
-  { featureType: 'administrative', elementType: 'geometry', stylers: [{ visibility: 'off' }] },
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1b1f2a' }] },
-  { featureType: 'road', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#262b3a' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e1420' }] },
-  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#12151c' }] },
+  { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#8a93a6' }] },
+  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#263c3f' }] },
+  { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#6b9a76' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#38414e' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#212a37' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9ca5b3' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#746855' }] },
+  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1f2835' }] },
+  { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#f3d19c' }] },
+  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2f3948' }] },
+  { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#515c6d' }] },
+  { featureType: 'water', elementType: 'labels.text.stroke', stylers: [{ color: '#17263c' }] },
 ]
