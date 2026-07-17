@@ -2,30 +2,27 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
 import { MapPin, Plus, LocateFixed } from 'lucide-react'
-import { useGameStore } from '@/store/useGameStore'
+import { useGameStore, type RegionInput } from '@/store/useGameStore'
 import { useAvatarStore } from '@/store/useAvatarStore'
 import { regionProgress, goalProgress } from '@/lib/planning/goalEngine'
 import { layoutRegions, DEFAULT_WORLD_CENTER, type LatLng } from '@/lib/world/layout'
 import { GOOGLE_MAPS_API_KEY } from '@/lib/world/geocode'
 import { WORLD_MAP_STYLE } from '@/data/mapStyle'
 import { RegionMarker } from '@/components/world/RegionMarker'
-import { PlaceMarker } from '@/components/world/PlaceMarker'
-import { PlaceFormDialog } from '@/components/world/PlaceFormDialog'
+import { RegionFormDialog } from '@/components/world/RegionFormDialog'
 import { MissionMarker } from '@/components/world/MissionMarker'
 import { GoalMarker } from '@/components/world/GoalMarker'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { Goal, Mission, Place, PlaceCategory, Region } from '@/types'
+import type { Goal, Mission, Region } from '@/types'
 
 export function MapPage() {
   const navigate = useNavigate()
   const regions = useGameStore((s) => s.regions)
   const goals = useGameStore((s) => s.goals)
   const missions = useGameStore((s) => s.missions)
-  const places = useGameStore((s) => s.places)
-  const addPlace = useGameStore((s) => s.addPlace)
-  const deletePlace = useGameStore((s) => s.deletePlace)
+  const addRegion = useGameStore((s) => s.addRegion)
   const completeMission = useGameStore((s) => s.completeMission)
   const profile = useGameStore((s) => s.profile)
   const avatar = useAvatarStore((s) => s.avatar)
@@ -36,14 +33,13 @@ export function MapPage() {
     googleMapsApiKey: GOOGLE_MAPS_API_KEY ?? '',
   })
 
-  // `center` only drives what part of the map the camera is looking at — the
-  // regions are laid out around `worldAnchor` instead, a fixed point set once
-  // from the first real location fix, so panning/recentering (e.g. "Dónde
-  // estoy") never reshuffles where the regions are.
+  // `center` only drives what part of the map the camera is looking at — legacy
+  // regions without coordinates are laid out around `worldAnchor` instead, a
+  // fixed point set once from the first real location fix, so panning/recentering
+  // (e.g. "Dónde estoy") never reshuffles them.
   const [center, setCenter] = useState<LatLng>(worldAnchor ?? DEFAULT_WORLD_CENTER)
-  const [addingPlace, setAddingPlace] = useState(false)
+  const [addingRegion, setAddingRegion] = useState(false)
   const [pendingLocation, setPendingLocation] = useState<LatLng | null>(null)
-  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null)
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null)
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [locating, setLocating] = useState(false)
@@ -85,22 +81,27 @@ export function MapPage() {
     )
   }
 
-  const regionMarkers = useMemo(
-    () => layoutRegions(regions, worldAnchor ?? DEFAULT_WORLD_CENTER),
-    [regions, worldAnchor],
-  )
+  // Regions created on the map carry their own coordinates; legacy ones from
+  // the fixed-region era don't and fall back to the ring layout.
+  const regionMarkers = useMemo(() => {
+    const anchor = worldAnchor ?? DEFAULT_WORLD_CENTER
+    const located = regions.filter((r): r is Region & LatLng => r.lat != null && r.lng != null)
+    const legacy = regions.filter((r) => r.lat == null || r.lng == null)
+    return [...located, ...layoutRegions(legacy, anchor)]
+  }, [regions, worldAnchor])
+
   const missionsWithLocation = useMemo(() => missions.filter((m) => m.location), [missions])
   const goalsWithLocation = useMemo(() => goals.filter((g) => g.location), [goals])
 
   function handleMapClick(e: google.maps.MapMouseEvent) {
-    if (!addingPlace || !e.latLng) return
+    if (!addingRegion || !e.latLng) return
     setPendingLocation({ lat: e.latLng.lat(), lng: e.latLng.lng() })
-    setAddingPlace(false)
+    setAddingRegion(false)
   }
 
-  function handleCreatePlace(name: string, category: PlaceCategory) {
+  function handleCreateRegion(input: RegionInput) {
     if (!pendingLocation) return
-    addPlace(name, category, pendingLocation.lat, pendingLocation.lng)
+    addRegion({ ...input, lat: pendingLocation.lat, lng: pendingLocation.lng })
     setPendingLocation(null)
   }
 
@@ -148,10 +149,6 @@ export function MapPage() {
               />
             ))}
 
-            {places.map((place) => (
-              <PlaceMarker key={place.id} place={place} onClick={setSelectedPlace} />
-            ))}
-
             {missionsWithLocation.map((mission) => (
               <MissionMarker key={mission.id} mission={mission} onClick={setSelectedMission} />
             ))}
@@ -165,13 +162,14 @@ export function MapPage() {
         {GOOGLE_MAPS_API_KEY && isLoaded && (
           <>
             <button
-              onClick={() => setAddingPlace((v) => !v)}
+              onClick={() => setAddingRegion((v) => !v)}
+              title="Crear región"
               className={cn(
                 'absolute bottom-4 right-4 flex h-12 w-12 items-center justify-center rounded-full border border-ink-600 bg-ink-900 shadow-lg',
-                addingPlace && 'border-gold-400 text-gold-400',
+                addingRegion && 'border-gold-400 text-gold-400',
               )}
             >
-              {addingPlace ? <MapPin size={20} /> : <Plus size={20} />}
+              {addingRegion ? <MapPin size={20} /> : <Plus size={20} />}
             </button>
 
             <button
@@ -185,10 +183,24 @@ export function MapPage() {
           </>
         )}
 
-        {addingPlace && (
+        {addingRegion && (
           <p className="absolute inset-x-0 top-16 z-10 mx-auto w-fit rounded-full bg-ink-950/90 px-3 py-1.5 text-[11px] text-gold-400">
-            Toca el mapa para marcar tu lugar
+            Toca el mapa donde está ese lugar (tu casa, gimnasio, banco...)
           </p>
+        )}
+
+        {/* First-run guidance: the whole game starts by claiming your first place. */}
+        {GOOGLE_MAPS_API_KEY && isLoaded && regions.length === 0 && !addingRegion && !pendingLocation && (
+          <div className="absolute inset-x-4 bottom-20 z-10 mx-auto max-w-sm rounded-2xl border border-ink-700 bg-ink-950/95 p-4 text-center">
+            <p className="mb-1 font-pixel text-[10px] text-gold-400">Tu mundo está vacío</p>
+            <p className="mb-3 text-xs leading-relaxed text-ink-300">
+              Crea tu primera región: un lugar real de tu vida (casa, gimnasio, universidad, banco...). Ahí vivirán tus
+              metas y misiones.
+            </p>
+            <Button size="sm" onClick={() => setAddingRegion(true)}>
+              <Plus size={14} /> Crear mi primera región
+            </Button>
+          </div>
         )}
 
         {locateError && (
@@ -198,29 +210,11 @@ export function MapPage() {
         )}
       </div>
 
-      <PlaceFormDialog open={!!pendingLocation} onClose={() => setPendingLocation(null)} onSubmit={handleCreatePlace} />
-
-      {selectedPlace && (
-        <div className="absolute inset-x-4 bottom-20 z-20 flex items-center justify-between rounded-xl border border-ink-700 bg-ink-900 p-3">
-          <span className="text-sm text-ink-50">{selectedPlace.name}</span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-red-800 text-red-300"
-              onClick={() => {
-                deletePlace(selectedPlace.id)
-                setSelectedPlace(null)
-              }}
-            >
-              Eliminar
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSelectedPlace(null)}>
-              Cerrar
-            </Button>
-          </div>
-        </div>
-      )}
+      <RegionFormDialog
+        open={!!pendingLocation}
+        onClose={() => setPendingLocation(null)}
+        onSubmit={handleCreateRegion}
+      />
 
       {selectedMission && (
         <div className="absolute inset-x-4 bottom-20 z-20 flex items-center justify-between gap-2 rounded-xl border border-ink-700 bg-ink-900 p-3">
@@ -281,6 +275,9 @@ function FallbackWorld({ regions, goals, missions }: { regions: Region[]; goals:
       <p className="mb-4 text-xs text-ink-400">
         Configura VITE_GOOGLE_MAPS_API_KEY para ver el mundo real. Mientras tanto, aquí están tus regiones:
       </p>
+      {regions.length === 0 && (
+        <p className="text-sm text-ink-400">Todavía no tienes regiones. Con el mapa activo podrás crearlas tocando el lugar real donde están.</p>
+      )}
       <div className="flex flex-col gap-3">
         {regions.map((region) => (
           <div key={region.id} className="flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900 p-3">

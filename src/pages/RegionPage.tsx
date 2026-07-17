@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft, Plus, Pencil } from 'lucide-react'
+import { ChevronLeft, Plus, Pencil, Settings2 } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { goalProgress } from '@/lib/planning/goalEngine'
+import { regionCategory } from '@/data/regionCategories'
+import { RegionFormDialog } from '@/components/world/RegionFormDialog'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { Button } from '@/components/ui/button'
@@ -26,7 +28,10 @@ export function RegionPage() {
   const addMission = useGameStore((s) => s.addMission)
   const updateMission = useGameStore((s) => s.updateMission)
   const deleteMission = useGameStore((s) => s.deleteMission)
+  const updateRegion = useGameStore((s) => s.updateRegion)
+  const deleteRegion = useGameStore((s) => s.deleteRegion)
 
+  const [regionDialogOpen, setRegionDialogOpen] = useState(false)
   const [goalDialog, setGoalDialog] = useState<{ open: boolean; goal?: Goal }>({ open: false })
   const [missionDialog, setMissionDialog] = useState<{ open: boolean; goalId?: string; mission?: Mission }>({
     open: false,
@@ -67,12 +72,19 @@ export function RegionPage() {
           </div>
           <div>
             <h1 className="text-lg font-semibold text-ink-50">{region.name}</h1>
-            <p className="text-xs text-ink-400">{region.description}</p>
+            <p className="text-xs text-ink-400">
+              {regionCategory(region.category).label} · Nv. {region.level} · {region.description}
+            </p>
           </div>
         </div>
-        <Button size="icon" onClick={() => setGoalDialog({ open: true })}>
-          <Plus size={18} />
-        </Button>
+        <div className="flex gap-2">
+          <Button size="icon" variant="ghost" title="Editar región" onClick={() => setRegionDialogOpen(true)}>
+            <Settings2 size={18} />
+          </Button>
+          <Button size="icon" onClick={() => setGoalDialog({ open: true })}>
+            <Plus size={18} />
+          </Button>
+        </div>
       </header>
 
       {goals.length === 0 && (
@@ -129,6 +141,18 @@ export function RegionPage() {
           )
         })}
       </div>
+
+      <RegionFormDialog
+        open={regionDialogOpen}
+        onClose={() => setRegionDialogOpen(false)}
+        region={region}
+        goalCount={goals.length}
+        onSubmit={(input) => updateRegion(region.id, input)}
+        onDelete={() => {
+          deleteRegion(region.id)
+          navigate('/')
+        }}
+      />
 
       <GoalFormDialog
         open={goalDialog.open}

@@ -1,11 +1,7 @@
-export type RegionId =
-  | 'salud'
-  | 'finanzas'
-  | 'trabajo'
-  | 'aprendizaje'
-  | 'relaciones'
-  | 'mentalidad'
-  | 'proyectos'
+/** Regions are user-created places (casa, gimnasio, banco...), so ids are free-form. */
+export type RegionId = string
+
+export type RegionCategory = 'casa' | 'trabajo' | 'gimnasio' | 'universidad' | 'banco' | 'parque' | 'otro'
 
 export type Priority = 'baja' | 'media' | 'alta'
 
@@ -60,33 +56,23 @@ export interface Goal {
   icon: string
   missionIds: string[]
   location?: MissionLocation
+  /** Set when this goal was generated from an express plan template. */
+  planId?: string
 }
 
+/** A region is a real place in the player's life where goals arise: home, gym, bank, campus... */
 export interface Region {
   id: RegionId
   name: string
+  category: RegionCategory
   emoji: string
   color: string
   level: number
   description: string
   goalIds: string[]
-}
-
-export interface InventoryItem {
-  id: string
-  name: string
-  icon: string
-  linkedGoalIds: string[]
-}
-
-export type PlaceCategory = 'casa' | 'trabajo' | 'gimnasio' | 'universidad' | 'parque' | 'otro'
-
-export interface Place {
-  id: string
-  name: string
-  category: PlaceCategory
-  lat: number
-  lng: number
+  /** Real map position. Legacy regions from the fixed-region era may lack one — they fall back to the ring layout around the world anchor. */
+  lat?: number
+  lng?: number
 }
 
 export type BiomeId = 'valle' | 'ciudad' | 'playa' | 'bosque' | 'montana' | 'espacio'

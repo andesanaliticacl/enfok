@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useJsApiLoader } from '@react-google-maps/api'
 import { MapPin, X } from 'lucide-react'
 import { Dialog } from '@/components/ui/dialog'
@@ -14,7 +15,8 @@ import type { Goal, MissionLocation, Priority, RegionId } from '@/types'
 interface GoalFormDialogProps {
   open: boolean
   onClose: () => void
-  defaultRegionId: RegionId
+  /** May be missing when the player hasn't created any region yet. */
+  defaultRegionId?: RegionId
   goal?: Goal
   onSubmit: (input: GoalInput) => void
   onDelete?: () => void
@@ -35,8 +37,9 @@ const EMPTY_FORM = {
 }
 
 export function GoalFormDialog({ open, onClose, defaultRegionId, goal, onSubmit, onDelete }: GoalFormDialogProps) {
+  const navigate = useNavigate()
   const regions = useGameStore((s) => s.regions)
-  const [regionId, setRegionId] = useState<RegionId>(defaultRegionId)
+  const [regionId, setRegionId] = useState<RegionId>(defaultRegionId ?? '')
   const [form, setForm] = useState(EMPTY_FORM)
   const [geocoding, setGeocoding] = useState(false)
   const [geocodeError, setGeocodeError] = useState<string | null>(null)
@@ -62,7 +65,7 @@ export function GoalFormDialog({ open, onClose, defaultRegionId, goal, onSubmit,
         location: goal.location,
       })
     } else {
-      setRegionId(defaultRegionId)
+      setRegionId(defaultRegionId ?? '')
       setForm(EMPTY_FORM)
     }
   }, [open, goal, defaultRegionId])
@@ -90,7 +93,8 @@ export function GoalFormDialog({ open, onClose, defaultRegionId, goal, onSubmit,
 
   function handleSubmit() {
     if (!form.name.trim()) return
-    const region = regions.find((r) => r.id === regionId)!
+    const region = regions.find((r) => r.id === regionId)
+    if (!region) return
     onSubmit({
       regionId,
       name: form.name.trim(),
@@ -106,6 +110,28 @@ export function GoalFormDialog({ open, onClose, defaultRegionId, goal, onSubmit,
       location: form.location,
     })
     onClose()
+  }
+
+  if (regions.length === 0) {
+    return (
+      <Dialog open={open} onClose={onClose} title="Nueva meta">
+        <div className="flex flex-col gap-3 text-center">
+          <span className="text-3xl">🗺️</span>
+          <p className="text-sm leading-relaxed text-ink-300">
+            Las metas viven en una región — un lugar real de tu vida como tu casa, gimnasio o banco. Crea tu primera
+            región en el mapa y vuelve aquí.
+          </p>
+          <Button
+            onClick={() => {
+              onClose()
+              navigate('/')
+            }}
+          >
+            Ir al mapa a crear mi región
+          </Button>
+        </div>
+      </Dialog>
+    )
   }
 
   return (

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Settings, Pencil, Globe2, Map, Swords, Star, Sparkles, Coins, Flame, Hourglass, Compass } from 'lucide-react'
+import { Settings, Pencil, Globe2, Map, Swords, Star, Sparkles, Coins, Flame, Hourglass, Trophy } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { countCompletions } from '@/lib/planning/missionEngine'
 import { effectiveStreak } from '@/lib/planning/profileEngine'
@@ -12,6 +12,7 @@ import { BiomaComponent } from '@/components/biome/BiomaComponent'
 import { lpcProvider } from '@/lib/avatar/providers/lpcProvider'
 import { biomes } from '@/data/biomes'
 import { achievements } from '@/data/achievements'
+import { PlansSection } from '@/components/planning/PlansSection'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
@@ -20,21 +21,25 @@ import { cn } from '@/lib/utils'
 export function ProfilePage() {
   const navigate = useNavigate()
   const profile = useGameStore((s) => s.profile)
-  const regions = useGameStore((s) => s.regions)
-  const goals = useGameStore((s) => s.goals)
   const missions = useGameStore((s) => s.missions)
-  const inventory = useGameStore((s) => s.inventory)
   const { avatar, biome: biomeId, biomeArt, biomeVariant, deleteCharacter } = useAvatarStore()
   const { user, signOut } = useAuthStore()
 
   const [settingsOpen, setSettingsOpen] = useState(false)
 
-  const unlockedRegions = regions.filter((r) => r.level > 0).length
   const biome = biomes.find((b) => b.id === biomeId)
   // Repeating missions count every completed occurrence, not just their status.
   const missionsCompleted = useMemo(() => countCompletions(missions), [missions])
   const streak = effectiveStreak(profile)
   const xpProgress = Math.min(100, Math.round((profile.xp / profile.xpToNextLevel) * 100))
+
+  const achievementCtx = {
+    missionsCompleted,
+    streakDays: streak,
+    hoursInvested: profile.hoursInvested,
+    level: profile.level,
+  }
+  const unlockedAchievements = achievements.filter((a) => a.isUnlocked(achievementCtx)).length
 
   const stats = [
     { label: 'Nivel', value: profile.level, icon: Star },
@@ -42,7 +47,7 @@ export function ProfilePage() {
     { label: 'Monedas', value: profile.coins, icon: Coins },
     { label: 'Racha', value: `${streak}d`, icon: Flame },
     { label: 'Horas', value: Math.round(profile.hoursInvested), icon: Hourglass },
-    { label: 'Regiones', value: `${unlockedRegions}/${regions.length}`, icon: Compass },
+    { label: 'Logros', value: `${unlockedAchievements}/${achievements.length}`, icon: Trophy },
   ]
 
   function handleDeleteCharacter() {
@@ -152,12 +157,7 @@ export function ProfilePage() {
             <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-400">Logros</h2>
             <div className="grid grid-cols-3 gap-3">
               {achievements.map((achievement) => {
-                const unlocked = achievement.isUnlocked({
-                  missionsCompleted,
-                  streakDays: streak,
-                  hoursInvested: profile.hoursInvested,
-                  level: profile.level,
-                })
+                const unlocked = achievement.isUnlocked(achievementCtx)
                 return (
                   <div
                     key={achievement.id}
@@ -175,27 +175,7 @@ export function ProfilePage() {
             </div>
           </section>
 
-          <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/60 p-4">
-            <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-400">Inventario</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {inventory.map((item) => {
-                const linkedGoals = item.linkedGoalIds.map((id) => goals.find((g) => g.id === id)).filter((g) => !!g)
-                return (
-                  <Card key={item.id}>
-                    <CardContent className="flex flex-col items-center gap-2 p-4 text-center">
-                      <span className="text-3xl">{item.icon}</span>
-                      <p className="text-sm font-medium text-ink-50">{item.name}</p>
-                      <p className="text-[11px] text-ink-400">
-                        {linkedGoals.length > 0
-                          ? linkedGoals.map((g) => `${g!.icon} ${g!.name}`).join(', ')
-                          : 'Sin meta asociada'}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          </section>
+          <PlansSection />
         </div>
       </div>
 

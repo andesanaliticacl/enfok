@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client'
-import { useGameStore } from '@/store/useGameStore'
+import { useGameStore, normalizeGameState } from '@/store/useGameStore'
 import { useAvatarStore } from '@/store/useAvatarStore'
 
 const SAVE_DEBOUNCE_MS = 1500
@@ -14,8 +14,6 @@ function pickGameState() {
     regions: s.regions,
     goals: s.goals,
     missions: s.missions,
-    inventory: s.inventory,
-    places: s.places,
     profile: s.profile,
     worldAnchor: s.worldAnchor,
   }
@@ -66,7 +64,8 @@ async function hydrateFromCloud(userId: string) {
 
     if (data) {
       if (data.game_state && Object.keys(data.game_state).length > 0) {
-        useGameStore.setState(data.game_state)
+        // Cloud rows can predate user-created regions — bring them up to the current model.
+        useGameStore.setState(normalizeGameState(data.game_state))
       }
       if (data.avatar_state && Object.keys(data.avatar_state).length > 0) {
         useAvatarStore.setState(data.avatar_state)

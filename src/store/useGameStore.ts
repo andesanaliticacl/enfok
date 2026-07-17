@@ -1,13 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import {
-  goals as mockGoals,
-  inventory as mockInventory,
-  missions as mockMissions,
-  playerProfile as mockProfile,
-  regions as mockRegions,
-} from '@/data/mockData'
-import { todayKey } from '@/lib/calendar'
+import { addDaysToKey, todayKey } from '@/lib/calendar'
 import {
   createGoal,
   recomputeGoalStatuses,
@@ -16,20 +9,32 @@ import {
 } from '@/lib/planning/goalEngine'
 import { applyCompletion, createMission, isDoneForNow, type MissionInput } from '@/lib/planning/missionEngine'
 import { applyMissionReward } from '@/lib/planning/profileEngine'
+import { regionCategory } from '@/data/regionCategories'
+import { planById } from '@/data/plans'
 import type { LatLng } from '@/lib/world/layout'
-import type { Goal, InventoryItem, Mission, Place, PlaceCategory, PlayerProfile, Region } from '@/types'
+import type { Goal, Mission, PlayerProfile, Region, RegionCategory } from '@/types'
+
+export interface RegionInput {
+  name: string
+  category: RegionCategory
+  description?: string
+  lat?: number
+  lng?: number
+}
 
 interface GameState {
   regions: Region[]
   goals: Goal[]
   missions: Mission[]
-  inventory: InventoryItem[]
-  places: Place[]
   profile: PlayerProfile
   lastGainedXp: number | null
   /** Fixed point the region "world" is laid out around — set once from the first real location fix, so recentering the map (e.g. "Dónde estoy") never reshuffles the regions. */
   worldAnchor: LatLng | null
   setWorldAnchor: (anchor: LatLng) => void
+
+  addRegion: (input: RegionInput) => string
+  updateRegion: (regionId: string, input: RegionInput) => void
+  deleteRegion: (regionId: string) => void
 
   addGoal: (input: GoalInput) => string
   updateGoal: (goalId: string, input: GoalInput) => void
@@ -41,14 +46,14 @@ interface GameState {
   moveMission: (missionId: string, date: string) => void
   completeMission: (missionId: string) => void
 
+  /** Creates the plan's goal + missions inside a region. Returns the goal id, or null if plan/region don't exist. */
+  startPlan: (planId: string, regionId: string) => string | null
+
   setProfileName: (name: string) => void
   setDailyXpGoal: (xp: number) => void
   startNewProfile: (name: string) => void
   clearLastGainedXp: () => void
   resetToFreshStart: () => void
-
-  addPlace: (name: string, category: PlaceCategory, lat: number, lng: number) => void
-  deletePlace: (placeId: string) => void
 }
 
 const STARTING_PROFILE: Omit<PlayerProfile, 'name'> = {
@@ -66,19 +71,124 @@ function deriveAfterMissionChange(goals: GameState['goals'], missions: GameState
   return { goals: nextGoals, regions: syncRegionLevels(regions, nextGoals) }
 }
 
+function buildRegion(input: RegionInput): Region {
+  const cat = regionCategory(input.category)
+  return {
+    id: `region-${crypto.randomUUID()}`,
+    name: input.name,
+    category: input.category,
+    emoji: cat.icon,
+    color: cat.color,
+    level: 0,
+    description: input.description ?? cat.description,
+    goalIds: [],
+    lat: input.lat,
+    lng: input.lng,
+  }
+}
+
+/**
+ * Brings any persisted shape (local save or cloud row) up to the current model:
+ * - Fixed-era regions (no `category`) survive only if they still hold goals,
+ *   converted to category 'otro'; empty ones were demo scaffolding and are dropped.
+ * - The retired `places` list becomes real regions at their coordinates.
+ * - Goals pointing at a dropped region are dropped too (demo content), along
+ *   with their missions; derived statuses/levels are recomputed at the end.
+ */
+export function normalizeGameState(raw: Partial<GameState> & { places?: unknown; inventory?: unknown }): Partial<GameState> {
+  const { places: rawPlaces, inventory: _inventory, ...rest } = raw
+  const rawRegions = (rest.regions ?? []) as (Region & { category?: RegionCategory })[]
+  const goals = rest.goals ?? []
+  const missions = rest.missions ?? []
+
+  const migratedRegions: Region[] = rawRegions
+    .filter((r) => r.category !== undefined || goals.some((g) => g.regionId === r.id))
+    .map((r) =>
+      r.category !== undefined
+        ? r
+        : { ...r, category: 'otro' as const, goalIds: goals.filter((g) => g.regionId === r.id).map((g) => g.id) },
+    )
+
+  const legacyPlaces = Array.isArray(rawPlaces)
+    ? (rawPlaces as { id: string; name: string; category: string; lat: number; lng: number }[])
+    : []
+  for (const place of legacyPlaces) {
+    const category = (REGION_CATEGORY_IDS.includes(place.category as RegionCategory) ? place.category : 'otro') as RegionCategory
+    const cat = regionCategory(category)
+    migratedRegions.push({
+      id: place.id,
+      name: place.name,
+      category,
+      emoji: cat.icon,
+      color: cat.color,
+      level: 0,
+      description: cat.description,
+      goalIds: [],
+      lat: place.lat,
+      lng: place.lng,
+    })
+  }
+
+  const regionIds = new Set(migratedRegions.map((r) => r.id))
+  const keptGoals = goals.filter((g) => regionIds.has(g.regionId))
+  const keptGoalIds = new Set(keptGoals.map((g) => g.id))
+  const keptMissions = missions.filter((m) => keptGoalIds.has(m.goalId))
+
+  return { ...rest, missions: keptMissions, ...deriveAfterMissionChange(keptGoals, keptMissions, migratedRegions) }
+}
+
+const REGION_CATEGORY_IDS: RegionCategory[] = ['casa', 'trabajo', 'gimnasio', 'universidad', 'banco', 'parque', 'otro']
+
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
-      regions: mockRegions,
-      goals: mockGoals,
-      missions: mockMissions,
-      inventory: mockInventory,
-      places: [],
-      profile: mockProfile,
+      regions: [],
+      goals: [],
+      missions: [],
+      profile: { name: 'Aventurero', ...STARTING_PROFILE },
       lastGainedXp: null,
       worldAnchor: null,
 
       setWorldAnchor: (anchor) => set((state) => (state.worldAnchor ? {} : { worldAnchor: anchor })),
+
+      addRegion: (input) => {
+        const region = buildRegion(input)
+        set((state) => ({ regions: [...state.regions, region] }))
+        return region.id
+      },
+
+      updateRegion: (regionId, input) => {
+        set((state) => ({
+          regions: state.regions.map((r) => {
+            if (r.id !== regionId) return r
+            const cat = regionCategory(input.category)
+            const changedCategory = input.category !== r.category
+            return {
+              ...r,
+              name: input.name,
+              category: input.category,
+              description: input.description ?? r.description,
+              // Re-skin only when the kind of place changed — otherwise keep the look.
+              emoji: changedCategory ? cat.icon : r.emoji,
+              color: changedCategory ? cat.color : r.color,
+              lat: input.lat ?? r.lat,
+              lng: input.lng ?? r.lng,
+            }
+          }),
+        }))
+      },
+
+      // Deleting a region takes its goals and missions with it — the callers
+      // confirm with the user first.
+      deleteRegion: (regionId) => {
+        set((state) => {
+          const regions = state.regions.filter((r) => r.id !== regionId)
+          const removedGoalIds = new Set(state.goals.filter((g) => g.regionId === regionId).map((g) => g.id))
+          const goals = state.goals.filter((g) => !removedGoalIds.has(g.id))
+          const missions = state.missions.filter((m) => !removedGoalIds.has(m.goalId))
+          return { missions, ...deriveAfterMissionChange(goals, missions, regions) }
+        })
+      },
 
       addGoal: (input) => {
         const goal = createGoal(input)
@@ -168,6 +278,53 @@ export const useGameStore = create<GameState>()(
         })
       },
 
+      startPlan: (planId, regionId) => {
+        const plan = planById(planId)
+        const region = get().regions.find((r) => r.id === regionId)
+        if (!plan || !region) return null
+
+        const start = todayKey()
+        const goal: Goal = {
+          ...createGoal({
+            regionId,
+            name: plan.name,
+            description: plan.description,
+            category: 'Plan exprés',
+            startDate: start,
+            dueDate: addDaysToKey(start, plan.durationWeeks * 7),
+            priority: 'alta',
+            xpReward: plan.xpReward,
+            reward: plan.reward,
+            color: plan.color,
+            icon: plan.icon,
+          }),
+          planId: plan.id,
+        }
+        const planMissions: Mission[] = plan.missions.map((b) =>
+          createMission({
+            goalId: goal.id,
+            title: b.title,
+            description: b.description,
+            date: addDaysToKey(start, b.startOffsetDays),
+            time: b.time,
+            priority: b.priority,
+            xp: b.xp,
+            coins: b.coins,
+            estimatedMinutes: b.estimatedMinutes,
+            tags: b.tags,
+            repeat: b.repeat,
+          }),
+        )
+        goal.missionIds = planMissions.map((m) => m.id)
+
+        set((state) => {
+          const goals = [...state.goals, goal]
+          const missions = [...state.missions, ...planMissions]
+          return { missions, ...deriveAfterMissionChange(goals, missions, state.regions) }
+        })
+        return goal.id
+      },
+
       setProfileName: (name) => set((state) => ({ profile: { ...state.profile, name } })),
 
       setDailyXpGoal: (xp) =>
@@ -177,40 +334,27 @@ export const useGameStore = create<GameState>()(
 
       clearLastGainedXp: () => set({ lastGainedXp: null }),
 
-      // The initial regions/goals/missions/inventory above are demo content
-      // for local, account-less exploration — a brand new cloud account
-      // should never silently inherit someone else's example goals.
+      // A brand new cloud account should never silently inherit this browser's
+      // previous local world — regions are personal places now, so it starts empty.
       resetToFreshStart: () =>
         set({
-          regions: mockRegions.map((r) => ({ ...r, level: 0, goalIds: [] })),
+          regions: [],
           goals: [],
           missions: [],
-          inventory: [],
-          places: [],
           profile: { name: 'Aventurero', ...STARTING_PROFILE },
           lastGainedXp: null,
           worldAnchor: null,
         }),
-
-      addPlace: (name, category, lat, lng) =>
-        set((state) => ({
-          places: [...state.places, { id: `place-${crypto.randomUUID()}`, name, category, lat, lng }],
-        })),
-
-      deletePlace: (placeId) =>
-        set((state) => ({ places: state.places.filter((p) => p.id !== placeId) })),
     }),
     {
       name: 'questly-game-state-v2',
-      // Backfill `places` for saves made before this field existed, same
-      // reasoning as the avatar store's merge fix — a missing array here
-      // would crash WorldMap on first render instead of just being empty.
-      // Goal statuses and region levels are derived state, so recompute them
-      // on load: saves from before they were derived carry stale values.
+      // Saves may predate user-created regions (fixed regions + `places`) or
+      // carry stale derived state — normalize brings any old shape up to date.
       merge: (persisted, current) => {
         const persistedState = (persisted ?? {}) as Partial<GameState>
-        const merged = { ...current, ...persistedState, places: persistedState.places ?? current.places }
-        return { ...merged, ...deriveAfterMissionChange(merged.goals, merged.missions, merged.regions) }
+        // Spread over `current` (not `merged`) so retired keys like `places`
+        // don't linger in the state and get re-persisted forever.
+        return { ...current, ...normalizeGameState({ ...current, ...persistedState }) }
       },
     },
   ),
