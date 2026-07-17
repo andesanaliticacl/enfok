@@ -30,7 +30,7 @@ export function Dialog({ open, onClose, title, children }: DialogProps) {
           onClick={onClose}
         >
           <motion.div
-            className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-ink-700 bg-ink-900 p-5 sm:rounded-2xl"
+            className="max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-ink-700 bg-ink-900 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:pb-5"
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}

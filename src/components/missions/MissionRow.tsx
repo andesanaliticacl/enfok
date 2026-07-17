@@ -34,8 +34,11 @@ export function MissionRow({ mission, onComplete, onEdit, onMoveToToday }: Missi
   const today = todayKey()
   const done = isDoneForNow(mission, today)
   const repeating = isRepeating(mission)
-  // A repeating mission that's "done" is just resting until its next date.
+  // A repeating mission that's "done" is just resting until its next date —
+  // but only show the check if it was actually completed at some point; a
+  // never-touched future occurrence is merely scheduled, not achieved.
   const doneForCycle = done && repeating && mission.status !== 'completada'
+  const checked = mission.status === 'completada' || (doneForCycle && !!mission.lastCompletedOn)
   const { text, overdue } = dateLabel(mission, today)
 
   return (
@@ -50,13 +53,20 @@ export function MissionRow({ mission, onComplete, onEdit, onMoveToToday }: Missi
       <button
         onClick={() => !done && onComplete(mission.id)}
         disabled={done}
-        title={doneForCycle ? `Hecha por ahora — vuelve el ${mission.date}` : undefined}
+        title={
+          doneForCycle
+            ? mission.lastCompletedOn
+              ? `Hecha por ahora — vuelve el ${mission.date}`
+              : `Programada para el ${mission.date}`
+            : undefined
+        }
         className={cn(
           'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-ink-600 transition-colors',
-          done && 'border-gold-500 bg-gold-500 text-ink-950',
+          checked && 'border-gold-500 bg-gold-500 text-ink-950',
+          done && !checked && 'opacity-50',
         )}
       >
-        {done && <Check size={14} strokeWidth={3} />}
+        {checked && <Check size={14} strokeWidth={3} />}
       </button>
 
       <button

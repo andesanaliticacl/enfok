@@ -106,7 +106,7 @@ export function MapPage() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-136px)] w-full flex-col">
+    <div className="flex h-[calc(100dvh-136px-env(safe-area-inset-bottom))] w-full flex-col">
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between p-4">
         <button
           onClick={() => navigate('/perfil')}
