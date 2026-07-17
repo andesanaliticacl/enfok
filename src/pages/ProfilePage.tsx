@@ -3,7 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { Settings, Pencil, Globe2, Map, Swords, Star, Sparkles, Coins, Flame, Hourglass, Trophy } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { countCompletions } from '@/lib/planning/missionEngine'
-import { effectiveStreak } from '@/lib/planning/profileEngine'
+import {
+  DAILY_GOAL_PRESETS,
+  dailyXpGoal,
+  effectiveStreak,
+  rankForLevel,
+  streakAtRisk,
+  xpEarnedToday,
+} from '@/lib/planning/profileEngine'
+import { addDaysToKey, todayKey } from '@/lib/calendar'
 import { useAvatarStore } from '@/store/useAvatarStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { isSupabaseConfigured } from '@/lib/supabase/client'
@@ -18,10 +26,14 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
+const WEEKDAY_LETTER = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
+
 export function ProfilePage() {
   const navigate = useNavigate()
   const profile = useGameStore((s) => s.profile)
   const missions = useGameStore((s) => s.missions)
+  const activityLog = useGameStore((s) => s.activityLog)
+  const setDailyXpGoal = useGameStore((s) => s.setDailyXpGoal)
   const { avatar, biome: biomeId, biomeArt, biomeVariant, deleteCharacter } = useAvatarStore()
   const { user, signOut } = useAuthStore()
 
@@ -30,8 +42,30 @@ export function ProfilePage() {
   const biome = biomes.find((b) => b.id === biomeId)
   // Repeating missions count every completed occurrence, not just their status.
   const missionsCompleted = useMemo(() => countCompletions(missions), [missions])
-  const streak = effectiveStreak(profile)
+  const today = todayKey()
+  const streak = effectiveStreak(profile, today)
+  const atRisk = streakAtRisk(profile, today)
+  const xpGoal = dailyXpGoal(profile)
   const xpProgress = Math.min(100, Math.round((profile.xp / profile.xpToNextLevel) * 100))
+  const rank = rankForLevel(profile.level)
+
+  // Last 7 days, oldest first, for the Duolingo-style weekly strip.
+  const week = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, i) => {
+        const key = addDaysToKey(today, i - 6)
+        const [y, m, d] = key.split('-').map(Number)
+        const entry = activityLog[key]
+        return {
+          key,
+          letter: WEEKDAY_LETTER[new Date(y, m - 1, d).getDay()],
+          xp: entry?.xp ?? 0,
+          missions: entry?.missions ?? 0,
+          isToday: key === today,
+        }
+      }),
+    [activityLog, today],
+  )
 
   const achievementCtx = {
     missionsCompleted,
@@ -62,6 +96,47 @@ export function ProfilePage() {
           the full width of the screen into three columns with the character anchored dead-center. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px_minmax(0,1fr)] lg:items-start lg:gap-10">
         <div className="order-2 flex flex-col gap-6 lg:order-1">
+          {/* Duolingo-style week: one dot per day, lit when the daily XP goal was met */}
+          <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/60 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-xs uppercase tracking-wide text-ink-400">Esta semana</h2>
+              <p className="font-pixel text-[9px] text-gold-400">
+                {xpEarnedToday(profile, today)}/{xpGoal} XP hoy
+              </p>
+            </div>
+            <div className="flex justify-between gap-1">
+              {week.map((day) => {
+                const goalMet = day.xp >= xpGoal
+                const active = day.xp > 0
+                return (
+                  <div key={day.key} className="flex flex-1 flex-col items-center gap-1" title={`${day.xp} XP · ${day.missions} misión(es)`}>
+                    <div
+                      className={cn(
+                        'flex h-8 w-8 items-center justify-center rounded-full border text-[10px]',
+                        goalMet
+                          ? 'border-gold-400 bg-gold-500/20 text-gold-400'
+                          : active
+                            ? 'border-ink-500 bg-ink-800 text-ink-200'
+                            : 'border-ink-700 text-ink-600',
+                        day.isToday && 'ring-2 ring-gold-400/40',
+                      )}
+                    >
+                      {goalMet ? <Flame size={13} fill="currentColor" /> : active ? '✓' : ''}
+                    </div>
+                    <span className={cn('text-[9px]', day.isToday ? 'text-gold-400' : 'text-ink-500')}>{day.letter}</span>
+                  </div>
+                )
+              })}
+            </div>
+            <p className="mt-3 text-[10px] leading-relaxed text-ink-400">
+              {atRisk
+                ? `🔥 Racha de ${streak} días en riesgo — completa una misión hoy.`
+                : streak > 0
+                  ? `Racha viva: ${streak} día${streak === 1 ? '' : 's'} seguidos.`
+                  : 'Completa una misión para encender tu racha.'}
+            </p>
+          </section>
+
           <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/60 p-4">
             <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-400">Estadísticas</h2>
             <div className="grid grid-cols-3 gap-3">
@@ -91,11 +166,25 @@ export function ProfilePage() {
             className="min-h-[360px] rounded-3xl border border-ink-700 panel-bevel lg:min-h-[460px]"
           >
             <div className="relative flex h-full flex-col items-center justify-center pb-2 pt-6">
+              {/* Streak flame lives on the hero — it's the heartbeat of the game */}
+              <div
+                className={cn(
+                  'absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full bg-ink-950/80 px-2.5 py-1',
+                  streak > 0 && !atRisk ? 'text-gold-400' : atRisk ? 'text-orange-400' : 'text-ink-500',
+                )}
+                title={atRisk ? 'Completa una misión hoy para no perder la racha' : 'Racha de días activos'}
+              >
+                <Flame size={14} fill={streak > 0 ? 'currentColor' : 'none'} />
+                <span className="font-pixel text-[10px]">{streak}d</span>
+              </div>
+
               <AvatarSprite config={avatar} size={192} />
 
               <div className="relative z-10 -mt-2 flex flex-col items-center gap-1 pb-5 text-center">
                 <h1 className="text-lg font-semibold text-ink-50">{profile.name}</h1>
-                <p className="font-pixel text-[10px] text-gold-400 text-glow-gold">Nivel {profile.level}</p>
+                <p className="font-pixel text-[10px] text-gold-400 text-glow-gold">
+                  Nivel {profile.level} · {rank}
+                </p>
                 {biome && (
                   <p className="font-pixel text-[9px] text-ink-200">
                     {biome.emoji} {biome.name}
@@ -158,17 +247,30 @@ export function ProfilePage() {
             <div className="grid grid-cols-3 gap-3">
               {achievements.map((achievement) => {
                 const unlocked = achievement.isUnlocked(achievementCtx)
+                const prog = achievement.progress?.(achievementCtx)
+                const pct = prog ? Math.min(100, Math.round((prog.current / prog.target) * 100)) : 0
                 return (
                   <div
                     key={achievement.id}
                     className={cn(
                       'panel-bevel flex flex-col items-center gap-1 rounded-xl border border-ink-700 bg-ink-900 p-3 text-center',
-                      !unlocked && 'opacity-30',
+                      !unlocked && 'opacity-60',
                     )}
-                    title={achievement.description}
+                    title={`${achievement.description}${prog && !unlocked ? ` (${Math.min(prog.current, prog.target)}/${prog.target})` : ''}`}
                   >
-                    <span className="text-2xl">{achievement.icon}</span>
+                    <span className={cn('text-2xl', !unlocked && 'grayscale opacity-60')}>{achievement.icon}</span>
                     <span className="text-[10px] text-ink-200">{achievement.name}</span>
+                    {/* Seeing "7/10" is what turns a locked badge into a goal */}
+                    {!unlocked && prog && (
+                      <>
+                        <div className="h-1 w-full overflow-hidden rounded-full bg-ink-800">
+                          <div className="h-full rounded-full bg-gold-500/70" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[8px] text-ink-500">
+                          {Math.min(prog.current, prog.target)}/{prog.target}
+                        </span>
+                      </>
+                    )}
                   </div>
                 )
               })}
@@ -181,6 +283,28 @@ export function ProfilePage() {
 
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Configuración">
         <div className="flex flex-col gap-4">
+          <div className="rounded-xl border border-ink-700 bg-ink-800 p-4">
+            <p className="mb-1 text-sm font-medium text-ink-50">Meta diaria de XP</p>
+            <p className="mb-3 text-[11px] text-ink-400">Cuánta XP quieres ganar cada día para mantener el ritmo.</p>
+            <div className="grid grid-cols-3 gap-2">
+              {DAILY_GOAL_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => setDailyXpGoal(preset.xp)}
+                  className={cn(
+                    'flex flex-col items-center gap-0.5 rounded-xl border border-ink-600 bg-ink-900 p-2.5',
+                    xpGoal === preset.xp && 'border-gold-400',
+                  )}
+                >
+                  <span className={cn('text-xs font-medium', xpGoal === preset.xp ? 'text-gold-400' : 'text-ink-200')}>
+                    {preset.label}
+                  </span>
+                  <span className="text-[10px] text-ink-400">{preset.xp} XP</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {isSupabaseConfigured && user && (
             <div className="rounded-xl border border-ink-700 bg-ink-800 p-4">
               <p className="mb-1 text-[11px] text-ink-400">Sesión iniciada como</p>

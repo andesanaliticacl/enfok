@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Minus, Plus, Paintbrush, Sun, Moon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Minus, Plus, Paintbrush, Sun, Moon, Dices } from 'lucide-react'
 import { useAvatarStore, HAT_SCALE_MIN, HAT_SCALE_MAX, HAT_SCALE_STEP } from '@/store/useAvatarStore'
 import { useGameStore } from '@/store/useGameStore'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
@@ -20,6 +20,36 @@ const PAINTABLE_CATEGORIES: AvatarLayerCategory[] = ['shirt', 'pants', 'shoes']
 
 interface CharacterCreationPageProps {
   mode?: 'create' | 'edit-avatar' | 'edit-biome'
+}
+
+function pickRandom<T>(arr: T[]): T | undefined {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
+/** The two-beat creation journey, shown only on first run. */
+function StepIndicator({ current }: { current: 'avatar' | 'biome' }) {
+  return (
+    <div className="mb-4 flex items-center gap-2">
+      {(
+        [
+          { id: 'avatar', label: '1 · Personaje' },
+          { id: 'biome', label: '2 · Mundo' },
+        ] as const
+      ).map((step, i) => (
+        <div key={step.id} className="flex items-center gap-2">
+          {i > 0 && <span className="h-px w-6 bg-ink-700" />}
+          <span
+            className={cn(
+              'rounded-full border px-3 py-1 font-pixel text-[9px]',
+              current === step.id ? 'border-gold-400 text-gold-400' : 'border-ink-700 text-ink-500',
+            )}
+          >
+            {step.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPageProps) {
@@ -56,6 +86,29 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
   const currentOptionId = avatar.options[category] ?? options[0]?.id
   const currentOption = options.find((o) => o.id === currentOptionId) ?? options[0]
 
+  /** One tap, a whole new adventurer — body first (it constrains everything), then the rest. */
+  function randomize() {
+    const bodies = lpcProvider.listOptions('body', avatar.figure)
+    const body = pickRandom(bodies)
+    let figure = avatar.figure
+    if (body) {
+      figure = figureOfBodyId(body.id)
+      if (figure !== avatar.figure) setFigure(figure)
+      setOption('body', body.id)
+      setOption('head', body.id)
+      if (body.colorMode !== 'none' && body.colors.length > 0) setColor('body', pickRandom(body.colors)!.id)
+    }
+    for (const cat of CREATION_CATEGORIES) {
+      if (cat === 'body') continue
+      const opt = pickRandom(lpcProvider.listOptions(cat, figure))
+      if (!opt) continue
+      setOption(cat, opt.id)
+      if (opt.colorMode !== 'none' && opt.colors.length > 0) {
+        setColor(cat as keyof typeof avatar.colors, pickRandom(opt.colors)!.id)
+      }
+    }
+  }
+
   function cycleOption(direction: 1 | -1) {
     if (options.length <= 1) return
     const idx = options.findIndex((o) => o.id === currentOptionId)
@@ -86,8 +139,11 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
   if (step === 'biome') {
     return (
       <div className="mx-auto flex min-h-full w-full max-w-xl flex-col px-4 pt-10 pb-8">
+        {mode === 'create' && <StepIndicator current="biome" />}
         <h1 className="font-pixel text-lg text-gold-400">¿Dónde comienza tu aventura?</h1>
-        <p className="mt-2 text-sm text-ink-400">Elige el bioma inicial de tu mundo.</p>
+        <p className="mt-2 text-sm text-ink-400">
+          Elige el bioma de tu mundo — el escenario donde tu personaje vivirá cada día que planifiques.
+        </p>
 
         {selectedBiome && (
           <BiomaComponent
@@ -193,17 +249,34 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-xl flex-col px-4 pt-10 pb-8">
+      {mode === 'create' && <StepIndicator current="avatar" />}
       <h1 className="font-pixel text-lg text-gold-400">
         {mode === 'create' ? 'Crea tu aventurero' : 'Editar personaje'}
       </h1>
+      {mode === 'create' && (
+        <p className="mt-2 text-sm text-ink-400">
+          Esta es la persona que va a recorrer tu mundo y completar tus misiones. Hazla tuya.
+        </p>
+      )}
 
-      <div className="my-6 flex justify-center">
+      <div className="relative my-6 flex justify-center">
         <AvatarSprite config={avatar} size={256} />
+        <button
+          onClick={randomize}
+          title="Personaje aleatorio"
+          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-full border border-ink-600 bg-ink-900 text-ink-200 shadow-lg transition-colors hover:border-gold-400 hover:text-gold-400"
+        >
+          <Dices size={18} />
+        </button>
       </div>
 
       <label className="mb-4 block">
         <span className="mb-1 block text-xs text-ink-400">Nombre</span>
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre de aventurero" />
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="¿Cómo te llamarán en tu mundo?"
+        />
       </label>
 
       <div className="mb-4 flex flex-wrap justify-center gap-2">
@@ -228,7 +301,14 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
         >
           <ChevronLeft size={18} />
         </button>
-        <p className="w-40 text-center text-sm font-medium text-ink-50">{currentOption?.label}</p>
+        <div className="w-40 text-center">
+          <p className="text-sm font-medium text-ink-50">{currentOption?.label}</p>
+          {options.length > 1 && (
+            <p className="text-[10px] text-ink-500">
+              {Math.max(0, options.findIndex((o) => o.id === currentOptionId)) + 1}/{options.length}
+            </p>
+          )}
+        </div>
         <button
           onClick={() => cycleOption(1)}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-ink-600 text-ink-50"

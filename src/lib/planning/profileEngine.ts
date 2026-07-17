@@ -3,6 +3,27 @@ import type { Mission, PlayerProfile } from '@/types'
 
 export const DEFAULT_DAILY_XP_GOAL = 50
 
+/** Daily goal presets, Duolingo-style. */
+export const DAILY_GOAL_PRESETS = [
+  { id: 'relajado', label: 'Relajado', xp: 30 },
+  { id: 'normal', label: 'Normal', xp: 50 },
+  { id: 'intenso', label: 'Intenso', xp: 100 },
+] as const
+
+const RANKS: { minLevel: number; title: string }[] = [
+  { minLevel: 30, title: 'Leyenda' },
+  { minLevel: 20, title: 'Héroe' },
+  { minLevel: 12, title: 'Veterano' },
+  { minLevel: 7, title: 'Aventurero' },
+  { minLevel: 3, title: 'Explorador' },
+  { minLevel: 1, title: 'Novato' },
+]
+
+/** RPG rank title for a level — pure flavor, but it makes leveling feel like something. */
+export function rankForLevel(level: number): string {
+  return RANKS.find((r) => level >= r.minLevel)?.title ?? 'Novato'
+}
+
 /**
  * Streak as it should read *right now*: still alive if the last completion was
  * today or yesterday, otherwise broken (0). The stored streakDays is only

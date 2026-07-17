@@ -12,7 +12,7 @@ import { applyMissionReward } from '@/lib/planning/profileEngine'
 import { regionCategory } from '@/data/regionCategories'
 import { planById } from '@/data/plans'
 import type { LatLng } from '@/lib/world/layout'
-import type { Goal, Mission, PlayerProfile, Region, RegionCategory } from '@/types'
+import type { ActivityLog, Goal, Mission, PlayerProfile, Region, RegionCategory } from '@/types'
 
 export interface RegionInput {
   name: string
@@ -27,6 +27,8 @@ interface GameState {
   goals: Goal[]
   missions: Mission[]
   profile: PlayerProfile
+  /** Per-day XP/mission totals — the source for the weekly activity strip. */
+  activityLog: ActivityLog
   lastGainedXp: number | null
   /** Fixed point the region "world" is laid out around — set once from the first real location fix, so recentering the map (e.g. "Dónde estoy") never reshuffles the regions. */
   worldAnchor: LatLng | null
@@ -69,6 +71,18 @@ const STARTING_PROFILE: Omit<PlayerProfile, 'name'> = {
 function deriveAfterMissionChange(goals: GameState['goals'], missions: GameState['missions'], regions: GameState['regions']) {
   const nextGoals = recomputeGoalStatuses(goals, missions)
   return { goals: nextGoals, regions: syncRegionLevels(regions, nextGoals) }
+}
+
+/** Records one completion in the per-day log, pruning entries older than ~6 months. */
+function logActivity(log: ActivityLog, today: string, xp: number): ActivityLog {
+  const next: ActivityLog = {}
+  const cutoff = addDaysToKey(today, -180)
+  for (const [day, entry] of Object.entries(log)) {
+    if (day >= cutoff) next[day] = entry
+  }
+  const current = next[today] ?? { xp: 0, missions: 0 }
+  next[today] = { xp: current.xp + xp, missions: current.missions + 1 }
+  return next
 }
 
 function buildRegion(input: RegionInput): Region {
@@ -134,7 +148,12 @@ export function normalizeGameState(raw: Partial<GameState> & { places?: unknown;
   const keptGoalIds = new Set(keptGoals.map((g) => g.id))
   const keptMissions = missions.filter((m) => keptGoalIds.has(m.goalId))
 
-  return { ...rest, missions: keptMissions, ...deriveAfterMissionChange(keptGoals, keptMissions, migratedRegions) }
+  return {
+    ...rest,
+    activityLog: rest.activityLog ?? {},
+    missions: keptMissions,
+    ...deriveAfterMissionChange(keptGoals, keptMissions, migratedRegions),
+  }
 }
 
 const REGION_CATEGORY_IDS: RegionCategory[] = ['casa', 'trabajo', 'gimnasio', 'universidad', 'banco', 'parque', 'otro']
@@ -146,6 +165,7 @@ export const useGameStore = create<GameState>()(
       goals: [],
       missions: [],
       profile: { name: 'Aventurero', ...STARTING_PROFILE },
+      activityLog: {},
       lastGainedXp: null,
       worldAnchor: null,
 
@@ -273,6 +293,7 @@ export const useGameStore = create<GameState>()(
             missions,
             ...deriveAfterMissionChange(state.goals, missions, state.regions),
             profile: applyMissionReward(state.profile, mission, today),
+            activityLog: logActivity(state.activityLog, today, mission.xp),
             lastGainedXp: mission.xp,
           }
         })
@@ -342,6 +363,7 @@ export const useGameStore = create<GameState>()(
           goals: [],
           missions: [],
           profile: { name: 'Aventurero', ...STARTING_PROFILE },
+          activityLog: {},
           lastGainedXp: null,
           worldAnchor: null,
         }),

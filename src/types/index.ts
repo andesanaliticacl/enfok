@@ -84,13 +84,25 @@ export interface Biome {
   color: string
 }
 
+export interface AchievementContext {
+  missionsCompleted: number
+  streakDays: number
+  hoursInvested: number
+  level: number
+}
+
 export interface Achievement {
   id: string
   name: string
   description: string
   icon: string
-  isUnlocked: (ctx: { missionsCompleted: number; streakDays: number; hoursInvested: number; level: number }) => boolean
+  isUnlocked: (ctx: AchievementContext) => boolean
+  /** Current vs. target toward unlocking — powers the "almost there" progress bar. */
+  progress?: (ctx: AchievementContext) => { current: number; target: number }
 }
+
+/** Per-day activity totals, keyed by ISO date (yyyy-mm-dd) — powers the weekly strip and history. */
+export type ActivityLog = Record<string, { xp: number; missions: number }>
 
 export interface PlayerProfile {
   name: string

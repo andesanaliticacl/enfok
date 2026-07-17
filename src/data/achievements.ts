@@ -7,6 +7,7 @@ export const achievements: Achievement[] = [
     description: 'Completa tu primera misión.',
     icon: '🥾',
     isUnlocked: (ctx) => ctx.missionsCompleted >= 1,
+    progress: (ctx) => ({ current: ctx.missionsCompleted, target: 1 }),
   },
   {
     id: 'ten-missions',
@@ -14,6 +15,7 @@ export const achievements: Achievement[] = [
     description: 'Completa 10 misiones.',
     icon: '⚔️',
     isUnlocked: (ctx) => ctx.missionsCompleted >= 10,
+    progress: (ctx) => ({ current: ctx.missionsCompleted, target: 10 }),
   },
   {
     id: 'hundred-missions',
@@ -21,6 +23,7 @@ export const achievements: Achievement[] = [
     description: 'Completa 100 misiones.',
     icon: '🏆',
     isUnlocked: (ctx) => ctx.missionsCompleted >= 100,
+    progress: (ctx) => ({ current: ctx.missionsCompleted, target: 100 }),
   },
   {
     id: 'streak-7',
@@ -28,6 +31,7 @@ export const achievements: Achievement[] = [
     description: 'Alcanza una racha de 7 días.',
     icon: '⚡',
     isUnlocked: (ctx) => ctx.streakDays >= 7,
+    progress: (ctx) => ({ current: ctx.streakDays, target: 7 }),
   },
   {
     id: 'streak-30',
@@ -35,6 +39,7 @@ export const achievements: Achievement[] = [
     description: 'Alcanza una racha de 30 días.',
     icon: '🔥',
     isUnlocked: (ctx) => ctx.streakDays >= 30,
+    progress: (ctx) => ({ current: ctx.streakDays, target: 30 }),
   },
   {
     id: 'hours-100',
@@ -42,6 +47,7 @@ export const achievements: Achievement[] = [
     description: 'Invierte 100 horas en tu aventura.',
     icon: '⏳',
     isUnlocked: (ctx) => ctx.hoursInvested >= 100,
+    progress: (ctx) => ({ current: Math.floor(ctx.hoursInvested), target: 100 }),
   },
   {
     id: 'level-10',
@@ -49,5 +55,6 @@ export const achievements: Achievement[] = [
     description: 'Alcanza el nivel 10.',
     icon: '⭐',
     isUnlocked: (ctx) => ctx.level >= 10,
+    progress: (ctx) => ({ current: ctx.level, target: 10 }),
   },
 ]

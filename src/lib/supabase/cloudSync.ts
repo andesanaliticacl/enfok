@@ -15,6 +15,7 @@ function pickGameState() {
     goals: s.goals,
     missions: s.missions,
     profile: s.profile,
+    activityLog: s.activityLog,
     worldAnchor: s.worldAnchor,
   }
 }
