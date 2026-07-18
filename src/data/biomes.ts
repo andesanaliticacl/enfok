@@ -10,7 +10,14 @@ export const biomes: Biome[] = [
   { id: 'espacio', name: 'Espacio', emoji: '🌌', color: '#6a4a9b' },
 ]
 
+/** Resolves 'auto' to the real time of day: the world is lit from 07:00 to 19:59 and dark otherwise. */
+export function resolveBiomeVariant(variant: BiomeVariant, now = new Date()): 'light' | 'dark' {
+  if (variant !== 'auto') return variant
+  const hour = now.getHours()
+  return hour >= 7 && hour < 20 ? 'light' : 'dark'
+}
+
 /** Generated pixel-art scenery for a biome — full-bleed background, light or dark time of day. */
 export function biomeBackgroundUrl(id: BiomeId, variant: BiomeVariant): string {
-  return `/assets/biomes/${id}/${variant}.png`
+  return `/assets/biomes/${id}/${resolveBiomeVariant(variant)}.png`
 }

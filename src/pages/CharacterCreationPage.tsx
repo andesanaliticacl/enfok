@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Minus, Plus, Paintbrush, Sun, Moon, Dices, Ban } from 'lucide-react'
+import { Minus, Plus, Paintbrush, Sun, Moon, Clock, Dices, Ban } from 'lucide-react'
 import { useAvatarStore, HAT_SCALE_MIN, HAT_SCALE_MAX, HAT_SCALE_STEP } from '@/store/useAvatarStore'
 import { useGameStore } from '@/store/useGameStore'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
@@ -9,7 +9,7 @@ import { LayerThumb } from '@/components/avatar/LayerThumb'
 import { PixelEditor } from '@/components/avatar/PixelEditor'
 import { getEditableFrame, getLayerSilhouette, getEditableBiomeFrame, BIOME_ART_WIDTH, BIOME_ART_HEIGHT } from '@/lib/avatar/pixelFrame'
 import { lpcProvider, figureOfBodyId, isHatResizable } from '@/lib/avatar/providers/lpcProvider'
-import { biomes, biomeBackgroundUrl } from '@/data/biomes'
+import { biomes, biomeBackgroundUrl, resolveBiomeVariant } from '@/data/biomes'
 import { BiomaComponent } from '@/components/biome/BiomaComponent'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -242,12 +242,22 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
           >
             <div className="absolute right-2 top-2 flex gap-1">
               <button
+                onClick={() => setBiomeVariant('auto')}
+                className={cn(
+                  'flex h-8 w-8 items-center justify-center rounded-full border border-ink-600 bg-ink-950/70 text-ink-200',
+                  biomeVariant === 'auto' && 'border-gold-400 text-gold-400',
+                )}
+                title="Automático — sigue tu hora real: amanece y anochece contigo"
+              >
+                <Clock size={14} />
+              </button>
+              <button
                 onClick={() => setBiomeVariant('light')}
                 className={cn(
                   'flex h-8 w-8 items-center justify-center rounded-full border border-ink-600 bg-ink-950/70 text-ink-200',
                   biomeVariant === 'light' && 'border-gold-400 text-gold-400',
                 )}
-                title="Claro"
+                title="Siempre de día"
               >
                 <Sun size={14} />
               </button>
@@ -257,7 +267,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
                   'flex h-8 w-8 items-center justify-center rounded-full border border-ink-600 bg-ink-950/70 text-ink-200',
                   biomeVariant === 'dark' && 'border-gold-400 text-gold-400',
                 )}
-                title="Oscuro"
+                title="Siempre de noche"
               >
                 <Moon size={14} />
               </button>
@@ -276,6 +286,13 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
               )}
             </div>
           </BiomaComponent>
+        )}
+
+        {selectedBiome && biomeVariant === 'auto' && (
+          <p className="mt-2 text-center text-[10px] text-ink-400">
+            Modo automático: {resolveBiomeVariant('auto') === 'light' ? 'ahora es de día' : 'ahora es de noche'} en tu
+            mundo — cambia con tu hora real 🌗
+          </p>
         )}
 
         <div className="mt-6 grid grid-cols-2 gap-3">

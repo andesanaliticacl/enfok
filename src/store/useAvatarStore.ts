@@ -52,7 +52,8 @@ export const HAT_SCALE_MIN = 0.6
 export const HAT_SCALE_MAX = 1.5
 export const HAT_SCALE_STEP = 0.1
 
-export type BiomeVariant = 'light' | 'dark'
+/** 'auto' follows the player's real local time — the world gets dark when their day does. */
+export type BiomeVariant = 'light' | 'dark' | 'auto'
 
 interface AvatarState {
   hasCreatedCharacter: boolean
@@ -81,7 +82,7 @@ export const useAvatarStore = create<AvatarState>()(
       avatar: DEFAULT_AVATAR,
       biome: null,
       biomeArt: null,
-      biomeVariant: 'light',
+      biomeVariant: 'auto',
 
       setFigure: (figure) =>
         set((state) => {
