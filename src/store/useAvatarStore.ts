@@ -16,7 +16,6 @@ const DEFAULT_AVATAR: AvatarConfig = {
     pants: 'default',
     shoes: 'default',
     hat: 'none',
-    pet: 'none',
   },
   colors: {
     body: 'light',
@@ -55,20 +54,30 @@ export const HAT_SCALE_STEP = 0.1
 /** 'auto' follows the player's real local time — the world gets dark when their day does. */
 export type BiomeVariant = 'light' | 'dark' | 'auto'
 
+/** A decoration the player placed on their biome, positioned as % of the scene. */
+export interface BiomeSticker {
+  id: string
+  emoji: string
+  x: number
+  y: number
+}
+
+export const MAX_BIOME_STICKERS = 10
+
 interface AvatarState {
   hasCreatedCharacter: boolean
   avatar: AvatarConfig
   biome: BiomeId | null
-  biomeArt: string | null
   biomeVariant: BiomeVariant
+  biomeStickers: BiomeSticker[]
   setFigure: (figure: AvatarConfig['figure']) => void
   setOption: (category: keyof AvatarConfig['options'], optionId: string) => void
   setColor: (category: keyof AvatarConfig['colors'], colorId: string) => void
   setHatScale: (scale: number) => void
   setBiome: (biome: BiomeId) => void
-  setBiomeArt: (dataUrl: string) => void
-  clearBiomeArt: () => void
   setBiomeVariant: (variant: BiomeVariant) => void
+  addBiomeSticker: (emoji: string, x: number, y: number) => void
+  removeBiomeSticker: (stickerId: string) => void
   setPixelOverride: (category: keyof AvatarConfig['options'], dataUrl: string) => void
   clearPixelOverride: (category: keyof AvatarConfig['options']) => void
   finishCreation: () => void
@@ -81,8 +90,8 @@ export const useAvatarStore = create<AvatarState>()(
       hasCreatedCharacter: false,
       avatar: DEFAULT_AVATAR,
       biome: null,
-      biomeArt: null,
       biomeVariant: 'auto',
+      biomeStickers: [],
 
       setFigure: (figure) =>
         set((state) => {
@@ -131,11 +140,22 @@ export const useAvatarStore = create<AvatarState>()(
 
       setBiome: (biome) => set({ biome }),
 
-      setBiomeArt: (dataUrl) => set({ biomeArt: dataUrl }),
-
-      clearBiomeArt: () => set({ biomeArt: null }),
-
       setBiomeVariant: (variant) => set({ biomeVariant: variant }),
+
+      addBiomeSticker: (emoji, x, y) =>
+        set((state) => {
+          if (state.biomeStickers.length >= MAX_BIOME_STICKERS) return {}
+          const sticker: BiomeSticker = {
+            id: `sticker-${crypto.randomUUID()}`,
+            emoji,
+            x: Math.min(96, Math.max(2, x)),
+            y: Math.min(92, Math.max(4, y)),
+          }
+          return { biomeStickers: [...state.biomeStickers, sticker] }
+        }),
+
+      removeBiomeSticker: (stickerId) =>
+        set((state) => ({ biomeStickers: state.biomeStickers.filter((s) => s.id !== stickerId) })),
 
       setPixelOverride: (category, dataUrl) =>
         set((state) => ({
@@ -154,7 +174,8 @@ export const useAvatarStore = create<AvatarState>()(
 
       finishCreation: () => set({ hasCreatedCharacter: true }),
 
-      deleteCharacter: () => set({ hasCreatedCharacter: false, avatar: DEFAULT_AVATAR, biome: null, biomeArt: null }),
+      deleteCharacter: () =>
+        set({ hasCreatedCharacter: false, avatar: DEFAULT_AVATAR, biome: null, biomeStickers: [] }),
     }),
     {
       name: 'questly-avatar-state',
@@ -162,10 +183,15 @@ export const useAvatarStore = create<AvatarState>()(
       // an older AvatarConfig shape (missing fields we've added since, like
       // pixelOverrides) doesn't crash the app — it just backfills defaults.
       merge: (persisted, current) => {
-        const persistedState = (persisted ?? {}) as Partial<AvatarState>
+        // biomeArt belonged to the retired biome-painting feature — drop it so
+        // old broken paint jobs never override the living scenery again.
+        const { biomeArt: _retiredBiomeArt, ...persistedState } = (persisted ?? {}) as Partial<AvatarState> & {
+          biomeArt?: unknown
+        }
         return {
           ...current,
           ...persistedState,
+          biomeStickers: persistedState.biomeStickers ?? current.biomeStickers,
           avatar: {
             ...current.avatar,
             ...persistedState.avatar,

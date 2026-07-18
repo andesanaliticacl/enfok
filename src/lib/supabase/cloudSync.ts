@@ -26,8 +26,8 @@ function pickAvatarState() {
     hasCreatedCharacter: s.hasCreatedCharacter,
     avatar: s.avatar,
     biome: s.biome,
-    biomeArt: s.biomeArt,
     biomeVariant: s.biomeVariant,
+    biomeStickers: s.biomeStickers,
   }
 }
 
@@ -69,7 +69,9 @@ async function hydrateFromCloud(userId: string) {
         useGameStore.setState(normalizeGameState(data.game_state))
       }
       if (data.avatar_state && Object.keys(data.avatar_state).length > 0) {
-        useAvatarStore.setState(data.avatar_state)
+        // Old rows may carry the retired biomeArt and lack biomeStickers.
+        const { biomeArt: _retired, ...avatarState } = data.avatar_state
+        useAvatarStore.setState({ biomeStickers: [], ...avatarState })
       }
     } else {
       // Brand new account, first sign-in anywhere — this browser's local

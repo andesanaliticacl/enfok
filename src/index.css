@@ -229,6 +229,34 @@
     transform: scale(1.12);
   }
 }
+@keyframes aura-breathe {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.15);
+  }
+}
+@keyframes crab-walk {
+  0% {
+    transform: translateX(-8%) scaleX(1);
+  }
+  48% {
+    transform: translateX(100%) scaleX(1);
+  }
+  50% {
+    transform: translateX(100%) scaleX(-1);
+  }
+  98% {
+    transform: translateX(-8%) scaleX(-1);
+  }
+  100% {
+    transform: translateX(-8%) scaleX(1);
+  }
+}
 @keyframes window-glow {
   0%,
   40%,
@@ -286,6 +314,12 @@
   }
   .anim-window {
     animation: window-glow 6s linear infinite;
+  }
+  .anim-aura {
+    animation: aura-breathe 7s ease-in-out infinite;
+  }
+  .anim-crab {
+    animation: crab-walk 26s linear infinite;
   }
   .text-glow-gold {
     text-shadow: 0 0 10px rgba(242, 204, 109, 0.55);

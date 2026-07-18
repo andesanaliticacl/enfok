@@ -7,17 +7,20 @@ import { useGameStore } from '@/store/useGameStore'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { LayerThumb } from '@/components/avatar/LayerThumb'
 import { PixelEditor } from '@/components/avatar/PixelEditor'
-import { getEditableFrame, getLayerSilhouette, getEditableBiomeFrame, BIOME_ART_WIDTH, BIOME_ART_HEIGHT } from '@/lib/avatar/pixelFrame'
+import { getEditableFrame, getLayerSilhouette } from '@/lib/avatar/pixelFrame'
 import { lpcProvider, figureOfBodyId, isHatResizable } from '@/lib/avatar/providers/lpcProvider'
-import { biomes, biomeBackgroundUrl, resolveBiomeVariant } from '@/data/biomes'
+import { biomes, resolveBiomeVariant } from '@/data/biomes'
 import { BiomaComponent } from '@/components/biome/BiomaComponent'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { AvatarConfig, AvatarLayerCategory, LayerOption, ResolvedLayer } from '@/lib/avatar/types'
 
-const RANDOM_CATEGORIES: AvatarLayerCategory[] = ['hair', 'beard', 'eyes', 'shirt', 'pants', 'shoes', 'hat', 'pet']
+const RANDOM_CATEGORIES: AvatarLayerCategory[] = ['hair', 'beard', 'eyes', 'shirt', 'pants', 'shoes', 'hat']
 const PAINTABLE_CATEGORIES: AvatarLayerCategory[] = ['shirt', 'pants', 'shoes']
+
+/** Decorations the player can drop on their biome — companions live here now, not on the sprite. */
+const BIOME_STICKERS = ['🐕', '🐈', '🐇', '🦜', '⛺', '🌻', '🍄', '🪵', '⚽', '🎸', '🏮', '🪴', '⛄', '🗿']
 
 /** How each category's thumbnail crops the 64px frame: where to look and how close. */
 const THUMB_VIEW: Partial<Record<AvatarLayerCategory, { focusY: number; zoom: number }>> = {
@@ -29,14 +32,13 @@ const THUMB_VIEW: Partial<Record<AvatarLayerCategory, { focusY: number; zoom: nu
   pants: { focusY: 46, zoom: 1.8 },
   shoes: { focusY: 57, zoom: 2.1 },
   hat: { focusY: 13, zoom: 1.9 },
-  pet: { focusY: 40, zoom: 1.5 },
 }
 
 type StyleGroup = 'rostro' | 'ropa' | 'extras'
 const STYLE_GROUPS: { id: StyleGroup; label: string; categories: AvatarLayerCategory[] }[] = [
   { id: 'rostro', label: 'Rostro', categories: ['hair', 'beard', 'eyes'] },
   { id: 'ropa', label: 'Vestimenta', categories: ['shirt', 'pants', 'shoes'] },
-  { id: 'extras', label: 'Extras', categories: ['hat', 'pet'] },
+  { id: 'extras', label: 'Extras', categories: ['hat'] },
 ]
 
 const SUBCATEGORY_LABELS: Partial<Record<AvatarLayerCategory, string>> = {
@@ -47,7 +49,6 @@ const SUBCATEGORY_LABELS: Partial<Record<AvatarLayerCategory, string>> = {
   pants: 'Piernas',
   shoes: 'Calzado',
   hat: 'Sombreros',
-  pet: 'Compañero',
 }
 
 const RACE_TAGLINES: Record<string, string> = {
@@ -140,16 +141,16 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
   const {
     avatar,
     biome: selectedBiome,
-    biomeArt,
     biomeVariant,
+    biomeStickers,
     setFigure,
     setOption,
     setColor,
     setHatScale,
     setBiome,
-    setBiomeArt,
-    clearBiomeArt,
     setBiomeVariant,
+    addBiomeSticker,
+    removeBiomeSticker,
     finishCreation,
     setPixelOverride,
     clearPixelOverride,
@@ -163,7 +164,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
   const [group, setGroup] = useState<StyleGroup>('rostro')
   const [subcategory, setSubcategory] = useState<AvatarLayerCategory>('hair')
   const [paintingCategory, setPaintingCategory] = useState<AvatarLayerCategory | null>(null)
-  const [paintingBiome, setPaintingBiome] = useState(false)
+  const [placingSticker, setPlacingSticker] = useState<string | null>(null)
 
   const bodies = useMemo(() => lpcProvider.listOptions('body', avatar.figure), [avatar.figure])
   const currentBody = avatar.options.body ?? 'male'
@@ -237,7 +238,16 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
           <BiomaComponent
             biomeId={selectedBiome}
             variant={biomeVariant}
-            customArt={biomeArt}
+            stickers={biomeStickers}
+            onStickerTap={removeBiomeSticker}
+            onSceneTap={
+              placingSticker
+                ? (x, y) => {
+                    addBiomeSticker(placingSticker, x, y)
+                    setPlacingSticker(null)
+                  }
+                : undefined
+            }
             className="panel-bevel mt-4 flex h-60 items-center justify-center rounded-2xl border border-ink-700"
           >
             <div className="absolute right-2 top-2 flex gap-1">
@@ -319,14 +329,31 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
         </div>
 
         {selectedBiome && (
-          <div className="mt-4 flex justify-center">
-            <button
-              onClick={() => setPaintingBiome(true)}
-              className="flex items-center gap-2 rounded-full border border-ink-600 px-4 py-2 text-xs text-ink-200"
-            >
-              <Paintbrush size={14} />
-              {biomeArt ? 'Editar pintura del bioma' : 'Pintar bioma'}
-            </button>
+          <div className="mt-4">
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-xs uppercase tracking-wide text-ink-400">Decora tu mundo</p>
+              <span className="text-[10px] text-ink-500">{biomeStickers.length}/10</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {BIOME_STICKERS.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => setPlacingSticker((s) => (s === emoji ? null : emoji))}
+                  disabled={biomeStickers.length >= 10}
+                  className={cn(
+                    'flex h-9 w-9 items-center justify-center rounded-xl border bg-ink-900 text-base transition-transform disabled:opacity-40',
+                    placingSticker === emoji ? 'border-gold-400 scale-110' : 'border-ink-700',
+                  )}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[10px] text-ink-500">
+              {placingSticker
+                ? `Toca la escena donde quieras poner ${placingSticker}`
+                : 'Elige un sticker y tócalo en la escena. Toca uno puesto para quitarlo.'}
+            </p>
           </div>
         )}
 
@@ -347,19 +374,6 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
           )}
         </div>
 
-        {selectedBiome && (
-          <PixelEditor
-            open={paintingBiome}
-            title="Pintar bioma"
-            frameWidth={BIOME_ART_WIDTH}
-            frameHeight={BIOME_ART_HEIGHT}
-            cellSize={3}
-            loadFrame={() => getEditableBiomeFrame(biomeArt, biomeBackgroundUrl(selectedBiome, biomeVariant))}
-            onClose={() => setPaintingBiome(false)}
-            onSave={setBiomeArt}
-            onClear={clearBiomeArt}
-          />
-        )}
       </div>
     )
   }

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
+import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { biomes, biomeBackgroundUrl, resolveBiomeVariant } from '@/data/biomes'
 import type { BiomeId } from '@/types'
-import type { BiomeVariant } from '@/store/useAvatarStore'
+import type { BiomeSticker, BiomeVariant } from '@/store/useAvatarStore'
 
 /** Deterministic PRNG so particle layout is stable across re-renders but differs per biome/variant. */
 function mulberry32(seed: number) {
@@ -27,20 +28,67 @@ interface OverlayProps {
   daylight: boolean
 }
 
+/**
+ * Every biome breathes light: a soft ambient glow whose color and place
+ * belong to the scene — sun or moon over the valley, urban haze over the
+ * skyline, moonlit forest, a summit halo, an aurora in space.
+ */
+function AuraLayer({ biomeId, daylight }: { biomeId: BiomeId; daylight: boolean }) {
+  const auras: Record<BiomeId, { className: string; style: CSSProperties }[]> = {
+    valle: [
+      daylight
+        ? { className: 'left-[10%] top-[6%] h-16 w-16', style: { backgroundColor: 'rgba(255, 214, 120, 0.45)' } }
+        : { className: 'right-[12%] top-[8%] h-12 w-12', style: { backgroundColor: 'rgba(190, 215, 255, 0.4)' } },
+    ],
+    playa: [
+      daylight
+        ? { className: 'right-[14%] top-[5%] h-16 w-16', style: { backgroundColor: 'rgba(255, 220, 130, 0.5)' } }
+        : { className: 'right-[16%] top-[7%] h-11 w-11', style: { backgroundColor: 'rgba(210, 225, 255, 0.45)' } },
+    ],
+    bosque: [
+      daylight
+        ? { className: 'left-[30%] top-[0%] h-14 w-28', style: { backgroundColor: 'rgba(190, 235, 150, 0.28)' } }
+        : { className: 'left-[35%] top-[2%] h-12 w-24', style: { backgroundColor: 'rgba(150, 170, 255, 0.25)' } },
+    ],
+    montana: [
+      { className: 'left-[38%] top-[10%] h-10 w-24', style: { backgroundColor: daylight ? 'rgba(255, 255, 255, 0.35)' : 'rgba(180, 205, 255, 0.3)' } },
+    ],
+    ciudad: [
+      daylight
+        ? { className: 'left-[20%] top-[4%] h-12 w-32', style: { backgroundColor: 'rgba(255, 235, 190, 0.25)' } }
+        : { className: 'inset-x-[15%] top-[52%] h-10', style: { backgroundColor: 'rgba(120, 200, 255, 0.18)' } },
+    ],
+    espacio: [
+      { className: 'inset-x-[10%] top-[36%] h-8', style: { backgroundColor: 'rgba(140, 255, 200, 0.16)' } },
+    ],
+  }
+
+  return (
+    <>
+      {(auras[biomeId] ?? []).map((aura, i) => (
+        <div key={i} className={cn('anim-aura absolute rounded-full blur-xl', aura.className)} style={aura.style} />
+      ))}
+    </>
+  )
+}
+
 function ForestOverlay({ seedKey, daylight }: OverlayProps) {
-  const sparks = useMemo(() => {
-    const rand = mulberry32(seedFrom(`${seedKey}-sparks`))
-    return Array.from({ length: daylight ? 5 : 8 }, () => ({
-      left: 45 + rand() * 10,
-      delay: rand() * 1.6,
-      duration: 1.1 + rand() * 0.9,
-      drift: (rand() - 0.5) * 16,
+  // The forest's signature is no longer the campfire (auras are everywhere
+  // now) — it's the glowing mushrooms on the forest floor.
+  const mushrooms = useMemo(() => {
+    const rand = mulberry32(seedFrom(`${seedKey}-shrooms`))
+    return Array.from({ length: 4 }, () => ({
+      left: 8 + rand() * 80,
+      top: 74 + rand() * 18,
+      delay: rand() * 3,
+      duration: 2.6 + rand() * 2,
+      violet: rand() > 0.5,
     }))
-  }, [seedKey, daylight])
+  }, [seedKey])
 
   const leaves = useMemo(() => {
     const rand = mulberry32(seedFrom(`${seedKey}-leaves`))
-    return Array.from({ length: 5 }, () => ({
+    return Array.from({ length: 6 }, () => ({
       left: 5 + rand() * 90,
       top: 5 + rand() * 25,
       delay: rand() * 6,
@@ -49,21 +97,33 @@ function ForestOverlay({ seedKey, daylight }: OverlayProps) {
     }))
   }, [seedKey])
 
+  const flies = useMemo(() => {
+    const rand = mulberry32(seedFrom(`${seedKey}-flies`))
+    return Array.from({ length: 4 }, () => ({
+      left: 15 + rand() * 70,
+      top: 55 + rand() * 30,
+      delay: rand() * 4,
+      duration: 3.5 + rand() * 2,
+    }))
+  }, [seedKey])
+
   return (
     <>
-      {/* The campfire burns day and night, but it owns the scene after dark */}
-      <div
-        className={cn(
-          'anim-glow-pulse absolute bottom-[15%] left-1/2 h-8 w-14 -translate-x-1/2 rounded-full blur-md',
-          daylight ? 'bg-orange-500/35' : 'bg-orange-500/60',
-        )}
-      />
-      {sparks.map((s, i) => (
-        <span
-          key={i}
-          className="anim-spark absolute bottom-[17%] block h-1 w-1 rounded-full bg-orange-300"
-          style={{ left: `${s.left}%`, animationDelay: `${s.delay}s`, animationDuration: `${s.duration}s`, '--drift': `${s.drift}px` } as CSSProperties}
-        />
+      {mushrooms.map((m, i) => (
+        <span key={`shroom-${i}`} className="absolute" style={{ left: `${m.left}%`, top: `${m.top}%` }}>
+          <span
+            className="anim-twinkle absolute -inset-1.5 rounded-full blur-[3px]"
+            style={{
+              backgroundColor: m.violet ? 'rgba(180, 130, 255, 0.5)' : 'rgba(110, 231, 255, 0.5)',
+              animationDelay: `${m.delay}s`,
+              animationDuration: `${m.duration}s`,
+            }}
+          />
+          <span
+            className="relative block h-[3px] w-[3px] rounded-full"
+            style={{ backgroundColor: m.violet ? 'rgb(205, 170, 255)' : 'rgb(160, 240, 255)' }}
+          />
+        </span>
       ))}
       {leaves.map((l, i) => (
         <span
@@ -79,6 +139,14 @@ function ForestOverlay({ seedKey, daylight }: OverlayProps) {
           } as CSSProperties}
         />
       ))}
+      {!daylight &&
+        flies.map((f, i) => (
+          <span
+            key={`fly-${i}`}
+            className="anim-firefly absolute h-1 w-1 rounded-full bg-lime-200/90 blur-[0.5px]"
+            style={{ left: `${f.left}%`, top: `${f.top}%`, animationDelay: `${f.delay}s`, animationDuration: `${f.duration}s` }}
+          />
+        ))}
       <div className="anim-fog absolute inset-x-[-20%] bottom-0 h-8 bg-gradient-to-t from-white/10 to-transparent blur-sm" />
     </>
   )
@@ -98,11 +166,34 @@ function BeachOverlay({ seedKey, daylight }: OverlayProps) {
     }))
   }, [seedKey])
 
+  const sparkles = useMemo(() => {
+    const rand = mulberry32(seedFrom(`${seedKey}-sparkles`))
+    return Array.from({ length: 7 }, () => ({
+      left: 8 + rand() * 84,
+      top: 63 + rand() * 9,
+      delay: rand() * 3,
+      duration: 1.8 + rand() * 1.6,
+    }))
+  }, [seedKey])
+
   return (
     <>
       <div className="anim-fog absolute inset-x-[-15%] top-[56%] h-6 bg-white/15 blur-md" style={{ animationDuration: '16s' }} />
+      {/* Sun or moon glitter dancing on the water band */}
+      {sparkles.map((s, i) => (
+        <span
+          key={`sparkle-${i}`}
+          className={cn('anim-twinkle absolute h-[2px] w-[3px] rounded-full', daylight ? 'bg-yellow-100/90' : 'bg-blue-100/80')}
+          style={{ left: `${s.left}%`, top: `${s.top}%`, animationDelay: `${s.delay}s`, animationDuration: `${s.duration}s` }}
+        />
+      ))}
       <div className="anim-wave absolute inset-x-0 top-[70%] h-1.5 bg-white/45 blur-[1.5px]" />
       <div className="anim-wave absolute inset-x-0 top-[74%] h-1 bg-white/30 blur-[1.5px]" style={{ animationDelay: '0.9s' }} />
+      <div className="anim-wave absolute inset-x-0 top-[77%] h-[3px] bg-white/20 blur-[2px]" style={{ animationDelay: '1.8s', animationDuration: '4.5s' }} />
+      {/* A crab patrols the sand, turning around at the edges */}
+      <span className="anim-crab absolute bottom-[7%] left-0 right-0 text-[9px]" style={{ animationDelay: '2s' }}>
+        <span className="inline-block">🦀</span>
+      </span>
       {daylight
         ? gulls.map((g, i) => (
             <span
@@ -333,36 +424,80 @@ function useResolvedVariant(variant: BiomeVariant): 'light' | 'dark' {
 interface BiomaComponentProps {
   biomeId: BiomeId | null | undefined
   variant: BiomeVariant
-  /** A user-painted override replaces the generated art — the living layer is skipped since its particle positions are tuned to the generated scenery. */
-  customArt?: string | null
+  /** Player-placed decorations, positioned as % of the scene. */
+  stickers?: BiomeSticker[]
+  /** When set, tapping a sticker calls this (used by the decorate mode to remove them). */
+  onStickerTap?: (stickerId: string) => void
+  /** When set, tapping empty scenery reports the % position (used by the decorate mode to place stickers). */
+  onSceneTap?: (x: number, y: number) => void
   vignette?: boolean
   className?: string
   children?: ReactNode
 }
 
-/** Renders a biome's background art plus its ambient "living" animation (fire, waves, snow, neon, fauna, stars), following real time of day when the variant is 'auto'. */
-export function BiomaComponent({ biomeId, variant, customArt, vignette = true, className, children }: BiomaComponentProps) {
+/** Renders a biome's background art plus its ambient aura and "living" animation (mushrooms, waves, snow, neon, fauna, stars), following real time of day when the variant is 'auto'. */
+export function BiomaComponent({
+  biomeId,
+  variant,
+  stickers,
+  onStickerTap,
+  onSceneTap,
+  vignette = true,
+  className,
+  children,
+}: BiomaComponentProps) {
   const biome = biomes.find((b) => b.id === biomeId)
   const resolved = useResolvedVariant(variant)
   const seedKey = `${biomeId ?? 'none'}-${resolved}`
 
+  function handleSceneClick(e: MouseEvent<HTMLDivElement>) {
+    if (!onSceneTap) return
+    // Buttons inside the scene (variant toggles, stickers) handle their own clicks.
+    if ((e.target as HTMLElement).closest('button')) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    onSceneTap(((e.clientX - rect.left) / rect.width) * 100, ((e.clientY - rect.top) / rect.height) * 100)
+  }
+
   return (
     <div
-      className={cn('relative overflow-hidden', className)}
+      className={cn('relative overflow-hidden', className, onSceneTap && 'cursor-crosshair')}
+      onClick={handleSceneClick}
       style={{
-        backgroundImage: `url(${customArt || (biomeId ? biomeBackgroundUrl(biomeId, resolved) : '')})`,
+        backgroundImage: biomeId ? `url(${biomeBackgroundUrl(biomeId, resolved)})` : undefined,
         backgroundColor: biome?.color ?? 'var(--color-ink-800)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         imageRendering: 'pixelated',
       }}
     >
-      {biomeId && !customArt && (
+      {biomeId && (
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <AuraLayer biomeId={biomeId} daylight={resolved === 'light'} />
           <LivingLayer biomeId={biomeId} seedKey={seedKey} daylight={resolved === 'light'} />
         </div>
       )}
+
       {vignette && <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-ink-950/90" />}
+
+      {stickers?.map((sticker) => (
+        <motion.button
+          key={sticker.id}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+          disabled={!onStickerTap}
+          onClick={(e) => {
+            e.stopPropagation()
+            onStickerTap?.(sticker.id)
+          }}
+          className={cn('absolute -translate-x-1/2 -translate-y-1/2 text-xl drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]', onStickerTap && 'hover:scale-125')}
+          style={{ left: `${sticker.x}%`, top: `${sticker.y}%` }}
+          title={onStickerTap ? 'Tocar para quitar' : undefined}
+        >
+          {sticker.emoji}
+        </motion.button>
+      ))}
+
       {children}
     </div>
   )

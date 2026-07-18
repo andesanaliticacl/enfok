@@ -171,14 +171,6 @@ const BEARD_LABELS: Record<(typeof BEARD_STYLES)[number], string> = {
   mustache_handlebar: 'Bigote manubrio',
 }
 
-const PET_STYLES = ['none', 'peluche', 'rosa', 'cartera'] as const
-const PET_LABELS: Record<(typeof PET_STYLES)[number], string> = {
-  none: 'Ninguna',
-  peluche: 'Peluche',
-  rosa: 'Rosa',
-  cartera: 'Cartera',
-}
-
 /**
  * Eye expressions from the LPC catalog. The truly bestial eyes (cat slits,
  * reptile pupils) come baked into the race heads (lobo, argoniano, goblin...) —
@@ -327,7 +319,7 @@ function headLayer(bodyId: string, colorId: string | undefined): ResolvedLayer {
 export const lpcProvider: AvatarAssetProvider = {
   id: 'lpc-universal',
   frameSize: FRAME_SIZE,
-  categories: ['body', 'head', 'eyes', 'beard', 'hair', 'shirt', 'pants', 'shoes', 'hat', 'pet'],
+  categories: ['body', 'head', 'eyes', 'beard', 'hair', 'shirt', 'pants', 'shoes', 'hat'],
   attribution: {
     name: 'Liberated Pixel Cup — Universal LPC Spritesheet Character Generator',
     url: 'https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator/',
@@ -413,15 +405,6 @@ export const lpcProvider: AvatarAssetProvider = {
           figures: ALL_FIGURES,
           colorMode: def.colorMode,
           colors: def.colors,
-        }))
-
-      case 'pet':
-        return PET_STYLES.map((style) => ({
-          id: style,
-          label: PET_LABELS[style],
-          figures: ALL_FIGURES,
-          colorMode: 'none',
-          colors: [],
         }))
 
       default:
@@ -540,14 +523,6 @@ export const lpcProvider: AvatarAssetProvider = {
           imageUrl: `${ASSET_ROOT}/hat/${optionId}/idle.png`,
         }
 
-      case 'pet':
-        if (optionId === 'none') return null
-        return {
-          category,
-          zIndex: 25,
-          imageUrl: `${ASSET_ROOT}/pet/${optionId}/idle.png`,
-        }
-
       default:
         return null
     }
@@ -574,3 +549,5 @@ export const CATEGORY_LABELS: Record<AvatarLayerCategory, string> = {
   weapon: 'Arma',
   pet: 'Compañero',
 }
+// 'pet' stays in the label map for type completeness, but the category was
+// retired — companions now live as stickers on the player's biome instead.

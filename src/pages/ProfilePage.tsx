@@ -34,7 +34,7 @@ export function ProfilePage() {
   const missions = useGameStore((s) => s.missions)
   const activityLog = useGameStore((s) => s.activityLog)
   const setDailyXpGoal = useGameStore((s) => s.setDailyXpGoal)
-  const { avatar, biome: biomeId, biomeArt, biomeVariant, deleteCharacter } = useAvatarStore()
+  const { avatar, biome: biomeId, biomeVariant, biomeStickers, deleteCharacter } = useAvatarStore()
   const { user, signOut } = useAuthStore()
 
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -91,13 +91,24 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="w-full px-4 pt-6 pb-4 md:px-10 xl:px-16">
+    <div className="relative min-h-full w-full">
+      {/* The player's biome IS the screen — the whole profile lives inside their world */}
+      <BiomaComponent
+        biomeId={biomeId}
+        variant={biomeVariant}
+        stickers={biomeStickers}
+        vignette={false}
+        className="absolute inset-0"
+      />
+      <div className="pointer-events-none absolute inset-0 bg-ink-950/50" />
+
+      <div className="relative z-10 w-full px-4 pt-6 pb-4 md:px-10 xl:px-16">
       {/* On mobile everything stacks with the character on top; from lg up it spreads
           the full width of the screen into three columns with the character anchored dead-center. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px_minmax(0,1fr)] lg:items-start lg:gap-10">
         <div className="order-2 flex flex-col gap-6 lg:order-1">
           {/* Duolingo-style week: one dot per day, lit when the daily XP goal was met */}
-          <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/60 p-4">
+          <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-xs uppercase tracking-wide text-ink-400">Esta semana</h2>
               <p className="font-pixel text-[9px] text-gold-400">
@@ -137,7 +148,7 @@ export function ProfilePage() {
             </p>
           </section>
 
-          <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/60 p-4">
+          <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
             <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-400">Estadísticas</h2>
             <div className="grid grid-cols-3 gap-3">
               {stats.map((stat) => (
@@ -158,13 +169,8 @@ export function ProfilePage() {
         </div>
 
         <div className="order-1 flex flex-col lg:order-2">
-          {/* Hero: the character is the centerpiece, staged on its living biome */}
-          <BiomaComponent
-            biomeId={biomeId}
-            variant={biomeVariant}
-            customArt={biomeArt}
-            className="min-h-[360px] rounded-3xl border border-ink-700 panel-bevel lg:min-h-[460px]"
-          >
+          {/* Hero: the character stands directly in their world — the page background IS the biome */}
+          <div className="min-h-[360px] lg:min-h-[460px]">
             <div className="relative flex h-full flex-col items-center justify-center pb-2 pt-6">
               {/* Streak flame lives on the hero — it's the heartbeat of the game */}
               <div
@@ -206,7 +212,7 @@ export function ProfilePage() {
                 </div>
               </div>
             </div>
-          </BiomaComponent>
+          </div>
 
           <div className="mt-3 grid grid-cols-3 gap-2">
             <Button variant="outline" size="sm" onClick={() => navigate('/personaje/editar')}>
@@ -242,7 +248,7 @@ export function ProfilePage() {
         </div>
 
         <div className="order-3 flex flex-col gap-6">
-          <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/60 p-4">
+          <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
             <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-400">Logros</h2>
             <div className="grid grid-cols-3 gap-3">
               {achievements.map((achievement) => {
@@ -335,6 +341,7 @@ export function ProfilePage() {
           </div>
         </div>
       </Dialog>
+      </div>
     </div>
   )
 }
