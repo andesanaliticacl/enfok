@@ -178,7 +178,7 @@ export function ProfilePage() {
                 <span className="font-pixel text-[10px]">{streak}d</span>
               </div>
 
-              <AvatarSprite config={avatar} size={192} />
+              <AvatarSprite config={avatar} size={192} animate />
 
               <div className="relative z-10 -mt-2 flex flex-col items-center gap-1 pb-5 text-center">
                 <h1 className="text-lg font-semibold text-ink-50">{profile.name}</h1>

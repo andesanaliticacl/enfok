@@ -1,46 +1,96 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Minus, Plus, Paintbrush, Sun, Moon, Dices } from 'lucide-react'
+import { Minus, Plus, Paintbrush, Sun, Moon, Dices, Ban } from 'lucide-react'
 import { useAvatarStore, HAT_SCALE_MIN, HAT_SCALE_MAX, HAT_SCALE_STEP } from '@/store/useAvatarStore'
 import { useGameStore } from '@/store/useGameStore'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
+import { LayerThumb } from '@/components/avatar/LayerThumb'
 import { PixelEditor } from '@/components/avatar/PixelEditor'
 import { getEditableFrame, getLayerSilhouette, getEditableBiomeFrame, BIOME_ART_WIDTH, BIOME_ART_HEIGHT } from '@/lib/avatar/pixelFrame'
-import { lpcProvider, CATEGORY_LABELS, figureOfBodyId, isHatResizable } from '@/lib/avatar/providers/lpcProvider'
+import { lpcProvider, figureOfBodyId, isHatResizable } from '@/lib/avatar/providers/lpcProvider'
 import { biomes, biomeBackgroundUrl } from '@/data/biomes'
 import { BiomaComponent } from '@/components/biome/BiomaComponent'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import type { AvatarLayerCategory } from '@/lib/avatar/types'
+import type { AvatarConfig, AvatarLayerCategory, LayerOption, ResolvedLayer } from '@/lib/avatar/types'
 
-const CREATION_CATEGORIES: AvatarLayerCategory[] = ['body', 'hair', 'eyes', 'shirt', 'pants', 'shoes', 'hat', 'pet']
+const RANDOM_CATEGORIES: AvatarLayerCategory[] = ['hair', 'beard', 'eyes', 'shirt', 'pants', 'shoes', 'hat', 'pet']
 const PAINTABLE_CATEGORIES: AvatarLayerCategory[] = ['shirt', 'pants', 'shoes']
 
-interface CharacterCreationPageProps {
-  mode?: 'create' | 'edit-avatar' | 'edit-biome'
+/** How each category's thumbnail crops the 64px frame: where to look and how close. */
+const THUMB_VIEW: Partial<Record<AvatarLayerCategory, { focusY: number; zoom: number }>> = {
+  body: { focusY: 22, zoom: 1.7 },
+  hair: { focusY: 14, zoom: 2.1 },
+  beard: { focusY: 20, zoom: 2.4 },
+  eyes: { focusY: 17, zoom: 2.8 },
+  shirt: { focusY: 34, zoom: 1.8 },
+  pants: { focusY: 46, zoom: 1.8 },
+  shoes: { focusY: 57, zoom: 2.1 },
+  hat: { focusY: 13, zoom: 1.9 },
+  pet: { focusY: 40, zoom: 1.5 },
+}
+
+type StyleGroup = 'rostro' | 'ropa' | 'extras'
+const STYLE_GROUPS: { id: StyleGroup; label: string; categories: AvatarLayerCategory[] }[] = [
+  { id: 'rostro', label: 'Rostro', categories: ['hair', 'beard', 'eyes'] },
+  { id: 'ropa', label: 'Vestimenta', categories: ['shirt', 'pants', 'shoes'] },
+  { id: 'extras', label: 'Extras', categories: ['hat', 'pet'] },
+]
+
+const SUBCATEGORY_LABELS: Partial<Record<AvatarLayerCategory, string>> = {
+  hair: 'Pelo',
+  beard: 'Barba',
+  eyes: 'Ojos',
+  shirt: 'Torso',
+  pants: 'Piernas',
+  shoes: 'Calzado',
+  hat: 'Sombreros',
+  pet: 'Compañero',
+}
+
+const RACE_TAGLINES: Record<string, string> = {
+  male: 'Clásico y confiable.',
+  female: 'Clásica y confiable.',
+  female_teen: 'Ligereza y agilidad.',
+  muscular: 'Fuerza bruta al servicio del plan.',
+  orc_male: 'La disciplina de la horda.',
+  orc_female: 'La disciplina de la horda.',
+  lizard_male: 'Sangre fría, mirada de reptil.',
+  lizard_female: 'Sangre fría, mirada de reptil.',
+  wolf_male: 'Instinto de depredador.',
+  wolf_female: 'Instinto de depredadora.',
+  minotaur_male: 'Nadie se interpone en su camino.',
+  minotaur_female: 'Nadie se interpone en su camino.',
+  vampire: 'La eternidad da tiempo para planificar.',
+  goblin: 'Astucia por sobre todas las cosas.',
+  troll: 'Paciencia de piedra.',
+  zombie: 'Ni la muerte detiene sus hábitos.',
+  rabbit: 'Rápido, curioso, imparable.',
+  skeleton: 'Sus pendientes lo siguen a la tumba.',
 }
 
 function pickRandom<T>(arr: T[]): T | undefined {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
-/** The two-beat creation journey, shown only on first run. */
-function StepIndicator({ current }: { current: 'avatar' | 'biome' }) {
+type Step = 'identity' | 'style' | 'world'
+
+function StepIndicator({ current }: { current: Step }) {
+  const steps: { id: Step; label: string }[] = [
+    { id: 'identity', label: '1 · Identidad' },
+    { id: 'style', label: '2 · Apariencia' },
+    { id: 'world', label: '3 · Mundo' },
+  ]
   return (
-    <div className="mb-4 flex items-center gap-2">
-      {(
-        [
-          { id: 'avatar', label: '1 · Personaje' },
-          { id: 'biome', label: '2 · Mundo' },
-        ] as const
-      ).map((step, i) => (
-        <div key={step.id} className="flex items-center gap-2">
-          {i > 0 && <span className="h-px w-6 bg-ink-700" />}
+    <div className="mb-4 flex items-center gap-1.5">
+      {steps.map((step, i) => (
+        <div key={step.id} className="flex items-center gap-1.5">
+          {i > 0 && <span className="h-px w-4 bg-ink-700" />}
           <span
             className={cn(
-              'rounded-full border px-3 py-1 font-pixel text-[9px]',
+              'rounded-full border px-2.5 py-1 font-pixel text-[8px]',
               current === step.id ? 'border-gold-400 text-gold-400' : 'border-ink-700 text-ink-500',
             )}
           >
@@ -50,6 +100,39 @@ function StepIndicator({ current }: { current: 'avatar' | 'biome' }) {
       ))}
     </div>
   )
+}
+
+function ColorDots({
+  option,
+  selected,
+  onSelect,
+}: {
+  option: LayerOption
+  selected?: string
+  onSelect: (colorId: string) => void
+}) {
+  if (option.colorMode === 'none' || option.colors.length === 0) return null
+  return (
+    <div className="mt-3 flex flex-wrap justify-center gap-2">
+      {option.colors.map((color) => (
+        <button
+          key={color.id}
+          onClick={() => onSelect(color.id)}
+          className={cn(
+            'h-7 w-7 rounded-full border-2 border-transparent transition-transform hover:scale-110',
+            selected === color.id && 'border-gold-400 scale-110',
+          )}
+          style={{ backgroundColor: color.swatch }}
+          aria-label={color.label}
+          title={color.label}
+        />
+      ))}
+    </div>
+  )
+}
+
+interface CharacterCreationPageProps {
+  mode?: 'create' | 'edit-avatar' | 'edit-biome'
 }
 
 export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPageProps) {
@@ -75,20 +158,41 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
   const setProfileName = useGameStore((s) => s.setProfileName)
   const startNewProfile = useGameStore((s) => s.startNewProfile)
 
-  const [step, setStep] = useState<'avatar' | 'biome'>(mode === 'edit-biome' ? 'biome' : 'avatar')
+  const [step, setStep] = useState<Step>(mode === 'edit-biome' ? 'world' : 'identity')
   const [name, setName] = useState(profileName)
-  const [categoryIndex, setCategoryIndex] = useState(0)
+  const [group, setGroup] = useState<StyleGroup>('rostro')
+  const [subcategory, setSubcategory] = useState<AvatarLayerCategory>('hair')
   const [paintingCategory, setPaintingCategory] = useState<AvatarLayerCategory | null>(null)
   const [paintingBiome, setPaintingBiome] = useState(false)
-  const category = CREATION_CATEGORIES[categoryIndex]
 
-  const options = useMemo(() => lpcProvider.listOptions(category, avatar.figure), [category, avatar.figure])
-  const currentOptionId = avatar.options[category] ?? options[0]?.id
-  const currentOption = options.find((o) => o.id === currentOptionId) ?? options[0]
+  const bodies = useMemo(() => lpcProvider.listOptions('body', avatar.figure), [avatar.figure])
+  const currentBody = avatar.options.body ?? 'male'
+  const currentBodyOption = bodies.find((b) => b.id === currentBody)
+
+  /** Body + head (+ eyes for non-eye categories) resolved with the current look — the context behind every thumbnail. */
+  const contextLayers = useMemo(() => {
+    const layers: ResolvedLayer[] = []
+    const body = lpcProvider.resolveLayer('body', currentBody, avatar.colors.body, avatar.figure)
+    const head = lpcProvider.resolveLayer('head', currentBody, avatar.colors.body, avatar.figure)
+    if (body) layers.push(body)
+    if (head) layers.push(head)
+    return layers
+  }, [currentBody, avatar.colors.body, avatar.figure])
+
+  const eyesLayer = useMemo(
+    () => lpcProvider.resolveLayer('eyes', avatar.options.eyes ?? 'default', avatar.colors.eyes, avatar.figure),
+    [avatar.options.eyes, avatar.colors.eyes, avatar.figure],
+  )
+
+  function selectBody(bodyId: string) {
+    const figure = figureOfBodyId(bodyId)
+    if (figure !== avatar.figure) setFigure(figure)
+    setOption('body', bodyId)
+    setOption('head', bodyId)
+  }
 
   /** One tap, a whole new adventurer — body first (it constrains everything), then the rest. */
   function randomize() {
-    const bodies = lpcProvider.listOptions('body', avatar.figure)
     const body = pickRandom(bodies)
     let figure = avatar.figure
     if (body) {
@@ -96,32 +200,15 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
       if (figure !== avatar.figure) setFigure(figure)
       setOption('body', body.id)
       setOption('head', body.id)
-      if (body.colorMode !== 'none' && body.colors.length > 0) setColor('body', pickRandom(body.colors)!.id)
+      if (body.colors.length > 0) setColor('body', pickRandom(body.colors)!.id)
     }
-    for (const cat of CREATION_CATEGORIES) {
-      if (cat === 'body') continue
+    for (const cat of RANDOM_CATEGORIES) {
       const opt = pickRandom(lpcProvider.listOptions(cat, figure))
       if (!opt) continue
       setOption(cat, opt.id)
       if (opt.colorMode !== 'none' && opt.colors.length > 0) {
-        setColor(cat as keyof typeof avatar.colors, pickRandom(opt.colors)!.id)
+        setColor(cat as keyof AvatarConfig['colors'], pickRandom(opt.colors)!.id)
       }
-    }
-  }
-
-  function cycleOption(direction: 1 | -1) {
-    if (options.length <= 1) return
-    const idx = options.findIndex((o) => o.id === currentOptionId)
-    const next = options[(idx + direction + options.length) % options.length]
-    if (category === 'body') {
-      const nextFigure = figureOfBodyId(next.id)
-      if (nextFigure !== avatar.figure) setFigure(nextFigure)
-      setOption('body', next.id)
-      // Head sprite depends on race, not just figure (an orc needs an orc
-      // head, not just any male head), so it must track the exact body id.
-      setOption('head', next.id)
-    } else {
-      setOption(category, next.id)
     }
   }
 
@@ -136,10 +223,11 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
     navigate(destination)
   }
 
-  if (step === 'biome') {
+  /* ---------------------------------- Acto 3: Mundo ---------------------------------- */
+  if (step === 'world') {
     return (
       <div className="mx-auto flex min-h-full w-full max-w-xl flex-col px-4 pt-10 pb-8">
-        {mode === 'create' && <StepIndicator current="biome" />}
+        {mode === 'create' && <StepIndicator current="world" />}
         <h1 className="font-pixel text-lg text-gold-400">¿Dónde comienza tu aventura?</h1>
         <p className="mt-2 text-sm text-ink-400">
           Elige el bioma de tu mundo — el escenario donde tu personaje vivirá cada día que planifiques.
@@ -150,7 +238,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
             biomeId={selectedBiome}
             variant={biomeVariant}
             customArt={biomeArt}
-            className="panel-bevel mt-4 flex h-56 items-center justify-center rounded-2xl border border-ink-700"
+            className="panel-bevel mt-4 flex h-60 items-center justify-center rounded-2xl border border-ink-700"
           >
             <div className="absolute right-2 top-2 flex gap-1">
               <button
@@ -174,11 +262,23 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
                 <Moon size={14} />
               </button>
             </div>
-            <AvatarSprite config={avatar} size={128} />
+
+            <div className="flex flex-col items-center">
+              <AvatarSprite config={avatar} size={128} animate />
+              {mode === 'create' && (
+                <div className="rounded-xl bg-ink-950/80 px-4 py-2 text-center">
+                  <p className="text-sm font-semibold text-ink-50">{name.trim() || 'Aventurero'}</p>
+                  <p className="font-pixel text-[8px] text-gold-400">Nivel 1 · Novato</p>
+                  <p className="mt-0.5 text-[10px] text-ink-400">
+                    {currentBodyOption?.label} · {RACE_TAGLINES[currentBody] ?? ''}
+                  </p>
+                </div>
+              )}
+            </div>
           </BiomaComponent>
         )}
 
-        <div className="mt-8 grid grid-cols-2 gap-3">
+        <div className="mt-6 grid grid-cols-2 gap-3">
           {biomes.map((biome) => (
             <motion.button
               key={biome.id}
@@ -216,10 +316,10 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
         <div className="mt-auto flex gap-3 pt-8">
           {mode === 'create' ? (
             <>
-              <Button variant="outline" onClick={() => setStep('avatar')} className="flex-1">
+              <Button variant="outline" onClick={() => setStep('style')} className="flex-1">
                 Atrás
               </Button>
-              <Button onClick={() => finishAndExit('/')} className="flex-1">
+              <Button onClick={() => finishAndExit('/')} className="flex-1" disabled={!selectedBiome}>
                 Comenzar aventura
               </Button>
             </>
@@ -247,20 +347,105 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
     )
   }
 
+  /* ---------------------------------- Acto 1: Identidad ---------------------------------- */
+  if (step === 'identity') {
+    return (
+      <div className="mx-auto flex min-h-full w-full max-w-xl flex-col px-4 pt-10 pb-8">
+        {mode === 'create' && <StepIndicator current="identity" />}
+        <h1 className="font-pixel text-lg text-gold-400">{mode === 'create' ? '¿Quién eres?' : 'Editar personaje'}</h1>
+        <p className="mt-2 text-sm text-ink-400">
+          {RACE_TAGLINES[currentBody] ?? 'Esta es la persona que va a recorrer tu mundo.'}
+        </p>
+
+        <div className="relative my-5 flex justify-center">
+          <div className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/60 p-2">
+            <AvatarSprite config={avatar} size={176} animate />
+          </div>
+          <button
+            onClick={randomize}
+            title="Personaje aleatorio"
+            className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-full border border-ink-600 bg-ink-900 text-ink-200 shadow-lg transition-colors hover:border-gold-400 hover:text-gold-400"
+          >
+            <Dices size={18} />
+          </button>
+        </div>
+
+        <label className="mb-4 block">
+          <span className="mb-1 block text-xs text-ink-400">Nombre</span>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="¿Cómo te llamarán en tu mundo?" />
+        </label>
+
+        <p className="mb-2 text-xs uppercase tracking-wide text-ink-400">Raza y cuerpo</p>
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+          {bodies.map((body) => {
+            const layers = [
+              lpcProvider.resolveLayer('body', body.id, avatar.colors.body, figureOfBodyId(body.id)),
+              lpcProvider.resolveLayer('head', body.id, avatar.colors.body, figureOfBodyId(body.id)),
+            ].filter((l): l is ResolvedLayer => l !== null)
+            return (
+              <motion.button
+                key={body.id}
+                whileTap={{ scale: 0.92 }}
+                onClick={() => selectBody(body.id)}
+                title={body.label}
+                className={cn(
+                  'flex flex-col items-center gap-1 rounded-xl border bg-ink-900 p-1.5',
+                  currentBody === body.id ? 'border-gold-400' : 'border-ink-700',
+                )}
+              >
+                <LayerThumb layers={layers} {...THUMB_VIEW.body!} size={56} />
+                <span className="w-full truncate text-center text-[9px] leading-tight text-ink-300">{body.label}</span>
+              </motion.button>
+            )
+          })}
+        </div>
+
+        {currentBodyOption && (
+          <ColorDots
+            option={currentBodyOption}
+            selected={avatar.colors.body}
+            onSelect={(colorId) => setColor('body', colorId)}
+          />
+        )}
+
+        <div className="mt-auto flex gap-3 pt-8">
+          {mode === 'edit-avatar' && (
+            <Button variant="outline" onClick={() => navigate('/perfil')} className="flex-1">
+              Cancelar
+            </Button>
+          )}
+          <Button onClick={() => setStep('style')} className="flex-1">
+            Continuar
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  /* ---------------------------------- Acto 2: Apariencia ---------------------------------- */
+  const activeGroup = STYLE_GROUPS.find((g) => g.id === group)!
+  const options = lpcProvider.listOptions(subcategory, avatar.figure)
+  const currentOptionId = avatar.options[subcategory] ?? options[0]?.id
+  const currentOption = options.find((o) => o.id === currentOptionId) ?? options[0]
+  const view = THUMB_VIEW[subcategory] ?? { focusY: 32, zoom: 1.5 }
+
+  function thumbLayersFor(option: LayerOption): ResolvedLayer[] {
+    const layers = [...contextLayers]
+    if (subcategory !== 'eyes' && eyesLayer) layers.push(eyesLayer)
+    const candidate = lpcProvider.resolveLayer(subcategory, option.id, avatar.colors[subcategory], avatar.figure)
+    if (candidate) layers.push(candidate)
+    return layers
+  }
+
   return (
     <div className="mx-auto flex min-h-full w-full max-w-xl flex-col px-4 pt-10 pb-8">
-      {mode === 'create' && <StepIndicator current="avatar" />}
-      <h1 className="font-pixel text-lg text-gold-400">
-        {mode === 'create' ? 'Crea tu aventurero' : 'Editar personaje'}
-      </h1>
-      {mode === 'create' && (
-        <p className="mt-2 text-sm text-ink-400">
-          Esta es la persona que va a recorrer tu mundo y completar tus misiones. Hazla tuya.
-        </p>
-      )}
+      {mode === 'create' && <StepIndicator current="style" />}
+      <h1 className="font-pixel text-lg text-gold-400">Tu apariencia</h1>
 
-      <div className="relative my-6 flex justify-center">
-        <AvatarSprite config={avatar} size={256} />
+      <div className="relative my-5 flex justify-center">
+        <div className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/60 p-2">
+          <AvatarSprite config={avatar} size={176} animate />
+        </div>
         <button
           onClick={randomize}
           title="Personaje aleatorio"
@@ -270,83 +455,84 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
         </button>
       </div>
 
-      <label className="mb-4 block">
-        <span className="mb-1 block text-xs text-ink-400">Nombre</span>
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="¿Cómo te llamarán en tu mundo?"
-        />
-      </label>
-
-      <div className="mb-4 flex flex-wrap justify-center gap-2">
-        {CREATION_CATEGORIES.map((cat, i) => (
+      <div className="mb-3 flex justify-center gap-2">
+        {STYLE_GROUPS.map((g) => (
           <button
-            key={cat}
-            onClick={() => setCategoryIndex(i)}
+            key={g.id}
+            onClick={() => {
+              setGroup(g.id)
+              setSubcategory(g.categories[0])
+            }}
             className={cn(
-              'rounded-full px-3 py-1 text-xs font-medium text-ink-400',
-              i === categoryIndex && 'bg-ink-800 text-gold-400',
+              'rounded-full px-4 py-1.5 text-xs font-medium text-ink-400',
+              group === g.id && 'bg-ink-800 text-gold-400',
             )}
           >
-            {CATEGORY_LABELS[cat]}
+            {g.label}
           </button>
         ))}
       </div>
 
-      <div className="flex items-center justify-center gap-4">
-        <button
-          onClick={() => cycleOption(-1)}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-ink-600 text-ink-50"
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <div className="w-40 text-center">
-          <p className="text-sm font-medium text-ink-50">{currentOption?.label}</p>
-          {options.length > 1 && (
-            <p className="text-[10px] text-ink-500">
-              {Math.max(0, options.findIndex((o) => o.id === currentOptionId)) + 1}/{options.length}
-            </p>
-          )}
-        </div>
-        <button
-          onClick={() => cycleOption(1)}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-ink-600 text-ink-50"
-        >
-          <ChevronRight size={18} />
-        </button>
+      <div className="mb-4 flex justify-center gap-1.5">
+        {activeGroup.categories.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setSubcategory(cat)}
+            className={cn(
+              'rounded-full border px-3 py-1 text-[11px] text-ink-400',
+              subcategory === cat ? 'border-gold-400 text-gold-400' : 'border-ink-700',
+            )}
+          >
+            {SUBCATEGORY_LABELS[cat]}
+          </button>
+        ))}
       </div>
 
-      {currentOption && currentOption.colorMode !== 'none' && (
-        <div className="mt-6 flex justify-center gap-2">
-          {currentOption.colors.map((color) => (
-            <button
-              key={color.id}
-              onClick={() => setColor(category, color.id)}
-              className={cn(
-                'h-8 w-8 rounded-full border-2 border-transparent',
-                avatar.colors[category] === color.id && 'border-gold-400',
-              )}
-              style={{ backgroundColor: color.swatch }}
-              aria-label={color.label}
-            />
-          ))}
-        </div>
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+        {options.map((option) => (
+          <motion.button
+            key={option.id}
+            whileTap={{ scale: 0.92 }}
+            onClick={() => setOption(subcategory, option.id)}
+            title={option.label}
+            className={cn(
+              'flex flex-col items-center gap-1 rounded-xl border bg-ink-900 p-1.5',
+              currentOptionId === option.id ? 'border-gold-400' : 'border-ink-700',
+            )}
+          >
+            {option.id === 'none' ? (
+              <span className="flex h-14 w-14 items-center justify-center text-ink-600">
+                <Ban size={22} />
+              </span>
+            ) : (
+              <LayerThumb layers={thumbLayersFor(option)} focusY={view.focusY} zoom={view.zoom} size={56} />
+            )}
+            <span className="w-full truncate text-center text-[9px] leading-tight text-ink-300">{option.label}</span>
+          </motion.button>
+        ))}
+      </div>
+
+      {currentOption && (
+        <ColorDots
+          option={currentOption}
+          selected={avatar.colors[subcategory]}
+          onSelect={(colorId) => setColor(subcategory as keyof AvatarConfig['colors'], colorId)}
+        />
       )}
 
-      {(PAINTABLE_CATEGORIES.includes(category) || (category === 'hat' && currentOptionId === 'mask')) && (
+      {(PAINTABLE_CATEGORIES.includes(subcategory) || (subcategory === 'hat' && currentOptionId === 'mask')) && (
         <div className="mt-4 flex justify-center">
           <button
-            onClick={() => setPaintingCategory(category)}
+            onClick={() => setPaintingCategory(subcategory)}
             className="flex items-center gap-2 rounded-full border border-ink-600 px-4 py-2 text-xs text-ink-200"
           >
             <Paintbrush size={14} />
-            {avatar.pixelOverrides[category] ? 'Editar pintura' : 'Pintar píxeles'}
+            {avatar.pixelOverrides[subcategory] ? 'Editar pintura' : 'Pintar píxeles'}
           </button>
         </div>
       )}
 
-      {category === 'hat' && currentOptionId && isHatResizable(currentOptionId) && (
+      {subcategory === 'hat' && currentOptionId && isHatResizable(currentOptionId) && currentOptionId !== 'none' && (
         <div className="mt-4 flex items-center justify-center gap-3">
           <span className="text-xs text-ink-400">Tamaño</span>
           <button
@@ -368,13 +554,11 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
       )}
 
       <div className="mt-auto flex gap-3 pt-8">
-        {mode === 'edit-avatar' && (
-          <Button variant="outline" onClick={() => navigate('/perfil')} className="flex-1">
-            Cancelar
-          </Button>
-        )}
+        <Button variant="outline" onClick={() => setStep('identity')} className="flex-1">
+          Atrás
+        </Button>
         <Button
-          onClick={() => (mode === 'edit-avatar' ? finishAndExit('/perfil') : setStep('biome'))}
+          onClick={() => (mode === 'edit-avatar' ? finishAndExit('/perfil') : setStep('world'))}
           className="flex-1"
         >
           {mode === 'edit-avatar' ? 'Guardar' : 'Continuar'}
@@ -384,7 +568,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
       {paintingCategory && (
         <PixelEditor
           open
-          title={`Pintar ${CATEGORY_LABELS[paintingCategory]}`}
+          title={`Pintar ${SUBCATEGORY_LABELS[paintingCategory] ?? paintingCategory}`}
           loadFrame={() => getEditableFrame(avatar, paintingCategory)}
           loadSilhouette={() => getLayerSilhouette(avatar, paintingCategory)}
           onClose={() => setPaintingCategory(null)}

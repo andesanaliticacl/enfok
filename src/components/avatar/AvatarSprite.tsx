@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { lpcProvider, isHatResizable } from '@/lib/avatar/providers/lpcProvider'
 import { AvatarLayerImage } from './AvatarLayerImage'
 import type { AvatarConfig } from '@/lib/avatar/types'
@@ -8,11 +8,52 @@ interface AvatarSpriteProps {
   /** Final rendered box size in pixels. The internal scale is derived from this, so the sprite never gets clipped by a mismatched container. */
   size?: number
   className?: string
+  /** Plays the subtle idle animation (breathing sway + blink) using the sheets' second idle frame. */
+  animate?: boolean
 }
 
 const provider = lpcProvider
 
-export function AvatarSprite({ config, size = 192, className }: AvatarSpriteProps) {
+/**
+ * Irregular idle rhythm: rest on frame 0 for a few seconds, hold the second
+ * frame briefly — reads as a blink/breath rather than a mechanical loop.
+ */
+function useIdleFrame(enabled: boolean): 0 | 1 {
+  const [frame, setFrame] = useState<0 | 1>(0)
+
+  useEffect(() => {
+    if (!enabled) {
+      setFrame(0)
+      return
+    }
+    let alive = true
+    let timer: number
+
+    function rest() {
+      timer = window.setTimeout(() => {
+        if (!alive) return
+        setFrame(1)
+        timer = window.setTimeout(() => {
+          if (!alive) return
+          setFrame(0)
+          rest()
+        }, 320)
+      }, 1600 + Math.random() * 2400)
+    }
+    rest()
+
+    return () => {
+      alive = false
+      clearTimeout(timer)
+    }
+  }, [enabled])
+
+  return frame
+}
+
+export function AvatarSprite({ config, size = 192, className, animate = false }: AvatarSpriteProps) {
+  const frame = useIdleFrame(animate)
+
   const layers = useMemo(() => {
     return provider.categories
       .map((category) => {
@@ -56,7 +97,7 @@ export function AvatarSprite({ config, size = 192, className }: AvatarSpriteProp
         }}
       >
         {layers.map((layer) => (
-          <AvatarLayerImage key={layer.category} layer={layer} />
+          <AvatarLayerImage key={layer.category} layer={layer} frame={frame} />
         ))}
       </div>
     </div>

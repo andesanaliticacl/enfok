@@ -11,6 +11,7 @@ const DEFAULT_AVATAR: AvatarConfig = {
     head: 'male',
     eyes: 'default',
     hair: 'plain',
+    beard: 'none',
     shirt: 'tshirt',
     pants: 'default',
     shoes: 'default',
@@ -22,6 +23,7 @@ const DEFAULT_AVATAR: AvatarConfig = {
     head: 'light',
     eyes: 'brown',
     hair: 'brown',
+    beard: 'brown',
     hat: 'dark',
     shirt: 'blue',
     pants: 'gray',
@@ -29,6 +31,21 @@ const DEFAULT_AVATAR: AvatarConfig = {
   },
   pixelOverrides: {},
   hatScale: 1,
+}
+
+/** Options whose assets were retired (hand-made helmets, the old 'round' eyes) mapped to their replacements. */
+const RETIRED_OPTIONS: Partial<Record<keyof AvatarConfig['options'], Record<string, string>>> = {
+  hat: { astronaut_helmet: 'xeon', penguin_helmet: 'none' },
+  eyes: { round: 'default' },
+}
+
+function migrateRetiredOptions(options: AvatarConfig['options']): AvatarConfig['options'] {
+  const next = { ...options }
+  for (const [category, mapping] of Object.entries(RETIRED_OPTIONS) as [keyof AvatarConfig['options'], Record<string, string>][]) {
+    const current = next[category]
+    if (current && mapping[current]) next[category] = mapping[current]
+  }
+  return next
 }
 
 export const HAT_SCALE_MIN = 0.6
@@ -151,7 +168,7 @@ export const useAvatarStore = create<AvatarState>()(
           avatar: {
             ...current.avatar,
             ...persistedState.avatar,
-            options: { ...current.avatar.options, ...persistedState.avatar?.options },
+            options: migrateRetiredOptions({ ...current.avatar.options, ...persistedState.avatar?.options }),
             colors: { ...current.avatar.colors, ...persistedState.avatar?.colors },
             pixelOverrides: { ...current.avatar.pixelOverrides, ...persistedState.avatar?.pixelOverrides },
           },
