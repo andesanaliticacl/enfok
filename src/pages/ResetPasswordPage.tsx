@@ -36,7 +36,7 @@ export function ResetPasswordPage() {
           transition={{ duration: 0.6, ease: 'easeOut' }}
           className="mb-6 text-center"
         >
-          <h1 className="font-pixel text-2xl tracking-wide text-gold-400 text-glow-gold">QUESTLY</h1>
+          <h1 className="font-pixel text-2xl tracking-wide text-gold-400 text-glow-gold">ENFOK</h1>
           <p className="mt-3 text-xs text-ink-300">Define tu nueva contraseña</p>
         </motion.div>
 

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { Session, User } from '@supabase/supabase-js'
-import { supabase, isSupabaseConfigured } from '@/lib/supabase/client'
+import { supabase, isSupabaseConfigured, SITE_URL } from '@/lib/supabase/client'
 
 interface AuthState {
   session: Session | null
@@ -41,7 +41,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   signUp: async (email, password, phone) => {
     if (!supabase) return false
     set({ authError: null, infoMessage: null })
-    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password })
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { emailRedirectTo: `${SITE_URL}/` },
+    })
     if (error) {
       set({ authError: error.message })
       return false
@@ -62,7 +66,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (!supabase) return false
     set({ authError: null, infoMessage: null })
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/`,
+      redirectTo: `${SITE_URL}/`,
     })
     if (error) {
       set({ authError: error.message })

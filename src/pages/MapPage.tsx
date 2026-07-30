@@ -125,7 +125,7 @@ export function MapPage() {
         >
           <AvatarSprite config={avatar} size={48} className="rounded-xl bg-ink-800" />
           <div className="rounded-xl bg-ink-950/80 px-3 py-1.5">
-            <h1 className="font-pixel text-xs text-gold-400">Questly</h1>
+            <h1 className="font-pixel text-xs text-gold-400">ENFOK</h1>
             <p className="mt-0.5 text-[10px] text-ink-400">Nivel {profile.level} · {profile.xp} XP</p>
           </div>
         </button>

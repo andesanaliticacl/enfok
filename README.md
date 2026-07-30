@@ -1,6 +1,6 @@
-# Questly
+# Enfok
 
-**Questly** es un planificador de vida y metas personales gamificado: convierte tus objetivos reales (salud, finanzas, trabajo, aprendizaje, relaciones, mentalidad, proyectos) en un RPG donde cada meta cumplida hace avanzar a tu personaje.
+**Enfok** es un planificador de vida y metas personales gamificado: convierte tus objetivos reales (salud, finanzas, trabajo, aprendizaje, relaciones, mentalidad, proyectos) en un RPG donde cada meta cumplida hace avanzar a tu personaje.
 
 En lugar de una lista de tareas plana, tu vida se organiza como un **mapa de regiones**. Cada región representa un área de tu vida, contiene tus **metas**, y cada meta se descompone en **misiones** (tareas concretas con fecha) que aparecen en tu calendario. Al completar misiones ganas XP y monedas, subes de nivel, avanza el progreso de la meta y de la región, y desbloqueas logros.
 
