@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Wallet, ShoppingCart, Dumbbell, Plus, Trash2, Pencil, Check, TrendingUp, TrendingDown, Landmark } from 'lucide-react'
+import { Wallet, ShoppingCart, Dumbbell, Plus, Trash2, Pencil, Check, TrendingUp, TrendingDown, Landmark, Home } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { todayKey, MONTH_LABELS } from '@/lib/calendar'
 import { PageContainer } from '@/components/layout/PageContainer'
@@ -77,6 +77,10 @@ function FinanceSection() {
   const addIncomeSource = useGameStore((s) => s.addIncomeSource)
   const updateIncomeSource = useGameStore((s) => s.updateIncomeSource)
   const deleteIncomeSource = useGameStore((s) => s.deleteIncomeSource)
+  const fixedExpenses = useGameStore((s) => s.fixedExpenses)
+  const addFixedExpense = useGameStore((s) => s.addFixedExpense)
+  const updateFixedExpense = useGameStore((s) => s.updateFixedExpense)
+  const deleteFixedExpense = useGameStore((s) => s.deleteFixedExpense)
 
   const [view, setView] = useState<'resumen' | 'tendencia'>('resumen')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -88,11 +92,17 @@ function FinanceSection() {
   const [sourceName, setSourceName] = useState('')
   const [sourceAmount, setSourceAmount] = useState('')
 
+  const [expenseEditingId, setExpenseEditingId] = useState<string | null>(null)
+  const [expenseName, setExpenseName] = useState('')
+  const [expenseAmount, setExpenseAmount] = useState('')
+
   const fixedIncome = incomeSources.reduce((sum, s) => sum + s.amount, 0)
+  const fixedExpensesTotal = fixedExpenses.reduce((sum, e) => sum + e.amount, 0)
   const entriesIncome = financeEntries.filter((e) => e.type === 'ingreso').reduce((sum, e) => sum + e.amount, 0)
   const entriesExpense = financeEntries.filter((e) => e.type === 'gasto').reduce((sum, e) => sum + e.amount, 0)
   const totalIncome = fixedIncome + entriesIncome
-  const balance = totalIncome - entriesExpense
+  const totalExpense = fixedExpensesTotal + entriesExpense
+  const balance = totalIncome - totalExpense
 
   function resetEntryForm() {
     setEditingId(null)
@@ -144,6 +154,30 @@ function FinanceSection() {
     setSourceAmount(String(source.amount))
   }
 
+  function resetExpenseForm() {
+    setExpenseEditingId(null)
+    setExpenseName('')
+    setExpenseAmount('')
+  }
+
+  function handleExpenseSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const parsed = Number(expenseAmount)
+    if (!expenseName.trim() || !parsed || parsed <= 0) return
+    if (expenseEditingId) {
+      updateFixedExpense(expenseEditingId, { name: expenseName.trim(), amount: parsed })
+    } else {
+      addFixedExpense({ name: expenseName.trim(), amount: parsed })
+    }
+    resetExpenseForm()
+  }
+
+  function startEditExpense(expense: (typeof fixedExpenses)[number]) {
+    setExpenseEditingId(expense.id)
+    setExpenseName(expense.name)
+    setExpenseAmount(String(expense.amount))
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <Card>
@@ -152,7 +186,7 @@ function FinanceSection() {
           <p className={cn('text-2xl font-semibold', balance >= 0 ? 'text-gold-400 text-glow-gold' : 'text-red-400')}>
             ${balance.toLocaleString('es-CL')}
           </p>
-          <p className="text-[10px] text-ink-500">Incluye tus ingresos fijos + movimientos registrados</p>
+          <p className="text-[10px] text-ink-500">Incluye ingresos y gastos fijos + movimientos registrados</p>
         </CardContent>
       </Card>
 
@@ -189,7 +223,7 @@ function FinanceSection() {
       ) : (
         <Card>
           <CardContent className="p-4">
-            <FinanceBarChart income={totalIncome} expense={entriesExpense} />
+            <FinanceBarChart income={totalIncome} expense={totalExpense} />
           </CardContent>
         </Card>
       )}
@@ -205,7 +239,7 @@ function FinanceSection() {
 
         <form onSubmit={handleSourceSubmit} className="mb-3 flex gap-2">
           <Input
-            placeholder="Sueldo, arriendo, etc."
+            placeholder="Sueldo, freelance, etc."
             value={sourceName}
             onChange={(e) => setSourceName(e.target.value)}
             className="flex-1"
@@ -248,6 +282,68 @@ function FinanceSection() {
                   <Pencil size={14} />
                 </button>
                 <button onClick={() => deleteIncomeSource(source.id)} className="text-ink-500 hover:text-red-400">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Recurring bills: luz, agua, arriendo, gastos comunes — counted every month without re-entering them */}
+      <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-ink-400">
+            <Home size={14} /> Gastos fijos
+          </h2>
+          <span className="text-xs font-medium text-red-400">${fixedExpensesTotal.toLocaleString('es-CL')}/mes</span>
+        </div>
+
+        <form onSubmit={handleExpenseSubmit} className="mb-3 flex gap-2">
+          <Input
+            placeholder="Luz, agua, arriendo, gastos comunes..."
+            value={expenseName}
+            onChange={(e) => setExpenseName(e.target.value)}
+            className="flex-1"
+          />
+          <Input
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Monto"
+            value={expenseAmount}
+            onChange={(e) => setExpenseAmount(e.target.value)}
+            className="w-28"
+          />
+          <Button type="submit" size="icon">
+            <Plus size={16} />
+          </Button>
+          {expenseEditingId && (
+            <Button type="button" variant="ghost" size="sm" onClick={resetExpenseForm}>
+              Cancelar
+            </Button>
+          )}
+        </form>
+
+        <div className="flex flex-col gap-2">
+          {fixedExpenses.length === 0 && (
+            <p className="text-xs text-ink-400">Agrega luz, agua, arriendo o gastos comunes del edificio.</p>
+          )}
+          {fixedExpenses.map((expense) => (
+            <div
+              key={expense.id}
+              className={cn(
+                'flex items-center justify-between rounded-xl border border-ink-700 bg-ink-900 p-3',
+                expenseEditingId === expense.id && 'border-gold-400',
+              )}
+            >
+              <span className="text-sm text-ink-50">{expense.name}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-red-400">${expense.amount.toLocaleString('es-CL')}</span>
+                <button onClick={() => startEditExpense(expense)} className="text-ink-500 hover:text-gold-400">
+                  <Pencil size={14} />
+                </button>
+                <button onClick={() => deleteFixedExpense(expense.id)} className="text-ink-500 hover:text-red-400">
                   <Trash2 size={14} />
                 </button>
               </div>

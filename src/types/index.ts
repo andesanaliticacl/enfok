@@ -122,6 +122,13 @@ export interface IncomeSource {
   amount: number
 }
 
+/** A recurring monthly bill — luz, agua, arriendo, gastos comunes — counted every month without re-entering it. */
+export interface FixedExpense {
+  id: string
+  name: string
+  amount: number
+}
+
 export type GroceryCategory =
   | 'carnes'
   | 'lacteos'

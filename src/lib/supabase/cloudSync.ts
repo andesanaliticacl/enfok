@@ -19,6 +19,7 @@ function pickGameState() {
     worldAnchor: s.worldAnchor,
     financeEntries: s.financeEntries,
     incomeSources: s.incomeSources,
+    fixedExpenses: s.fixedExpenses,
     groceryItems: s.groceryItems,
     exerciseItems: s.exerciseItems,
   }

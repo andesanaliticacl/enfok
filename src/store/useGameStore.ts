@@ -17,6 +17,7 @@ import type {
   ExerciseItem,
   FinanceEntry,
   FinanceEntryType,
+  FixedExpense,
   Goal,
   GroceryCategory,
   GroceryItem,
@@ -49,6 +50,7 @@ interface GameState {
 
   financeEntries: FinanceEntry[]
   incomeSources: IncomeSource[]
+  fixedExpenses: FixedExpense[]
   groceryItems: GroceryItem[]
   exerciseItems: ExerciseItem[]
 
@@ -62,6 +64,10 @@ interface GameState {
   addIncomeSource: (input: { name: string; amount: number }) => void
   updateIncomeSource: (sourceId: string, input: { name: string; amount: number }) => void
   deleteIncomeSource: (sourceId: string) => void
+
+  addFixedExpense: (input: { name: string; amount: number }) => void
+  updateFixedExpense: (expenseId: string, input: { name: string; amount: number }) => void
+  deleteFixedExpense: (expenseId: string) => void
 
   addGroceryItem: (input: { name: string; quantity?: string; category: GroceryCategory; price?: number }) => void
   updateGroceryItem: (
@@ -196,6 +202,7 @@ export function normalizeGameState(raw: Partial<GameState> & { places?: unknown;
     activityLog: rest.activityLog ?? {},
     financeEntries: rest.financeEntries ?? [],
     incomeSources: rest.incomeSources ?? [],
+    fixedExpenses: rest.fixedExpenses ?? [],
     // Grocery items predating categories/price default to 'otros' with no price.
     groceryItems: ((rest.groceryItems ?? []) as (GroceryItem & { category?: GroceryCategory })[]).map((i) => ({
       ...i,
@@ -221,6 +228,7 @@ export const useGameStore = create<GameState>()(
       worldAnchor: null,
       financeEntries: [],
       incomeSources: [],
+      fixedExpenses: [],
       groceryItems: [],
       exerciseItems: [],
 
@@ -254,6 +262,19 @@ export const useGameStore = create<GameState>()(
 
       deleteIncomeSource: (sourceId) =>
         set((state) => ({ incomeSources: state.incomeSources.filter((s) => s.id !== sourceId) })),
+
+      addFixedExpense: (input) =>
+        set((state) => ({
+          fixedExpenses: [...state.fixedExpenses, { id: `expense-${crypto.randomUUID()}`, ...input }],
+        })),
+
+      updateFixedExpense: (expenseId, input) =>
+        set((state) => ({
+          fixedExpenses: state.fixedExpenses.map((e) => (e.id === expenseId ? { ...e, ...input } : e)),
+        })),
+
+      deleteFixedExpense: (expenseId) =>
+        set((state) => ({ fixedExpenses: state.fixedExpenses.filter((e) => e.id !== expenseId) })),
 
       addGroceryItem: (input) =>
         set((state) => ({
@@ -511,6 +532,7 @@ export const useGameStore = create<GameState>()(
           worldAnchor: null,
           financeEntries: [],
           incomeSources: [],
+          fixedExpenses: [],
           groceryItems: [],
           exerciseItems: [],
         }),
