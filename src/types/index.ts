@@ -151,11 +151,32 @@ export interface GroceryItem {
   checked: boolean
 }
 
+export type MuscleGroup =
+  | 'pecho'
+  | 'hombros'
+  | 'biceps'
+  | 'triceps'
+  | 'espalda'
+  | 'cuadriceps'
+  | 'femoral'
+  | 'lumbar'
+  | 'otros'
+
+/** One logged set — a specific day you trained this exercise, with the weight and reps you did. */
+export interface ExerciseLog {
+  id: string
+  /** ISO date (yyyy-mm-dd). */
+  date: string
+  weight: number
+  reps: number
+}
+
 export interface ExerciseItem {
   id: string
   name: string
-  sets?: string
-  done: boolean
+  muscleGroup: MuscleGroup
+  /** Every logged session for this exercise — the personal best and last-trained date are derived from it. */
+  logs: ExerciseLog[]
 }
 
 export interface PlayerProfile {

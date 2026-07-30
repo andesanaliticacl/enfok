@@ -23,6 +23,7 @@ import type {
   GroceryItem,
   IncomeSource,
   Mission,
+  MuscleGroup,
   PlayerProfile,
   Region,
   RegionCategory,
@@ -79,9 +80,11 @@ interface GameState {
   /** Sums the price of every checked item, logs it as one expense in Finanzas, then unchecks everything for next month's run. Returns the logged amount (0 if nothing to log). */
   logGroceryPurchase: () => number
 
-  addExerciseItem: (input: { name: string; sets?: string }) => void
-  toggleExerciseItem: (itemId: string) => void
+  addExerciseItem: (input: { name: string; muscleGroup: MuscleGroup }) => void
+  updateExerciseItem: (itemId: string, input: { name: string; muscleGroup: MuscleGroup }) => void
   deleteExerciseItem: (itemId: string) => void
+  logExerciseSet: (itemId: string, input: { weight: number; reps: number; date: string }) => void
+  deleteExerciseLog: (itemId: string, logId: string) => void
 
   addRegion: (input: RegionInput) => string
   updateRegion: (regionId: string, input: RegionInput) => void
@@ -208,7 +211,16 @@ export function normalizeGameState(raw: Partial<GameState> & { places?: unknown;
       ...i,
       category: i.category ?? 'otros',
     })),
-    exerciseItems: rest.exerciseItems ?? [],
+    // Exercises predating muscle groups/logs (the old free-text "sets" + done checkbox) migrate to the
+    // body-map model with no history — there was no weight/reps data to carry over.
+    exerciseItems: ((rest.exerciseItems ?? []) as (ExerciseItem & { muscleGroup?: MuscleGroup; logs?: unknown })[]).map(
+      (i) => ({
+        id: i.id,
+        name: i.name,
+        muscleGroup: i.muscleGroup ?? 'otros',
+        logs: Array.isArray(i.logs) ? i.logs : [],
+      }),
+    ),
     missions: keptMissions,
     ...deriveAfterMissionChange(keptGoals, keptMissions, migratedRegions),
   }
@@ -321,19 +333,32 @@ export const useGameStore = create<GameState>()(
 
       addExerciseItem: (input) =>
         set((state) => ({
-          exerciseItems: [
-            ...state.exerciseItems,
-            { id: `exercise-${crypto.randomUUID()}`, done: false, ...input },
-          ],
+          exerciseItems: [...state.exerciseItems, { id: `exercise-${crypto.randomUUID()}`, logs: [], ...input }],
         })),
 
-      toggleExerciseItem: (itemId) =>
+      updateExerciseItem: (itemId, input) =>
         set((state) => ({
-          exerciseItems: state.exerciseItems.map((i) => (i.id === itemId ? { ...i, done: !i.done } : i)),
+          exerciseItems: state.exerciseItems.map((i) => (i.id === itemId ? { ...i, ...input } : i)),
         })),
 
       deleteExerciseItem: (itemId) =>
         set((state) => ({ exerciseItems: state.exerciseItems.filter((i) => i.id !== itemId) })),
+
+      logExerciseSet: (itemId, input) =>
+        set((state) => ({
+          exerciseItems: state.exerciseItems.map((i) =>
+            i.id === itemId
+              ? { ...i, logs: [{ id: `log-${crypto.randomUUID()}`, ...input }, ...i.logs] }
+              : i,
+          ),
+        })),
+
+      deleteExerciseLog: (itemId, logId) =>
+        set((state) => ({
+          exerciseItems: state.exerciseItems.map((i) =>
+            i.id === itemId ? { ...i, logs: i.logs.filter((l) => l.id !== logId) } : i,
+          ),
+        })),
 
       addRegion: (input) => {
         const region = buildRegion(input)

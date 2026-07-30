@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FinanceBarChart } from '@/components/inventory/FinanceBarChart'
 import { FinanceLineChart, type MonthlyTotal } from '@/components/inventory/FinanceLineChart'
+import { ExerciseSection } from '@/components/inventory/ExerciseSection'
 import { GROCERY_CATEGORIES } from '@/data/groceryCategories'
 import { cn } from '@/lib/utils'
 import type { FinanceEntry, FinanceEntryType, GroceryCategory } from '@/types'
@@ -594,59 +595,3 @@ function GrocerySection() {
   )
 }
 
-function ExerciseSection() {
-  const exerciseItems = useGameStore((s) => s.exerciseItems)
-  const addExerciseItem = useGameStore((s) => s.addExerciseItem)
-  const toggleExerciseItem = useGameStore((s) => s.toggleExerciseItem)
-  const deleteExerciseItem = useGameStore((s) => s.deleteExerciseItem)
-
-  const [name, setName] = useState('')
-  const [sets, setSets] = useState('')
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!name.trim()) return
-    addExerciseItem({ name: name.trim(), sets: sets.trim() || undefined })
-    setName('')
-    setSets('')
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <form onSubmit={handleSubmit} className="panel-bevel flex gap-2 rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
-        <Input placeholder="Ejercicio" value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
-        <Input placeholder="Series x reps" value={sets} onChange={(e) => setSets(e.target.value)} className="w-28" />
-        <Button type="submit" size="icon">
-          <Plus size={16} />
-        </Button>
-      </form>
-
-      <div className="flex flex-col gap-2">
-        {exerciseItems.length === 0 && <p className="text-sm text-ink-400">Aún no agregas ejercicios a tu rutina.</p>}
-        {exerciseItems.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-center justify-between rounded-xl border border-ink-700 bg-ink-900 p-3"
-          >
-            <button onClick={() => toggleExerciseItem(item.id)} className="flex flex-1 items-center gap-2 text-left">
-              <span
-                className={cn(
-                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-ink-600',
-                  item.done && 'border-gold-400 bg-gold-500/20 text-gold-400',
-                )}
-              >
-                {item.done && '✓'}
-              </span>
-              <span className={cn('text-sm text-ink-50', item.done && 'text-ink-500 line-through')}>
-                {item.name} {item.sets && <span className="text-ink-500">· {item.sets}</span>}
-              </span>
-            </button>
-            <button onClick={() => deleteExerciseItem(item.id)} className="text-ink-500 hover:text-red-400">
-              <Trash2 size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
