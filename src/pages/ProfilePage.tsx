@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Settings, Pencil, Globe2, Map, Swords, Star, Sparkles, Coins, Flame, Hourglass, Trophy } from 'lucide-react'
+import { AvatarAura } from '@/components/avatar/AvatarAura'
+import { ShopSection } from '@/components/profile/ShopSection'
+import { shopItem } from '@/data/shop'
+import { Input } from '@/components/ui/input'
 import { useGameStore } from '@/store/useGameStore'
 import { countCompletions } from '@/lib/planning/missionEngine'
 import {
@@ -34,10 +38,18 @@ export function ProfilePage() {
   const missions = useGameStore((s) => s.missions)
   const activityLog = useGameStore((s) => s.activityLog)
   const setDailyXpGoal = useGameStore((s) => s.setDailyXpGoal)
+  const setProfileName = useGameStore((s) => s.setProfileName)
+  const equippedTitle = useGameStore((s) => s.equippedTitle)
+  const equippedAura = useGameStore((s) => s.equippedAura)
+  const claimedAchievements = useGameStore((s) => s.claimedAchievements)
+  const claimAchievementReward = useGameStore((s) => s.claimAchievementReward)
   const { avatar, biome: biomeId, biomeVariant, biomeStickers, deleteCharacter } = useAvatarStore()
   const { user, signOut } = useAuthStore()
 
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [nameDraft, setNameDraft] = useState(profile.name)
+
+  const titleItem = equippedTitle ? shopItem(equippedTitle) : undefined
 
   const biome = biomes.find((b) => b.id === biomeId)
   // Repeating missions count every completed occurrence, not just their status.
@@ -184,10 +196,17 @@ export function ProfilePage() {
                 <span className="font-pixel text-[10px]">{streak}d</span>
               </div>
 
-              <AvatarSprite config={avatar} size={192} animate />
+              <AvatarAura auraId={equippedAura}>
+                <AvatarSprite config={avatar} size={192} animate />
+              </AvatarAura>
 
               <div className="relative z-10 -mt-2 flex flex-col items-center gap-1 pb-5 text-center">
                 <h1 className="text-lg font-semibold text-ink-50">{profile.name}</h1>
+                {titleItem && (
+                  <p className="font-pixel text-[9px] text-gold-400">
+                    {titleItem.icon} {titleItem.name}
+                  </p>
+                )}
                 <p className="font-pixel text-[10px] text-gold-400 text-glow-gold">
                   Nivel {profile.level} · {rank}
                 </p>
@@ -253,6 +272,7 @@ export function ProfilePage() {
             <div className="grid grid-cols-3 gap-3">
               {achievements.map((achievement) => {
                 const unlocked = achievement.isUnlocked(achievementCtx)
+                const claimed = claimedAchievements.includes(achievement.id)
                 const prog = achievement.progress?.(achievementCtx)
                 const pct = prog ? Math.min(100, Math.round((prog.current / prog.target) * 100)) : 0
                 return (
@@ -261,6 +281,7 @@ export function ProfilePage() {
                     className={cn(
                       'panel-bevel flex flex-col items-center gap-1 rounded-xl border border-ink-700 bg-ink-900 p-3 text-center',
                       !unlocked && 'opacity-60',
+                      unlocked && !claimed && 'border-gold-400',
                     )}
                     title={`${achievement.description}${prog && !unlocked ? ` (${Math.min(prog.current, prog.target)}/${prog.target})` : ''}`}
                   >
@@ -277,11 +298,23 @@ export function ProfilePage() {
                         </span>
                       </>
                     )}
+                    {/* An unlocked badge pays out once — the claim is what makes earning it feel real */}
+                    {unlocked && !claimed && (
+                      <button
+                        onClick={() => claimAchievementReward(achievement.id, achievement.coinReward)}
+                        className="anim-glow-pulse mt-0.5 flex items-center gap-1 rounded-full bg-gold-500 px-2 py-0.5 text-[9px] font-semibold text-ink-950"
+                      >
+                        <Coins size={10} /> +{achievement.coinReward}
+                      </button>
+                    )}
+                    {unlocked && claimed && <span className="text-[8px] text-emerald-400">✓ Reclamado</span>}
                   </div>
                 )
               })}
             </div>
           </section>
+
+          <ShopSection />
 
           <PlansSection />
         </div>
@@ -289,6 +322,21 @@ export function ProfilePage() {
 
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Configuración">
         <div className="flex flex-col gap-4">
+          <div className="rounded-xl border border-ink-700 bg-ink-800 p-4">
+            <p className="mb-1 text-sm font-medium text-ink-50">Nombre de tu personaje</p>
+            <div className="flex gap-2">
+              <Input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} maxLength={24} className="flex-1" />
+              <Button
+                size="sm"
+                className="h-10"
+                disabled={!nameDraft.trim() || nameDraft.trim() === profile.name}
+                onClick={() => setProfileName(nameDraft.trim())}
+              >
+                Guardar
+              </Button>
+            </div>
+          </div>
+
           <div className="rounded-xl border border-ink-700 bg-ink-800 p-4">
             <p className="mb-1 text-sm font-medium text-ink-50">Meta diaria de XP</p>
             <p className="mb-3 text-[11px] text-ink-400">Cuánta XP quieres ganar cada día para mantener el ritmo.</p>

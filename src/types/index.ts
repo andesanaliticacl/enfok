@@ -96,6 +96,8 @@ export interface Achievement {
   name: string
   description: string
   icon: string
+  /** Coins granted once when the player claims the unlocked achievement. */
+  coinReward: number
   isUnlocked: (ctx: AchievementContext) => boolean
   /** Current vs. target toward unlocking — powers the "almost there" progress bar. */
   progress?: (ctx: AchievementContext) => { current: number; target: number }

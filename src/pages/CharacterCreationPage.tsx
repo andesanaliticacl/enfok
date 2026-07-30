@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Minus, Plus, Paintbrush, Sun, Moon, Clock, Dices, Ban } from 'lucide-react'
 import { useAvatarStore, HAT_SCALE_MIN, HAT_SCALE_MAX, HAT_SCALE_STEP } from '@/store/useAvatarStore'
 import { useGameStore } from '@/store/useGameStore'
+import { unlockedStickers } from '@/data/shop'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { LayerThumb } from '@/components/avatar/LayerThumb'
 import { PixelEditor } from '@/components/avatar/PixelEditor'
@@ -156,6 +157,9 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
     clearPixelOverride,
   } = useAvatarStore()
   const profileName = useGameStore((s) => s.profile.name)
+  const unlocks = useGameStore((s) => s.unlocks)
+  // Base stickers plus every emoji from purchased shop packs — buying a pack makes it appear here.
+  const availableStickers = [...BIOME_STICKERS, ...unlockedStickers(unlocks)]
   const setProfileName = useGameStore((s) => s.setProfileName)
   const startNewProfile = useGameStore((s) => s.startNewProfile)
 
@@ -335,7 +339,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
               <span className="text-[10px] text-ink-500">{biomeStickers.length}/10</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {BIOME_STICKERS.map((emoji) => (
+              {availableStickers.map((emoji) => (
                 <button
                   key={emoji}
                   onClick={() => setPlacingSticker((s) => (s === emoji ? null : emoji))}

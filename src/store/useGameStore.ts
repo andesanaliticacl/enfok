@@ -56,6 +56,22 @@ interface GameState {
   groceryItems: GroceryItem[]
   exerciseItems: ExerciseItem[]
 
+  /** Shop item ids the player owns (titles, auras, sticker packs). */
+  unlocks: string[]
+  /** Shop item id of the title shown under the player's name, if any. */
+  equippedTitle: string | null
+  /** Shop item id of the aura rendered around the avatar, if any. */
+  equippedAura: string | null
+  /** Achievement ids whose one-time coin reward was already collected. */
+  claimedAchievements: string[]
+
+  /** Deducts the price and stores the unlock. Returns false (and changes nothing) if coins are short or it's already owned. */
+  purchaseShopItem: (itemId: string, price: number) => boolean
+  equipTitle: (itemId: string | null) => void
+  equipAura: (itemId: string | null) => void
+  /** Pays out an unlocked achievement's coins, once. */
+  claimAchievementReward: (achievementId: string, coins: number) => void
+
   addFinanceEntry: (input: { type: FinanceEntryType; amount: number; description: string; date: string }) => void
   updateFinanceEntry: (
     entryId: string,
@@ -210,6 +226,10 @@ export function normalizeGameState(raw: Partial<GameState> & { places?: unknown;
     financeEntries: rest.financeEntries ?? [],
     incomeSources: rest.incomeSources ?? [],
     fixedExpenses: rest.fixedExpenses ?? [],
+    unlocks: rest.unlocks ?? [],
+    equippedTitle: rest.equippedTitle ?? null,
+    equippedAura: rest.equippedAura ?? null,
+    claimedAchievements: rest.claimedAchievements ?? [],
     // Grocery items predating categories/price default to 'otros' with no price.
     groceryItems: ((rest.groceryItems ?? []) as (GroceryItem & { category?: GroceryCategory })[]).map((i) => ({
       ...i,
@@ -248,8 +268,37 @@ export const useGameStore = create<GameState>()(
       fixedExpenses: [],
       groceryItems: [],
       exerciseItems: [],
+      unlocks: [],
+      equippedTitle: null,
+      equippedAura: null,
+      claimedAchievements: [],
 
       setWorldAnchor: (anchor) => set((state) => (state.worldAnchor ? {} : { worldAnchor: anchor })),
+
+      purchaseShopItem: (itemId, price) => {
+        const { profile, unlocks } = get()
+        if (unlocks.includes(itemId) || profile.coins < price) return false
+        set((state) => ({
+          unlocks: [...state.unlocks, itemId],
+          profile: { ...state.profile, coins: state.profile.coins - price },
+        }))
+        return true
+      },
+
+      equipTitle: (itemId) =>
+        set((state) => (itemId === null || state.unlocks.includes(itemId) ? { equippedTitle: itemId } : {})),
+
+      equipAura: (itemId) =>
+        set((state) => (itemId === null || state.unlocks.includes(itemId) ? { equippedAura: itemId } : {})),
+
+      claimAchievementReward: (achievementId, coins) =>
+        set((state) => {
+          if (state.claimedAchievements.includes(achievementId)) return {}
+          return {
+            claimedAchievements: [...state.claimedAchievements, achievementId],
+            profile: { ...state.profile, coins: state.profile.coins + coins },
+          }
+        }),
 
       addFinanceEntry: (input) =>
         set((state) => ({
@@ -565,6 +614,10 @@ export const useGameStore = create<GameState>()(
           fixedExpenses: [],
           groceryItems: [],
           exerciseItems: [],
+          unlocks: [],
+          equippedTitle: null,
+          equippedAura: null,
+          claimedAchievements: [],
         }),
     }),
     {

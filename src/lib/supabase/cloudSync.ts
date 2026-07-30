@@ -20,6 +20,10 @@ function pickGameState() {
     financeEntries: s.financeEntries,
     incomeSources: s.incomeSources,
     fixedExpenses: s.fixedExpenses,
+    unlocks: s.unlocks,
+    equippedTitle: s.equippedTitle,
+    equippedAura: s.equippedAura,
+    claimedAchievements: s.claimedAchievements,
     groceryItems: s.groceryItems,
     exerciseItems: s.exerciseItems,
   }
