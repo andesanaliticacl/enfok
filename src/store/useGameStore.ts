@@ -24,6 +24,7 @@ import type {
   IncomeSource,
   Mission,
   MuscleGroup,
+  Weekday,
   PlayerProfile,
   Region,
   RegionCategory,
@@ -80,8 +81,11 @@ interface GameState {
   /** Sums the price of every checked item, logs it as one expense in Finanzas, then unchecks everything for next month's run. Returns the logged amount (0 if nothing to log). */
   logGroceryPurchase: () => number
 
-  addExerciseItem: (input: { name: string; muscleGroup: MuscleGroup }) => void
-  updateExerciseItem: (itemId: string, input: { name: string; muscleGroup: MuscleGroup }) => void
+  addExerciseItem: (input: { name: string; muscleGroup: MuscleGroup; trainingDays: Weekday[] }) => void
+  updateExerciseItem: (
+    itemId: string,
+    input: { name: string; muscleGroup: MuscleGroup; trainingDays: Weekday[] },
+  ) => void
   deleteExerciseItem: (itemId: string) => void
   logExerciseSet: (itemId: string, input: { weight: number; reps: number; date: string }) => void
   deleteExerciseLog: (itemId: string, logId: string) => void
@@ -211,16 +215,17 @@ export function normalizeGameState(raw: Partial<GameState> & { places?: unknown;
       ...i,
       category: i.category ?? 'otros',
     })),
-    // Exercises predating muscle groups/logs (the old free-text "sets" + done checkbox) migrate to the
-    // body-map model with no history — there was no weight/reps data to carry over.
-    exerciseItems: ((rest.exerciseItems ?? []) as (ExerciseItem & { muscleGroup?: MuscleGroup; logs?: unknown })[]).map(
-      (i) => ({
-        id: i.id,
-        name: i.name,
-        muscleGroup: i.muscleGroup ?? 'otros',
-        logs: Array.isArray(i.logs) ? i.logs : [],
-      }),
-    ),
+    // Exercises predating muscle groups/logs/training days (the old free-text "sets" + done checkbox)
+    // migrate to the body-map model with no history — there was no weight/reps data to carry over.
+    exerciseItems: (
+      (rest.exerciseItems ?? []) as (ExerciseItem & { muscleGroup?: MuscleGroup; trainingDays?: Weekday[]; logs?: unknown })[]
+    ).map((i) => ({
+      id: i.id,
+      name: i.name,
+      muscleGroup: i.muscleGroup ?? 'otros',
+      trainingDays: Array.isArray(i.trainingDays) ? i.trainingDays : [],
+      logs: Array.isArray(i.logs) ? i.logs : [],
+    })),
     missions: keptMissions,
     ...deriveAfterMissionChange(keptGoals, keptMissions, migratedRegions),
   }

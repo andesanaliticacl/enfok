@@ -171,10 +171,15 @@ export interface ExerciseLog {
   reps: number
 }
 
+/** A weekly training split slot — "Grupo de entreno 1" is lunes, "2" is martes, and so on. */
+export type Weekday = 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes' | 'sabado' | 'domingo'
+
 export interface ExerciseItem {
   id: string
   name: string
   muscleGroup: MuscleGroup
+  /** Which day(s) of the weekly split this exercise belongs to — an exercise can repeat on more than one day. */
+  trainingDays: Weekday[]
   /** Every logged session for this exercise — the personal best and last-trained date are derived from it. */
   logs: ExerciseLog[]
 }
