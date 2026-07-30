@@ -8,20 +8,27 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export function AuthPage() {
-  const { signIn, signUp, authError, infoMessage, clearMessages } = useAuthStore()
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const { signIn, signUp, resetPassword, authError, infoMessage, clearMessages } = useAuthStore()
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
 
-  function switchMode(next: 'login' | 'signup') {
+  function switchMode(next: 'login' | 'signup' | 'forgot') {
     setMode(next)
     clearMessages()
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (mode === 'forgot') {
+      if (!email.trim()) return
+      setLoading(true)
+      await resetPassword(email)
+      setLoading(false)
+      return
+    }
     if (!email.trim() || !password) return
     setLoading(true)
     if (mode === 'login') {
@@ -68,37 +75,41 @@ export function AuthPage() {
               </p>
             )}
 
-            <div className="relative mb-4 flex rounded-xl border border-ink-700 bg-ink-950/60 p-1">
-              <motion.span
-                layout
-                className="absolute inset-y-1 w-[calc(50%-4px)] rounded-lg bg-ink-800"
-                animate={{ left: mode === 'login' ? 4 : 'calc(50% + 0px)' }}
-                transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-              />
-              <button
-                type="button"
-                onClick={() => switchMode('login')}
-                className={cn(
-                  'relative z-10 flex-1 rounded-lg py-1.5 text-xs font-medium text-ink-400 transition-colors',
-                  mode === 'login' && 'text-gold-400',
-                )}
-              >
-                Iniciar sesión
-              </button>
-              <button
-                type="button"
-                onClick={() => switchMode('signup')}
-                className={cn(
-                  'relative z-10 flex-1 rounded-lg py-1.5 text-xs font-medium text-ink-400 transition-colors',
-                  mode === 'signup' && 'text-gold-400',
-                )}
-              >
-                Crear cuenta
-              </button>
-            </div>
+            {mode !== 'forgot' && (
+              <div className="relative mb-4 flex rounded-xl border border-ink-700 bg-ink-950/60 p-1">
+                <motion.span
+                  layout
+                  className="absolute inset-y-1 w-[calc(50%-4px)] rounded-lg bg-ink-800"
+                  animate={{ left: mode === 'login' ? 4 : 'calc(50% + 0px)' }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className={cn(
+                    'relative z-10 flex-1 rounded-lg py-1.5 text-xs font-medium text-ink-400 transition-colors',
+                    mode === 'login' && 'text-gold-400',
+                  )}
+                >
+                  Iniciar sesión
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMode('signup')}
+                  className={cn(
+                    'relative z-10 flex-1 rounded-lg py-1.5 text-xs font-medium text-ink-400 transition-colors',
+                    mode === 'signup' && 'text-gold-400',
+                  )}
+                >
+                  Crear cuenta
+                </button>
+              </div>
+            )}
 
             <p className="mb-4 text-center text-[11px] text-ink-400">
-              {mode === 'login' ? 'Tu mundo te espera donde lo dejaste.' : 'Toda aventura comienza con un nombre en el registro.'}
+              {mode === 'login' && 'Tu mundo te espera donde lo dejaste.'}
+              {mode === 'signup' && 'Toda aventura comienza con un nombre en el registro.'}
+              {mode === 'forgot' && 'Te enviaremos un enlace a tu correo para restablecer tu contraseña.'}
             </p>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -115,19 +126,31 @@ export function AuthPage() {
                 />
               </label>
 
-              <label className="text-xs text-ink-400">
-                Contraseña
-                <Input
-                  type="password"
-                  required
-                  minLength={6}
-                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  className="mt-1"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                />
-              </label>
+              {mode !== 'forgot' && (
+                <label className="text-xs text-ink-400">
+                  Contraseña
+                  <Input
+                    type="password"
+                    required
+                    minLength={6}
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    className="mt-1"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                </label>
+              )}
+
+              {mode === 'login' && (
+                <button
+                  type="button"
+                  onClick={() => switchMode('forgot')}
+                  className="-mt-1 self-end text-[11px] text-ink-400 underline-offset-2 hover:text-gold-400 hover:underline"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              )}
 
               {mode === 'signup' && (
                 <label className="text-xs text-ink-400">
@@ -150,8 +173,24 @@ export function AuthPage() {
               {infoMessage && <p className="text-[11px] text-emerald-400">{infoMessage}</p>}
 
               <Button type="submit" disabled={loading || !isSupabaseConfigured} className="anim-glow-pulse mt-1">
-                {loading ? 'Cargando...' : mode === 'login' ? 'Entrar a mi mundo' : 'Comenzar mi aventura'}
+                {loading
+                  ? 'Cargando...'
+                  : mode === 'login'
+                    ? 'Entrar a mi mundo'
+                    : mode === 'signup'
+                      ? 'Comenzar mi aventura'
+                      : 'Enviar enlace'}
               </Button>
+
+              {mode === 'forgot' && (
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="text-center text-[11px] text-ink-400 underline-offset-2 hover:text-gold-400 hover:underline"
+                >
+                  Volver a iniciar sesión
+                </button>
+              )}
             </form>
           </motion.div>
         </motion.div>

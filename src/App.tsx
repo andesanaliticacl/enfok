@@ -6,15 +6,17 @@ import { useAuthStore } from '@/store/useAuthStore'
 import { isSupabaseConfigured } from '@/lib/supabase/client'
 import { setActiveUser } from '@/lib/supabase/cloudSync'
 import { AuthPage } from '@/pages/AuthPage'
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { CharacterCreationPage } from '@/pages/CharacterCreationPage'
 import { MapPage } from '@/pages/MapPage'
 import { RegionPage } from '@/pages/RegionPage'
 import { MissionsPage } from '@/pages/MissionsPage'
+import { InventoryPage } from '@/pages/InventoryPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 
 export default function App() {
   const hasCreatedCharacter = useAvatarStore((s) => s.hasCreatedCharacter)
-  const { user, initializing } = useAuthStore()
+  const { user, initializing, passwordRecovery } = useAuthStore()
 
   useEffect(() => {
     setActiveUser(user?.id ?? null)
@@ -22,6 +24,10 @@ export default function App() {
 
   if (isSupabaseConfigured && initializing) {
     return <div className="flex min-h-full items-center justify-center text-sm text-ink-400">Cargando...</div>
+  }
+
+  if (isSupabaseConfigured && passwordRecovery) {
+    return <ResetPasswordPage />
   }
 
   if (isSupabaseConfigured && !user) {
@@ -38,6 +44,7 @@ export default function App() {
         <Route path="/" element={<MapPage />} />
         <Route path="/region/:regionId" element={<RegionPage />} />
         <Route path="/misiones" element={<MissionsPage />} />
+        <Route path="/inventario" element={<InventoryPage />} />
         <Route path="/perfil" element={<ProfilePage />} />
         <Route path="/personaje/editar" element={<CharacterCreationPage mode="edit-avatar" />} />
         <Route path="/personaje/bioma" element={<CharacterCreationPage mode="edit-biome" />} />

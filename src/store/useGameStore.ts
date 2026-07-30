@@ -12,7 +12,18 @@ import { applyMissionReward } from '@/lib/planning/profileEngine'
 import { regionCategory } from '@/data/regionCategories'
 import { planById } from '@/data/plans'
 import type { LatLng } from '@/lib/world/layout'
-import type { ActivityLog, Goal, Mission, PlayerProfile, Region, RegionCategory } from '@/types'
+import type {
+  ActivityLog,
+  ExerciseItem,
+  FinanceEntry,
+  FinanceEntryType,
+  Goal,
+  GroceryItem,
+  Mission,
+  PlayerProfile,
+  Region,
+  RegionCategory,
+} from '@/types'
 
 export interface RegionInput {
   name: string
@@ -33,6 +44,21 @@ interface GameState {
   /** Fixed point the region "world" is laid out around — set once from the first real location fix, so recentering the map (e.g. "Dónde estoy") never reshuffles the regions. */
   worldAnchor: LatLng | null
   setWorldAnchor: (anchor: LatLng) => void
+
+  financeEntries: FinanceEntry[]
+  groceryItems: GroceryItem[]
+  exerciseItems: ExerciseItem[]
+
+  addFinanceEntry: (input: { type: FinanceEntryType; amount: number; description: string; date: string }) => void
+  deleteFinanceEntry: (entryId: string) => void
+
+  addGroceryItem: (input: { name: string; quantity?: string }) => void
+  toggleGroceryItem: (itemId: string) => void
+  deleteGroceryItem: (itemId: string) => void
+
+  addExerciseItem: (input: { name: string; sets?: string }) => void
+  toggleExerciseItem: (itemId: string) => void
+  deleteExerciseItem: (itemId: string) => void
 
   addRegion: (input: RegionInput) => string
   updateRegion: (regionId: string, input: RegionInput) => void
@@ -151,6 +177,9 @@ export function normalizeGameState(raw: Partial<GameState> & { places?: unknown;
   return {
     ...rest,
     activityLog: rest.activityLog ?? {},
+    financeEntries: rest.financeEntries ?? [],
+    groceryItems: rest.groceryItems ?? [],
+    exerciseItems: rest.exerciseItems ?? [],
     missions: keptMissions,
     ...deriveAfterMissionChange(keptGoals, keptMissions, migratedRegions),
   }
@@ -168,8 +197,54 @@ export const useGameStore = create<GameState>()(
       activityLog: {},
       lastGainedXp: null,
       worldAnchor: null,
+      financeEntries: [],
+      groceryItems: [],
+      exerciseItems: [],
 
       setWorldAnchor: (anchor) => set((state) => (state.worldAnchor ? {} : { worldAnchor: anchor })),
+
+      addFinanceEntry: (input) =>
+        set((state) => ({
+          financeEntries: [
+            { id: `finance-${crypto.randomUUID()}`, ...input },
+            ...state.financeEntries,
+          ],
+        })),
+
+      deleteFinanceEntry: (entryId) =>
+        set((state) => ({ financeEntries: state.financeEntries.filter((e) => e.id !== entryId) })),
+
+      addGroceryItem: (input) =>
+        set((state) => ({
+          groceryItems: [
+            ...state.groceryItems,
+            { id: `grocery-${crypto.randomUUID()}`, checked: false, ...input },
+          ],
+        })),
+
+      toggleGroceryItem: (itemId) =>
+        set((state) => ({
+          groceryItems: state.groceryItems.map((i) => (i.id === itemId ? { ...i, checked: !i.checked } : i)),
+        })),
+
+      deleteGroceryItem: (itemId) =>
+        set((state) => ({ groceryItems: state.groceryItems.filter((i) => i.id !== itemId) })),
+
+      addExerciseItem: (input) =>
+        set((state) => ({
+          exerciseItems: [
+            ...state.exerciseItems,
+            { id: `exercise-${crypto.randomUUID()}`, done: false, ...input },
+          ],
+        })),
+
+      toggleExerciseItem: (itemId) =>
+        set((state) => ({
+          exerciseItems: state.exerciseItems.map((i) => (i.id === itemId ? { ...i, done: !i.done } : i)),
+        })),
+
+      deleteExerciseItem: (itemId) =>
+        set((state) => ({ exerciseItems: state.exerciseItems.filter((i) => i.id !== itemId) })),
 
       addRegion: (input) => {
         const region = buildRegion(input)
@@ -366,6 +441,9 @@ export const useGameStore = create<GameState>()(
           activityLog: {},
           lastGainedXp: null,
           worldAnchor: null,
+          financeEntries: [],
+          groceryItems: [],
+          exerciseItems: [],
         }),
     }),
     {

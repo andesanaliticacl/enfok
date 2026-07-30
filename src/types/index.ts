@@ -104,6 +104,31 @@ export interface Achievement {
 /** Per-day activity totals, keyed by ISO date (yyyy-mm-dd) — powers the weekly strip and history. */
 export type ActivityLog = Record<string, { xp: number; missions: number }>
 
+export type FinanceEntryType = 'ingreso' | 'gasto'
+
+export interface FinanceEntry {
+  id: string
+  type: FinanceEntryType
+  amount: number
+  description: string
+  /** ISO date (yyyy-mm-dd). */
+  date: string
+}
+
+export interface GroceryItem {
+  id: string
+  name: string
+  quantity?: string
+  checked: boolean
+}
+
+export interface ExerciseItem {
+  id: string
+  name: string
+  sets?: string
+  done: boolean
+}
+
 export interface PlayerProfile {
   name: string
   level: number

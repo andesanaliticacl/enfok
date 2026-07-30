@@ -17,6 +17,9 @@ function pickGameState() {
     profile: s.profile,
     activityLog: s.activityLog,
     worldAnchor: s.worldAnchor,
+    financeEntries: s.financeEntries,
+    groceryItems: s.groceryItems,
+    exerciseItems: s.exerciseItems,
   }
 }
 
