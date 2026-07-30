@@ -9,6 +9,7 @@ import {
 } from '@/lib/planning/goalEngine'
 import { applyCompletion, createMission, isDoneForNow, type MissionInput } from '@/lib/planning/missionEngine'
 import { applyMissionReward } from '@/lib/planning/profileEngine'
+import { GROCERY_EXPENSE_DESCRIPTION, checkedGroceryTotal } from '@/lib/planning/groceryEngine'
 import { regionCategory } from '@/data/regionCategories'
 import { planById } from '@/data/plans'
 import type { LatLng } from '@/lib/world/layout'
@@ -54,6 +55,8 @@ interface GameState {
   incomeSources: IncomeSource[]
   fixedExpenses: FixedExpense[]
   groceryItems: GroceryItem[]
+  /** Finanzas entry the current basket is linked to — set on first send, so later sends update it instead of adding another expense. */
+  groceryPurchaseEntryId: string | null
   exerciseItems: ExerciseItem[]
 
   /** Shop item ids the player owns (titles, auras, sticker packs). */
@@ -87,15 +90,21 @@ interface GameState {
   updateFixedExpense: (expenseId: string, input: { name: string; amount: number }) => void
   deleteFixedExpense: (expenseId: string) => void
 
-  addGroceryItem: (input: { name: string; quantity?: string; category: GroceryCategory; price?: number }) => void
+  addGroceryItem: (input: { name: string; quantity: number; category: GroceryCategory; price?: number }) => void
   updateGroceryItem: (
     itemId: string,
-    input: { name: string; quantity?: string; category: GroceryCategory; price?: number },
+    input: { name: string; quantity: number; category: GroceryCategory; price?: number },
   ) => void
   toggleGroceryItem: (itemId: string) => void
   deleteGroceryItem: (itemId: string) => void
-  /** Sums the price of every checked item, logs it as one expense in Finanzas, then unchecks everything for next month's run. Returns the logged amount (0 if nothing to log). */
+  /**
+   * Sends the checked basket to Finanzas as ONE expense. Called again after
+   * editing the basket, it updates that same entry instead of duplicating it —
+   * so a sent basket stays editable. Returns the charged amount (0 if nothing).
+   */
   logGroceryPurchase: () => number
+  /** Closes the current basket: unchecks everything and unlinks it from its Finanzas entry, ready for next month. */
+  resetGroceryBasket: () => void
 
   addExerciseItem: (input: { name: string; muscleGroup: MuscleGroup; trainingDays: Weekday[] }) => void
   updateExerciseItem: (
@@ -230,11 +239,20 @@ export function normalizeGameState(raw: Partial<GameState> & { places?: unknown;
     equippedTitle: rest.equippedTitle ?? null,
     equippedAura: rest.equippedAura ?? null,
     claimedAchievements: rest.claimedAchievements ?? [],
-    // Grocery items predating categories/price default to 'otros' with no price.
-    groceryItems: ((rest.groceryItems ?? []) as (GroceryItem & { category?: GroceryCategory })[]).map((i) => ({
+    // Grocery items predating categories default to 'otros'. Quantity used to be
+    // free text ("2L", "3 cajas") — keep the leading number so totals still work,
+    // falling back to a single unit when there isn't one.
+    groceryItems: (
+      (rest.groceryItems ?? []) as (Omit<GroceryItem, 'quantity'> & {
+        category?: GroceryCategory
+        quantity?: number | string
+      })[]
+    ).map((i) => ({
       ...i,
       category: i.category ?? 'otros',
+      quantity: Math.max(1, Math.round(Number.parseFloat(String(i.quantity ?? 1)) || 1)),
     })),
+    groceryPurchaseEntryId: rest.groceryPurchaseEntryId ?? null,
     // Exercises predating muscle groups/logs/training days (the old free-text "sets" + done checkbox)
     // migrate to the body-map model with no history — there was no weight/reps data to carry over.
     exerciseItems: (
@@ -267,6 +285,7 @@ export const useGameStore = create<GameState>()(
       incomeSources: [],
       fixedExpenses: [],
       groceryItems: [],
+      groceryPurchaseEntryId: null,
       exerciseItems: [],
       unlocks: [],
       equippedTitle: null,
@@ -364,26 +383,46 @@ export const useGameStore = create<GameState>()(
         set((state) => ({ groceryItems: state.groceryItems.filter((i) => i.id !== itemId) })),
 
       logGroceryPurchase: () => {
-        const checkedTotal = get()
-          .groceryItems.filter((i) => i.checked)
-          .reduce((sum, i) => sum + (i.price ?? 0), 0)
-        if (checkedTotal <= 0) return 0
+        const { groceryItems, groceryPurchaseEntryId, financeEntries } = get()
+        const total = checkedGroceryTotal(groceryItems)
+        if (total <= 0) return 0
 
-        set((state) => ({
-          financeEntries: [
-            {
-              id: `finance-${crypto.randomUUID()}`,
-              type: 'gasto',
-              amount: checkedTotal,
-              description: 'Compras del mes (supermercado)',
-              date: todayKey(),
-            },
-            ...state.financeEntries,
-          ],
-          groceryItems: state.groceryItems.map((i) => ({ ...i, checked: false })),
-        }))
-        return checkedTotal
+        // The linked entry can be gone if it was deleted straight from Finanzas —
+        // then this send starts a fresh one rather than silently doing nothing.
+        const linked = groceryPurchaseEntryId
+          ? financeEntries.find((e) => e.id === groceryPurchaseEntryId)
+          : undefined
+
+        if (linked) {
+          set((state) => ({
+            financeEntries: state.financeEntries.map((e) =>
+              e.id === linked.id ? { ...e, amount: total, date: todayKey() } : e,
+            ),
+          }))
+        } else {
+          const entryId = `finance-${crypto.randomUUID()}`
+          set((state) => ({
+            financeEntries: [
+              {
+                id: entryId,
+                type: 'gasto',
+                amount: total,
+                description: GROCERY_EXPENSE_DESCRIPTION,
+                date: todayKey(),
+              },
+              ...state.financeEntries,
+            ],
+            groceryPurchaseEntryId: entryId,
+          }))
+        }
+        return total
       },
+
+      resetGroceryBasket: () =>
+        set((state) => ({
+          groceryItems: state.groceryItems.map((i) => ({ ...i, checked: false })),
+          groceryPurchaseEntryId: null,
+        })),
 
       addExerciseItem: (input) =>
         set((state) => ({
@@ -613,6 +652,7 @@ export const useGameStore = create<GameState>()(
           incomeSources: [],
           fixedExpenses: [],
           groceryItems: [],
+          groceryPurchaseEntryId: null,
           exerciseItems: [],
           unlocks: [],
           equippedTitle: null,

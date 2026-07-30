@@ -147,9 +147,10 @@ export type GroceryCategory =
 export interface GroceryItem {
   id: string
   name: string
-  quantity?: string
+  /** Cuántas unidades llevas — el total de la línea es quantity × price. */
+  quantity: number
   category: GroceryCategory
-  /** Precio estimado o real — al marcar el ítem como comprado, suma al gasto que se registra en Finanzas. */
+  /** Precio por UNIDAD, no el total: se multiplica por quantity. */
   price?: number
   checked: boolean
 }

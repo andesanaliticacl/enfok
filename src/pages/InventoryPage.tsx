@@ -10,6 +10,7 @@ import { FinanceBarChart } from '@/components/inventory/FinanceBarChart'
 import { FinanceLineChart, type MonthlyTotal } from '@/components/inventory/FinanceLineChart'
 import { ExerciseSection } from '@/components/inventory/ExerciseSection'
 import { GROCERY_CATEGORIES } from '@/data/groceryCategories'
+import { checkedGroceryTotal, groceryLineTotal, groceryTotal } from '@/lib/planning/groceryEngine'
 import { cn } from '@/lib/utils'
 import type { FinanceEntry, FinanceEntryType, GroceryCategory } from '@/types'
 
@@ -443,24 +444,35 @@ function GrocerySection() {
   const toggleGroceryItem = useGameStore((s) => s.toggleGroceryItem)
   const deleteGroceryItem = useGameStore((s) => s.deleteGroceryItem)
   const logGroceryPurchase = useGameStore((s) => s.logGroceryPurchase)
+  const resetGroceryBasket = useGameStore((s) => s.resetGroceryBasket)
+  const groceryPurchaseEntryId = useGameStore((s) => s.groceryPurchaseEntryId)
+  const financeEntries = useGameStore((s) => s.financeEntries)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
-  const [quantity, setQuantity] = useState('')
+  const [quantity, setQuantity] = useState('1')
   const [price, setPrice] = useState('')
   const [category, setCategory] = useState<GroceryCategory>('otros')
   const [loggedMessage, setLoggedMessage] = useState<string | null>(null)
 
-  const checkedTotal = groceryItems.filter((i) => i.checked).reduce((sum, i) => sum + (i.price ?? 0), 0)
+  const checkedTotal = checkedGroceryTotal(groceryItems)
+  const basketTotal = groceryTotal(groceryItems)
   const grouped = GROCERY_CATEGORIES.map((cat) => ({
     ...cat,
     items: groceryItems.filter((i) => i.category === cat.id),
   })).filter((g) => g.items.length > 0)
 
+  // Treat the basket as sent only while its Finanzas entry actually exists —
+  // deleting the expense there frees the basket to be sent again.
+  const sentEntry = groceryPurchaseEntryId
+    ? financeEntries.find((e) => e.id === groceryPurchaseEntryId)
+    : undefined
+  const pendingChanges = !!sentEntry && sentEntry.amount !== checkedTotal
+
   function resetForm() {
     setEditingId(null)
     setName('')
-    setQuantity('')
+    setQuantity('1')
     setPrice('')
     setCategory('otros')
   }
@@ -470,7 +482,7 @@ function GrocerySection() {
     if (!name.trim()) return
     const input = {
       name: name.trim(),
-      quantity: quantity.trim() || undefined,
+      quantity: Math.max(1, Math.round(Number(quantity) || 1)),
       category,
       price: price ? Number(price) : undefined,
     }
@@ -482,7 +494,7 @@ function GrocerySection() {
   function startEdit(item: (typeof groceryItems)[number]) {
     setEditingId(item.id)
     setName(item.name)
-    setQuantity(item.quantity ?? '')
+    setQuantity(String(item.quantity))
     setPrice(item.price ? String(item.price) : '')
     setCategory(item.category)
   }
@@ -490,30 +502,65 @@ function GrocerySection() {
   function handleLogPurchase() {
     const amount = logGroceryPurchase()
     if (amount <= 0) return
-    setLoggedMessage(`Se registró $${amount.toLocaleString('es-CL')} en Finanzas.`)
+    setLoggedMessage(
+      sentEntry
+        ? `Actualizado a $${amount.toLocaleString('es-CL')} en Finanzas.`
+        : `Se registró $${amount.toLocaleString('es-CL')} en Finanzas.`,
+    )
     setTimeout(() => setLoggedMessage(null), 4000)
+  }
+
+  function handleNewBasket() {
+    resetGroceryBasket()
+    setLoggedMessage(null)
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-ink-50">Supermercado</h2>
-        {checkedTotal > 0 && <span className="text-xs font-medium text-gold-400">Total marcado: ${checkedTotal.toLocaleString('es-CL')}</span>}
-      </div>
+      <h2 className="text-sm font-semibold text-ink-50">Supermercado</h2>
+
+      {/* The basket's running cost: what the whole list would cost vs. what you've actually picked up */}
+      <Card>
+        <CardContent className="flex items-center justify-between gap-3 p-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-ink-400">Canasta completa</p>
+            <p className="text-sm font-semibold text-ink-50">${basketTotal.toLocaleString('es-CL')}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-wide text-ink-400">Marcado</p>
+            <p className="text-lg font-semibold text-gold-400 text-glow-gold">
+              ${checkedTotal.toLocaleString('es-CL')}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <form onSubmit={handleSubmit} className="panel-bevel flex flex-col gap-2 rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
+        <Input placeholder="Producto" value={name} onChange={(e) => setName(e.target.value)} />
         <div className="flex gap-2">
-          <Input placeholder="Producto" value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
-          <Input placeholder="Cant." value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-16" />
-          <Input
-            type="number"
-            min="0"
-            step="1"
-            placeholder="Precio"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            className="w-24"
-          />
+          <label className="flex-1 text-[10px] text-ink-400">
+            Cantidad
+            <Input
+              type="number"
+              min="1"
+              step="1"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              className="mt-0.5"
+            />
+          </label>
+          <label className="flex-1 text-[10px] text-ink-400">
+            Precio por unidad
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              placeholder="$ c/u"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="mt-0.5"
+            />
+          </label>
         </div>
         <div className="flex flex-wrap gap-1.5">
           {GROCERY_CATEGORIES.map((cat) => (
@@ -566,9 +613,20 @@ function GrocerySection() {
                   >
                     {item.checked && '✓'}
                   </span>
-                  <span className={cn('text-sm text-ink-50', item.checked && 'text-ink-500 line-through')}>
-                    {item.name} {item.quantity && <span className="text-ink-500">· {item.quantity}</span>}
-                    {item.price !== undefined && <span className="text-ink-500"> · ${item.price.toLocaleString('es-CL')}</span>}
+                  <span className="min-w-0 flex-1">
+                    <span className={cn('block text-sm text-ink-50', item.checked && 'text-ink-500 line-through')}>
+                      {item.name}
+                    </span>
+                    {/* Spelling out "4 × $1.200 = $4.800" is what makes the unit price unambiguous */}
+                    <span className="block text-[10px] text-ink-500">
+                      {item.quantity} un.
+                      {item.price !== undefined && (
+                        <>
+                          {' × '}${item.price.toLocaleString('es-CL')} c/u
+                          <span className="text-gold-400"> = ${groceryLineTotal(item).toLocaleString('es-CL')}</span>
+                        </>
+                      )}
+                    </span>
                   </span>
                 </button>
                 <button onClick={() => startEdit(item)} className="text-ink-500 hover:text-gold-400">
@@ -583,11 +641,39 @@ function GrocerySection() {
         ))}
       </div>
 
-      {groceryItems.some((i) => i.checked) && (
+      {/* Sending charges Finanzas once; editing afterwards updates that same expense instead of stacking new ones */}
+      {(checkedTotal > 0 || sentEntry) && (
         <div className="flex flex-col gap-2">
-          <Button onClick={handleLogPurchase}>
-            <Check size={16} /> Registrar compra en Finanzas (${checkedTotal.toLocaleString('es-CL')})
-          </Button>
+          {sentEntry && (
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-900/60 bg-emerald-950/20 p-3">
+              <Check size={15} className="shrink-0 text-emerald-400" />
+              <p className="flex-1 text-[11px] text-emerald-300">
+                Enviado a Finanzas: ${sentEntry.amount.toLocaleString('es-CL')}
+                {pendingChanges && (
+                  <span className="block text-gold-400">
+                    Tu canasta ahora suma ${checkedTotal.toLocaleString('es-CL')} — actualízala.
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            {(!sentEntry || pendingChanges) && (
+              <Button onClick={handleLogPurchase} disabled={checkedTotal <= 0} className="flex-1">
+                <Check size={16} />{' '}
+                {sentEntry
+                  ? `Actualizar a $${checkedTotal.toLocaleString('es-CL')}`
+                  : `Enviar canasta a Finanzas ($${checkedTotal.toLocaleString('es-CL')})`}
+              </Button>
+            )}
+            {sentEntry && (
+              <Button variant="outline" onClick={handleNewBasket} className={cn(!pendingChanges && 'flex-1')}>
+                Nueva canasta
+              </Button>
+            )}
+          </div>
+
           {loggedMessage && <p className="text-center text-[11px] text-emerald-400">{loggedMessage}</p>}
         </div>
       )}
