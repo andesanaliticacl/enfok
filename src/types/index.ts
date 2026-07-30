@@ -137,6 +137,7 @@ export type GroceryCategory =
   | 'huevos'
   | 'vegetales'
   | 'frutas'
+  | 'granos'
   | 'congelados'
   | 'suplementos'
   | 'limpieza'

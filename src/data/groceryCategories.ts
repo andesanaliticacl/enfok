@@ -13,6 +13,7 @@ export const GROCERY_CATEGORIES: GroceryCategoryDef[] = [
   { id: 'huevos', label: 'Huevos', icon: '🥚' },
   { id: 'vegetales', label: 'Vegetales', icon: '🥦' },
   { id: 'frutas', label: 'Frutas', icon: '🍎' },
+  { id: 'granos', label: 'Granos', icon: '🌾' },
   { id: 'congelados', label: 'Congelados', icon: '🧊' },
   { id: 'suplementos', label: 'Suplementos', icon: '💊' },
   { id: 'limpieza', label: 'Limpieza', icon: '🧴' },
