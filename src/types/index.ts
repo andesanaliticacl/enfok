@@ -122,10 +122,25 @@ export interface IncomeSource {
   amount: number
 }
 
+export type GroceryCategory =
+  | 'carnes'
+  | 'lacteos'
+  | 'huevos'
+  | 'vegetales'
+  | 'frutas'
+  | 'congelados'
+  | 'suplementos'
+  | 'limpieza'
+  | 'dulces'
+  | 'otros'
+
 export interface GroceryItem {
   id: string
   name: string
   quantity?: string
+  category: GroceryCategory
+  /** Precio estimado o real — al marcar el ítem como comprado, suma al gasto que se registra en Finanzas. */
+  price?: number
   checked: boolean
 }
 

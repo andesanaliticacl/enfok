@@ -18,6 +18,7 @@ import type {
   FinanceEntry,
   FinanceEntryType,
   Goal,
+  GroceryCategory,
   GroceryItem,
   IncomeSource,
   Mission,
@@ -62,9 +63,15 @@ interface GameState {
   updateIncomeSource: (sourceId: string, input: { name: string; amount: number }) => void
   deleteIncomeSource: (sourceId: string) => void
 
-  addGroceryItem: (input: { name: string; quantity?: string }) => void
+  addGroceryItem: (input: { name: string; quantity?: string; category: GroceryCategory; price?: number }) => void
+  updateGroceryItem: (
+    itemId: string,
+    input: { name: string; quantity?: string; category: GroceryCategory; price?: number },
+  ) => void
   toggleGroceryItem: (itemId: string) => void
   deleteGroceryItem: (itemId: string) => void
+  /** Sums the price of every checked item, logs it as one expense in Finanzas, then unchecks everything for next month's run. Returns the logged amount (0 if nothing to log). */
+  logGroceryPurchase: () => number
 
   addExerciseItem: (input: { name: string; sets?: string }) => void
   toggleExerciseItem: (itemId: string) => void
@@ -189,7 +196,11 @@ export function normalizeGameState(raw: Partial<GameState> & { places?: unknown;
     activityLog: rest.activityLog ?? {},
     financeEntries: rest.financeEntries ?? [],
     incomeSources: rest.incomeSources ?? [],
-    groceryItems: rest.groceryItems ?? [],
+    // Grocery items predating categories/price default to 'otros' with no price.
+    groceryItems: ((rest.groceryItems ?? []) as (GroceryItem & { category?: GroceryCategory })[]).map((i) => ({
+      ...i,
+      category: i.category ?? 'otros',
+    })),
     exerciseItems: rest.exerciseItems ?? [],
     missions: keptMissions,
     ...deriveAfterMissionChange(keptGoals, keptMissions, migratedRegions),
@@ -252,6 +263,11 @@ export const useGameStore = create<GameState>()(
           ],
         })),
 
+      updateGroceryItem: (itemId, input) =>
+        set((state) => ({
+          groceryItems: state.groceryItems.map((i) => (i.id === itemId ? { ...i, ...input } : i)),
+        })),
+
       toggleGroceryItem: (itemId) =>
         set((state) => ({
           groceryItems: state.groceryItems.map((i) => (i.id === itemId ? { ...i, checked: !i.checked } : i)),
@@ -259,6 +275,28 @@ export const useGameStore = create<GameState>()(
 
       deleteGroceryItem: (itemId) =>
         set((state) => ({ groceryItems: state.groceryItems.filter((i) => i.id !== itemId) })),
+
+      logGroceryPurchase: () => {
+        const checkedTotal = get()
+          .groceryItems.filter((i) => i.checked)
+          .reduce((sum, i) => sum + (i.price ?? 0), 0)
+        if (checkedTotal <= 0) return 0
+
+        set((state) => ({
+          financeEntries: [
+            {
+              id: `finance-${crypto.randomUUID()}`,
+              type: 'gasto',
+              amount: checkedTotal,
+              description: 'Compras del mes (supermercado)',
+              date: todayKey(),
+            },
+            ...state.financeEntries,
+          ],
+          groceryItems: state.groceryItems.map((i) => ({ ...i, checked: false })),
+        }))
+        return checkedTotal
+      },
 
       addExerciseItem: (input) =>
         set((state) => ({

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Wallet, ShoppingCart, Dumbbell, Plus, Trash2, Pencil, TrendingUp, TrendingDown, Landmark } from 'lucide-react'
+import { Wallet, ShoppingCart, Dumbbell, Plus, Trash2, Pencil, Check, TrendingUp, TrendingDown, Landmark } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { todayKey, MONTH_LABELS } from '@/lib/calendar'
 import { PageContainer } from '@/components/layout/PageContainer'
@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FinanceBarChart } from '@/components/inventory/FinanceBarChart'
 import { FinanceLineChart, type MonthlyTotal } from '@/components/inventory/FinanceLineChart'
+import { GROCERY_CATEGORIES } from '@/data/groceryCategories'
 import { cn } from '@/lib/utils'
-import type { FinanceEntry, FinanceEntryType } from '@/types'
+import type { FinanceEntry, FinanceEntryType, GroceryCategory } from '@/types'
 
 /** Last `count` months (oldest first, current month last), aggregated from the already-dated entries — no separate history storage needed. */
 function buildMonthlyTotals(entries: FinanceEntry[], count: number): MonthlyTotal[] {
@@ -30,11 +31,11 @@ function buildMonthlyTotals(entries: FinanceEntry[], count: number): MonthlyTota
   return months
 }
 
-type Tab = 'finanzas' | 'supermercado' | 'ejercicios'
+type Tab = 'finanzas' | 'compras' | 'ejercicios'
 
 const TABS: { id: Tab; label: string; icon: typeof Wallet }[] = [
   { id: 'finanzas', label: 'Finanzas', icon: Wallet },
-  { id: 'supermercado', label: 'Supermercado', icon: ShoppingCart },
+  { id: 'compras', label: 'Compras del mes', icon: ShoppingCart },
   { id: 'ejercicios', label: 'Ejercicios', icon: Dumbbell },
 ]
 
@@ -61,7 +62,7 @@ export function InventoryPage() {
       </div>
 
       {tab === 'finanzas' && <FinanceSection />}
-      {tab === 'supermercado' && <GrocerySection />}
+      {tab === 'compras' && <GrocerySection />}
       {tab === 'ejercicios' && <ExerciseSection />}
     </PageContainer>
   )
@@ -341,61 +342,158 @@ function FinanceSection() {
 function GrocerySection() {
   const groceryItems = useGameStore((s) => s.groceryItems)
   const addGroceryItem = useGameStore((s) => s.addGroceryItem)
+  const updateGroceryItem = useGameStore((s) => s.updateGroceryItem)
   const toggleGroceryItem = useGameStore((s) => s.toggleGroceryItem)
   const deleteGroceryItem = useGameStore((s) => s.deleteGroceryItem)
+  const logGroceryPurchase = useGameStore((s) => s.logGroceryPurchase)
 
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [quantity, setQuantity] = useState('')
+  const [price, setPrice] = useState('')
+  const [category, setCategory] = useState<GroceryCategory>('otros')
+  const [loggedMessage, setLoggedMessage] = useState<string | null>(null)
+
+  const checkedTotal = groceryItems.filter((i) => i.checked).reduce((sum, i) => sum + (i.price ?? 0), 0)
+  const grouped = GROCERY_CATEGORIES.map((cat) => ({
+    ...cat,
+    items: groceryItems.filter((i) => i.category === cat.id),
+  })).filter((g) => g.items.length > 0)
+
+  function resetForm() {
+    setEditingId(null)
+    setName('')
+    setQuantity('')
+    setPrice('')
+    setCategory('otros')
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
-    addGroceryItem({ name: name.trim(), quantity: quantity.trim() || undefined })
-    setName('')
-    setQuantity('')
+    const input = {
+      name: name.trim(),
+      quantity: quantity.trim() || undefined,
+      category,
+      price: price ? Number(price) : undefined,
+    }
+    if (editingId) updateGroceryItem(editingId, input)
+    else addGroceryItem(input)
+    resetForm()
+  }
+
+  function startEdit(item: (typeof groceryItems)[number]) {
+    setEditingId(item.id)
+    setName(item.name)
+    setQuantity(item.quantity ?? '')
+    setPrice(item.price ? String(item.price) : '')
+    setCategory(item.category)
+  }
+
+  function handleLogPurchase() {
+    const amount = logGroceryPurchase()
+    if (amount <= 0) return
+    setLoggedMessage(`Se registró $${amount.toLocaleString('es-CL')} en Finanzas.`)
+    setTimeout(() => setLoggedMessage(null), 4000)
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={handleSubmit} className="panel-bevel flex gap-2 rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
-        <Input placeholder="Producto" value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
-        <Input
-          placeholder="Cant."
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-          className="w-20"
-        />
-        <Button type="submit" size="icon">
-          <Plus size={16} />
-        </Button>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-ink-50">Supermercado</h2>
+        {checkedTotal > 0 && <span className="text-xs font-medium text-gold-400">Total marcado: ${checkedTotal.toLocaleString('es-CL')}</span>}
+      </div>
+
+      <form onSubmit={handleSubmit} className="panel-bevel flex flex-col gap-2 rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
+        <div className="flex gap-2">
+          <Input placeholder="Producto" value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
+          <Input placeholder="Cant." value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-16" />
+          <Input
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Precio"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className="w-24"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {GROCERY_CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setCategory(cat.id)}
+              className={cn(
+                'rounded-full border border-ink-600 px-2.5 py-1 text-[11px] text-ink-300',
+                category === cat.id && 'border-gold-400 bg-gold-500/20 text-gold-400',
+              )}
+            >
+              {cat.icon} {cat.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Button type="submit" size="sm" className="flex-1">
+            <Plus size={14} /> {editingId ? 'Guardar cambios' : 'Agregar'}
+          </Button>
+          {editingId && (
+            <Button type="button" variant="ghost" size="sm" onClick={resetForm}>
+              Cancelar
+            </Button>
+          )}
+        </div>
       </form>
 
-      <div className="flex flex-col gap-2">
-        {groceryItems.length === 0 && <p className="text-sm text-ink-400">Tu lista de supermercado está vacía.</p>}
-        {groceryItems.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-center justify-between rounded-xl border border-ink-700 bg-ink-900 p-3"
-          >
-            <button onClick={() => toggleGroceryItem(item.id)} className="flex flex-1 items-center gap-2 text-left">
-              <span
+      <div className="flex flex-col gap-4">
+        {groceryItems.length === 0 && <p className="text-sm text-ink-400">Tu lista de compras del mes está vacía.</p>}
+        {grouped.map((group) => (
+          <div key={group.id} className="flex flex-col gap-2">
+            <h3 className="text-[11px] font-medium uppercase tracking-wide text-ink-400">
+              {group.icon} {group.label}
+            </h3>
+            {group.items.map((item) => (
+              <div
+                key={item.id}
                 className={cn(
-                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-ink-600',
-                  item.checked && 'border-gold-400 bg-gold-500/20 text-gold-400',
+                  'flex items-center justify-between rounded-xl border border-ink-700 bg-ink-900 p-3',
+                  editingId === item.id && 'border-gold-400',
                 )}
               >
-                {item.checked && '✓'}
-              </span>
-              <span className={cn('text-sm text-ink-50', item.checked && 'text-ink-500 line-through')}>
-                {item.name} {item.quantity && <span className="text-ink-500">· {item.quantity}</span>}
-              </span>
-            </button>
-            <button onClick={() => deleteGroceryItem(item.id)} className="text-ink-500 hover:text-red-400">
-              <Trash2 size={14} />
-            </button>
+                <button onClick={() => toggleGroceryItem(item.id)} className="flex flex-1 items-center gap-2 text-left">
+                  <span
+                    className={cn(
+                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-ink-600',
+                      item.checked && 'border-gold-400 bg-gold-500/20 text-gold-400',
+                    )}
+                  >
+                    {item.checked && '✓'}
+                  </span>
+                  <span className={cn('text-sm text-ink-50', item.checked && 'text-ink-500 line-through')}>
+                    {item.name} {item.quantity && <span className="text-ink-500">· {item.quantity}</span>}
+                    {item.price !== undefined && <span className="text-ink-500"> · ${item.price.toLocaleString('es-CL')}</span>}
+                  </span>
+                </button>
+                <button onClick={() => startEdit(item)} className="text-ink-500 hover:text-gold-400">
+                  <Pencil size={14} />
+                </button>
+                <button onClick={() => deleteGroceryItem(item.id)} className="ml-3 text-ink-500 hover:text-red-400">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
           </div>
         ))}
       </div>
+
+      {groceryItems.some((i) => i.checked) && (
+        <div className="flex flex-col gap-2">
+          <Button onClick={handleLogPurchase}>
+            <Check size={16} /> Registrar compra en Finanzas (${checkedTotal.toLocaleString('es-CL')})
+          </Button>
+          {loggedMessage && <p className="text-center text-[11px] text-emerald-400">{loggedMessage}</p>}
+        </div>
+      )}
     </div>
   )
 }
