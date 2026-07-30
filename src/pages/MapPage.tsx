@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api'
-import { MapPin, Plus, LocateFixed } from 'lucide-react'
+import { MapPin, Plus, LocateFixed, X } from 'lucide-react'
 import { useGameStore, type RegionInput } from '@/store/useGameStore'
 import { useAvatarStore } from '@/store/useAvatarStore'
 import { regionProgress, goalProgress } from '@/lib/planning/goalEngine'
 import { layoutRegions, DEFAULT_WORLD_CENTER, type LatLng } from '@/lib/world/layout'
-import { GOOGLE_MAPS_API_KEY } from '@/lib/world/geocode'
+import { GOOGLE_MAPS_API_KEY, type GeocodeResult } from '@/lib/world/geocode'
+import { LocationSearch } from '@/components/world/LocationSearch'
 import { WORLD_MAP_STYLE } from '@/data/mapStyle'
 import { RegionMarker } from '@/components/world/RegionMarker'
 import { RegionFormDialog } from '@/components/world/RegionFormDialog'
@@ -44,6 +45,8 @@ export function MapPage() {
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [locating, setLocating] = useState(false)
   const [locateError, setLocateError] = useState<string | null>(null)
+  /** Place picked from the search box — the map flew there and offers to claim it as a region. */
+  const [foundPlace, setFoundPlace] = useState<GeocodeResult | null>(null)
 
   useEffect(() => {
     if (worldAnchor || !navigator.geolocation) return
@@ -103,6 +106,14 @@ export function MapPage() {
     if (!pendingLocation) return
     addRegion({ ...input, lat: pendingLocation.lat, lng: pendingLocation.lng })
     setPendingLocation(null)
+    setFoundPlace(null)
+  }
+
+  function handleSearchSelect(result: GeocodeResult) {
+    setCenter({ lat: result.lat, lng: result.lng })
+    setFoundPlace(result)
+    setAddingRegion(false)
+    setLocateError(null)
   }
 
   return (
@@ -159,6 +170,29 @@ export function MapPage() {
           </GoogleMap>
         )}
 
+        {/* Find any real place by name/address instead of hunting for it by dragging the map */}
+        {GOOGLE_MAPS_API_KEY && isLoaded && (
+          <div className="absolute inset-x-4 top-20 z-20 mx-auto max-w-sm">
+            <LocationSearch onSelect={handleSearchSelect} mapsLoaded={isLoaded} />
+          </div>
+        )}
+
+        {foundPlace && (
+          <div className="absolute inset-x-4 top-36 z-20 mx-auto flex max-w-sm items-center gap-2 rounded-2xl border border-ink-700 bg-ink-950/95 p-3">
+            <MapPin size={16} className="shrink-0 text-gold-400" />
+            <p className="min-w-0 flex-1 truncate text-[11px] text-ink-200">{foundPlace.address}</p>
+            <Button
+              size="sm"
+              onClick={() => setPendingLocation({ lat: foundPlace.lat, lng: foundPlace.lng })}
+            >
+              <Plus size={13} /> Región
+            </Button>
+            <button onClick={() => setFoundPlace(null)} className="shrink-0 text-ink-400 hover:text-ink-50">
+              <X size={15} />
+            </button>
+          </div>
+        )}
+
         {GOOGLE_MAPS_API_KEY && isLoaded && (
           <>
             <button
@@ -184,7 +218,7 @@ export function MapPage() {
         )}
 
         {addingRegion && (
-          <p className="absolute inset-x-0 top-16 z-10 mx-auto w-fit rounded-full bg-ink-950/90 px-3 py-1.5 text-[11px] text-gold-400">
+          <p className="absolute inset-x-0 top-36 z-10 mx-auto w-fit rounded-full bg-ink-950/90 px-3 py-1.5 text-[11px] text-gold-400">
             Toca el mapa donde está ese lugar (tu casa, gimnasio, banco...)
           </p>
         )}
@@ -204,7 +238,7 @@ export function MapPage() {
         )}
 
         {locateError && (
-          <p className="absolute inset-x-0 top-16 z-10 mx-auto w-fit rounded-full bg-ink-950/90 px-3 py-1.5 text-[11px] text-red-400">
+          <p className="absolute inset-x-0 top-36 z-10 mx-auto w-fit rounded-full bg-ink-950/90 px-3 py-1.5 text-[11px] text-red-400">
             {locateError}
           </p>
         )}
