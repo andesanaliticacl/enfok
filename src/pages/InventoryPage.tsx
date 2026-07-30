@@ -1,14 +1,34 @@
 import { useState } from 'react'
 import { Wallet, ShoppingCart, Dumbbell, Plus, Trash2, Pencil, TrendingUp, TrendingDown, Landmark } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
-import { todayKey } from '@/lib/calendar'
+import { todayKey, MONTH_LABELS } from '@/lib/calendar'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FinanceBarChart } from '@/components/inventory/FinanceBarChart'
+import { FinanceLineChart, type MonthlyTotal } from '@/components/inventory/FinanceLineChart'
 import { cn } from '@/lib/utils'
-import type { FinanceEntryType } from '@/types'
+import type { FinanceEntry, FinanceEntryType } from '@/types'
+
+/** Last `count` months (oldest first, current month last), aggregated from the already-dated entries — no separate history storage needed. */
+function buildMonthlyTotals(entries: FinanceEntry[], count: number): MonthlyTotal[] {
+  const now = new Date()
+  const months: MonthlyTotal[] = []
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    months.push({ key, label: MONTH_LABELS[d.getMonth()].slice(0, 3), ingreso: 0, gasto: 0 })
+  }
+  const byKey = new Map(months.map((m) => [m.key, m]))
+  for (const entry of entries) {
+    const month = byKey.get(entry.date.slice(0, 7))
+    if (!month) continue
+    if (entry.type === 'ingreso') month.ingreso += entry.amount
+    else month.gasto += entry.amount
+  }
+  return months
+}
 
 type Tab = 'finanzas' | 'supermercado' | 'ejercicios'
 
@@ -57,6 +77,7 @@ function FinanceSection() {
   const updateIncomeSource = useGameStore((s) => s.updateIncomeSource)
   const deleteIncomeSource = useGameStore((s) => s.deleteIncomeSource)
 
+  const [view, setView] = useState<'resumen' | 'tendencia'>('resumen')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [type, setType] = useState<FinanceEntryType>('gasto')
   const [amount, setAmount] = useState('')
@@ -134,11 +155,43 @@ function FinanceSection() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-4">
-          <FinanceBarChart income={totalIncome} expense={entriesExpense} />
-        </CardContent>
-      </Card>
+      <div className="flex gap-2">
+        <button
+          onClick={() => setView('resumen')}
+          className={cn(
+            'flex-1 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
+            view === 'resumen' && 'bg-ink-800 text-gold-400',
+          )}
+        >
+          Resumen
+        </button>
+        <button
+          onClick={() => setView('tendencia')}
+          className={cn(
+            'flex-1 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
+            view === 'tendencia' && 'bg-ink-800 text-gold-400',
+          )}
+        >
+          Tendencia mensual
+        </button>
+      </div>
+
+      {view === 'tendencia' ? (
+        <Card>
+          <CardContent className="p-4">
+            <FinanceLineChart months={buildMonthlyTotals(financeEntries, 6)} />
+            <p className="mt-3 text-[10px] text-ink-500">
+              Últimos 6 meses, según la fecha de cada movimiento registrado.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-4">
+            <FinanceBarChart income={totalIncome} expense={entriesExpense} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recurring income: salary + any other fixed monthly source, counted every month without re-entering it */}
       <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
