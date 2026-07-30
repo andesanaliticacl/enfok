@@ -115,6 +115,13 @@ export interface FinanceEntry {
   date: string
 }
 
+/** A recurring monthly amount — salary, a side gig, rent income — counted every month without re-entering it. */
+export interface IncomeSource {
+  id: string
+  name: string
+  amount: number
+}
+
 export interface GroceryItem {
   id: string
   name: string

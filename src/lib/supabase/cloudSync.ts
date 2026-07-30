@@ -18,6 +18,7 @@ function pickGameState() {
     activityLog: s.activityLog,
     worldAnchor: s.worldAnchor,
     financeEntries: s.financeEntries,
+    incomeSources: s.incomeSources,
     groceryItems: s.groceryItems,
     exerciseItems: s.exerciseItems,
   }

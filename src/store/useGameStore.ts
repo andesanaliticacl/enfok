@@ -19,6 +19,7 @@ import type {
   FinanceEntryType,
   Goal,
   GroceryItem,
+  IncomeSource,
   Mission,
   PlayerProfile,
   Region,
@@ -46,11 +47,20 @@ interface GameState {
   setWorldAnchor: (anchor: LatLng) => void
 
   financeEntries: FinanceEntry[]
+  incomeSources: IncomeSource[]
   groceryItems: GroceryItem[]
   exerciseItems: ExerciseItem[]
 
   addFinanceEntry: (input: { type: FinanceEntryType; amount: number; description: string; date: string }) => void
+  updateFinanceEntry: (
+    entryId: string,
+    input: { type: FinanceEntryType; amount: number; description: string; date: string },
+  ) => void
   deleteFinanceEntry: (entryId: string) => void
+
+  addIncomeSource: (input: { name: string; amount: number }) => void
+  updateIncomeSource: (sourceId: string, input: { name: string; amount: number }) => void
+  deleteIncomeSource: (sourceId: string) => void
 
   addGroceryItem: (input: { name: string; quantity?: string }) => void
   toggleGroceryItem: (itemId: string) => void
@@ -178,6 +188,7 @@ export function normalizeGameState(raw: Partial<GameState> & { places?: unknown;
     ...rest,
     activityLog: rest.activityLog ?? {},
     financeEntries: rest.financeEntries ?? [],
+    incomeSources: rest.incomeSources ?? [],
     groceryItems: rest.groceryItems ?? [],
     exerciseItems: rest.exerciseItems ?? [],
     missions: keptMissions,
@@ -198,6 +209,7 @@ export const useGameStore = create<GameState>()(
       lastGainedXp: null,
       worldAnchor: null,
       financeEntries: [],
+      incomeSources: [],
       groceryItems: [],
       exerciseItems: [],
 
@@ -211,8 +223,26 @@ export const useGameStore = create<GameState>()(
           ],
         })),
 
+      updateFinanceEntry: (entryId, input) =>
+        set((state) => ({
+          financeEntries: state.financeEntries.map((e) => (e.id === entryId ? { ...e, ...input } : e)),
+        })),
+
       deleteFinanceEntry: (entryId) =>
         set((state) => ({ financeEntries: state.financeEntries.filter((e) => e.id !== entryId) })),
+
+      addIncomeSource: (input) =>
+        set((state) => ({
+          incomeSources: [...state.incomeSources, { id: `income-${crypto.randomUUID()}`, ...input }],
+        })),
+
+      updateIncomeSource: (sourceId, input) =>
+        set((state) => ({
+          incomeSources: state.incomeSources.map((s) => (s.id === sourceId ? { ...s, ...input } : s)),
+        })),
+
+      deleteIncomeSource: (sourceId) =>
+        set((state) => ({ incomeSources: state.incomeSources.filter((s) => s.id !== sourceId) })),
 
       addGroceryItem: (input) =>
         set((state) => ({
@@ -442,6 +472,7 @@ export const useGameStore = create<GameState>()(
           lastGainedXp: null,
           worldAnchor: null,
           financeEntries: [],
+          incomeSources: [],
           groceryItems: [],
           exerciseItems: [],
         }),
