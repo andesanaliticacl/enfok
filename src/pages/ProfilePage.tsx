@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Settings, Pencil, Globe2, Map, Swords, Star, Sparkles, Coins, Flame, Hourglass, Trophy } from 'lucide-react'
+import { Settings, Pencil, Globe2, Star, Sparkles, Coins, Flame, Hourglass, Trophy, Store, Rocket } from 'lucide-react'
 import { AvatarAura } from '@/components/avatar/AvatarAura'
 import { ShopSection } from '@/components/profile/ShopSection'
+import { DailyVerseCard } from '@/components/profile/DailyVerseCard'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
 import { shopItem } from '@/data/shop'
 import { Input } from '@/components/ui/input'
 import { useGameStore } from '@/store/useGameStore'
@@ -86,6 +88,10 @@ export function ProfilePage() {
     level: profile.level,
   }
   const unlockedAchievements = achievements.filter((a) => a.isUnlocked(achievementCtx)).length
+  // Unlocked but not yet claimed — surfaced as a badge so the collapsed section still nags you to collect.
+  const claimableCount = achievements.filter(
+    (a) => a.isUnlocked(achievementCtx) && !claimedAchievements.includes(a.id),
+  ).length
 
   const stats = [
     { label: 'Nivel', value: profile.level, icon: Star },
@@ -115,6 +121,11 @@ export function ProfilePage() {
       <div className="pointer-events-none absolute inset-0 bg-ink-950/50" />
 
       <div className="relative z-10 w-full px-4 pt-6 pb-4 md:px-10 xl:px-16">
+      {/* Daily verse greets the player once a day, full width above everything */}
+      <div className="mx-auto mb-6 max-w-2xl">
+        <DailyVerseCard />
+      </div>
+
       {/* On mobile everything stacks with the character on top; from lg up it spreads
           the full width of the screen into three columns with the character anchored dead-center. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px_minmax(0,1fr)] lg:items-start lg:gap-10">
@@ -244,31 +255,25 @@ export function ProfilePage() {
               <Settings size={14} /> Ajustes
             </Button>
           </div>
-
-          {/* Quick ways out of the profile, back into the game */}
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <button
-              onClick={() => navigate('/')}
-              className="panel-bevel flex flex-col items-start gap-2 rounded-2xl border border-ink-700 bg-ink-900 p-4 text-left transition-colors hover:border-gold-400"
-            >
-              <Map className="text-gold-400" size={22} />
-              <span className="text-sm font-semibold text-ink-50">Mundo</span>
-              <span className="text-[10px] text-ink-400">Explora tus regiones</span>
-            </button>
-            <button
-              onClick={() => navigate('/misiones')}
-              className="panel-bevel flex flex-col items-start gap-2 rounded-2xl border border-ink-700 bg-ink-900 p-4 text-left transition-colors hover:border-gold-400"
-            >
-              <Swords className="text-gold-400" size={22} />
-              <span className="text-sm font-semibold text-ink-50">Misiones</span>
-              <span className="text-[10px] text-ink-400">Tus tareas pendientes</span>
-            </button>
-          </div>
         </div>
 
         <div className="order-3 flex flex-col gap-6">
-          <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
-            <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-400">Logros</h2>
+          <CollapsibleSection
+            title="Logros"
+            legendary
+            defaultOpen
+            icon={<Trophy size={14} />}
+            badge={
+              <span className="flex items-center gap-2">
+                {claimableCount > 0 && (
+                  <span className="anim-glow-pulse flex items-center gap-0.5 rounded-full bg-gold-500 px-1.5 py-0.5 text-[9px] font-semibold text-ink-950">
+                    {claimableCount} por reclamar
+                  </span>
+                )}
+                <span className="font-pixel text-[9px] text-gold-400">{unlockedAchievements}/{achievements.length}</span>
+              </span>
+            }
+          >
             <div className="grid grid-cols-3 gap-3">
               {achievements.map((achievement) => {
                 const unlocked = achievement.isUnlocked(achievementCtx)
@@ -312,11 +317,23 @@ export function ProfilePage() {
                 )
               })}
             </div>
-          </section>
+          </CollapsibleSection>
 
-          <ShopSection />
+          <CollapsibleSection
+            title="Tienda"
+            icon={<Store size={14} />}
+            badge={
+              <span className="flex items-center gap-1 text-xs font-medium text-gold-400">
+                <Coins size={13} /> {profile.coins}
+              </span>
+            }
+          >
+            <ShopSection />
+          </CollapsibleSection>
 
-          <PlansSection />
+          <CollapsibleSection title="Planes exprés" icon={<Rocket size={14} />}>
+            <PlansSection />
+          </CollapsibleSection>
         </div>
       </div>
 

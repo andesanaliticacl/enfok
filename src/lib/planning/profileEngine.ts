@@ -58,6 +58,20 @@ function applyLevelUp(profile: PlayerProfile): PlayerProfile {
 }
 
 /**
+ * Grants a flat amount of XP outside the mission flow (e.g. reading the daily
+ * verse): level-up plus today's XP counter, so it counts toward the daily goal
+ * and the weekly strip. Does not touch the streak — that stays tied to missions.
+ */
+export function grantXp(profile: PlayerProfile, amount: number, today = todayKey()): PlayerProfile {
+  return applyLevelUp({
+    ...profile,
+    xp: profile.xp + amount,
+    xpToday: xpEarnedToday(profile, today) + amount,
+    xpTodayDate: today,
+  })
+}
+
+/**
  * Every profile consequence of completing one mission, in one place:
  * XP + level-up, coins, streak (extend if yesterday was active, restart if not),
  * today's XP counter, and invested hours from the mission's estimated duration.

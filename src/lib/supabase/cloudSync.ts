@@ -24,6 +24,7 @@ function pickGameState() {
     equippedTitle: s.equippedTitle,
     equippedAura: s.equippedAura,
     claimedAchievements: s.claimedAchievements,
+    lastVerseDate: s.lastVerseDate,
     groceryItems: s.groceryItems,
     groceryPurchaseEntryId: s.groceryPurchaseEntryId,
     exerciseItems: s.exerciseItems,

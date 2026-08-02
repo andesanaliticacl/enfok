@@ -30,8 +30,7 @@ export function PlansSection() {
   }
 
   return (
-    <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
-      <h2 className="mb-1 text-xs uppercase tracking-wide text-ink-400">Planes exprés</h2>
+    <div>
       <p className="mb-3 text-[11px] leading-relaxed text-ink-400">
         Programas de 3 meses listos para empezar: crean la meta y todas sus misiones de una vez.
       </p>
@@ -134,6 +133,6 @@ export function PlansSection() {
           </div>
         )}
       </Dialog>
-    </section>
+    </div>
   )
 }

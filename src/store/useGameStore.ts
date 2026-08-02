@@ -8,7 +8,7 @@ import {
   type GoalInput,
 } from '@/lib/planning/goalEngine'
 import { applyCompletion, createMission, isDoneForNow, type MissionInput } from '@/lib/planning/missionEngine'
-import { applyMissionReward } from '@/lib/planning/profileEngine'
+import { applyMissionReward, grantXp } from '@/lib/planning/profileEngine'
 import { GROCERY_EXPENSE_DESCRIPTION, checkedGroceryTotal } from '@/lib/planning/groceryEngine'
 import { regionCategory } from '@/data/regionCategories'
 import { planById } from '@/data/plans'
@@ -67,6 +67,8 @@ interface GameState {
   equippedAura: string | null
   /** Achievement ids whose one-time coin reward was already collected. */
   claimedAchievements: string[]
+  /** ISO date (yyyy-mm-dd) the daily verse was last read — gates the once-a-day XP. */
+  lastVerseDate: string | null
 
   /** Deducts the price and stores the unlock. Returns false (and changes nothing) if coins are short or it's already owned. */
   purchaseShopItem: (itemId: string, price: number) => boolean
@@ -74,6 +76,8 @@ interface GameState {
   equipAura: (itemId: string | null) => void
   /** Pays out an unlocked achievement's coins, once. */
   claimAchievementReward: (achievementId: string, coins: number) => void
+  /** Grants the daily verse's XP, once per day. No-op if already read today. */
+  claimDailyVerse: (xp: number) => void
 
   addFinanceEntry: (input: { type: FinanceEntryType; amount: number; description: string; date: string }) => void
   updateFinanceEntry: (
@@ -239,6 +243,7 @@ export function normalizeGameState(raw: Partial<GameState> & { places?: unknown;
     equippedTitle: rest.equippedTitle ?? null,
     equippedAura: rest.equippedAura ?? null,
     claimedAchievements: rest.claimedAchievements ?? [],
+    lastVerseDate: rest.lastVerseDate ?? null,
     // Grocery items predating categories default to 'otros'. Quantity used to be
     // free text ("2L", "3 cajas") — keep the leading number so totals still work,
     // falling back to a single unit when there isn't one.
@@ -291,6 +296,7 @@ export const useGameStore = create<GameState>()(
       equippedTitle: null,
       equippedAura: null,
       claimedAchievements: [],
+      lastVerseDate: null,
 
       setWorldAnchor: (anchor) => set((state) => (state.worldAnchor ? {} : { worldAnchor: anchor })),
 
@@ -316,6 +322,18 @@ export const useGameStore = create<GameState>()(
           return {
             claimedAchievements: [...state.claimedAchievements, achievementId],
             profile: { ...state.profile, coins: state.profile.coins + coins },
+          }
+        }),
+
+      claimDailyVerse: (xp) =>
+        set((state) => {
+          const today = todayKey()
+          if (state.lastVerseDate === today) return {}
+          return {
+            lastVerseDate: today,
+            profile: grantXp(state.profile, xp, today),
+            activityLog: logActivity(state.activityLog, today, xp),
+            lastGainedXp: xp,
           }
         }),
 
@@ -658,6 +676,7 @@ export const useGameStore = create<GameState>()(
           equippedTitle: null,
           equippedAura: null,
           claimedAchievements: [],
+          lastVerseDate: null,
         }),
     }),
     {

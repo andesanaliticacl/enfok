@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Coins, Check, Store } from 'lucide-react'
+import { Coins, Check } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { SHOP_ITEMS, type ShopCategory, type ShopItem } from '@/data/shop'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ const CATEGORY_TABS: { id: ShopCategory; label: string }[] = [
   { id: 'stickers', label: 'Stickers' },
 ]
 
-/** The coin sink: buy titles/auras/sticker packs, and equip what you own. */
+/** The coin sink: buy titles/auras/sticker packs, and equip what you own. Rendered inside a CollapsibleSection, so it owns no panel/header of its own. */
 export function ShopSection() {
   const coins = useGameStore((s) => s.profile.coins)
   const unlocks = useGameStore((s) => s.unlocks)
@@ -36,16 +36,7 @@ export function ShopSection() {
   }
 
   return (
-    <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-ink-400">
-          <Store size={14} /> Tienda
-        </h2>
-        <span className="flex items-center gap-1 text-xs font-medium text-gold-400">
-          <Coins size={13} /> {coins}
-        </span>
-      </div>
-
+    <div>
       <div className="mb-3 flex gap-1.5">
         {CATEGORY_TABS.map((tab) => (
           <button
@@ -108,6 +99,6 @@ export function ShopSection() {
       <p className="mt-3 text-[10px] leading-relaxed text-ink-500">
         Gana monedas completando misiones y reclamando logros. Los packs de stickers aparecen al decorar tu bioma.
       </p>
-    </section>
+    </div>
   )
 }
