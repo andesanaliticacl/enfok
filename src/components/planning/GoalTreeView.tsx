@@ -36,10 +36,12 @@ export function GoalTreeView({ onEditGoal, onCreateMission, onEditMission }: Goa
 
   const today = todayKey()
   const [onlyPending, setOnlyPending] = useState(false)
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  // Goals start closed — an empty set means nothing is expanded yet, including
+  // goals added later, so the tree opens as a tidy list of collapsed trunks.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   function toggle(goalId: string) {
-    setCollapsed((prev) => {
+    setExpanded((prev) => {
       const next = new Set(prev)
       next.has(goalId) ? next.delete(goalId) : next.add(goalId)
       return next
@@ -94,7 +96,7 @@ export function GoalTreeView({ onEditGoal, onCreateMission, onEditMission }: Goa
           const progress = goalProgress(goal, missions)
           const branchColor = `color-mix(in srgb, ${goal.color} 50%, transparent)`
           const chip = dueChip(goal, today)
-          const isOpen = !collapsed.has(goal.id)
+          const isOpen = expanded.has(goal.id)
           const pendingCount = allGoalMissions.filter((m) => !isDoneForNow(m, today)).length
 
           return (

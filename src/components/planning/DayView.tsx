@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Check, Sun, Sunset, Moon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, Sun, Sunset, Moon, Plus } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { addDaysToKey, todayKey } from '@/lib/calendar'
 import { WEEKDAY_NAMES, dayCellState, missionsForDay, mondayOf, weekDates, weekdayIndex } from '@/lib/planning/dayView'
@@ -8,6 +8,8 @@ import type { Goal, Mission } from '@/types'
 
 interface DayViewProps {
   onEdit: (mission: Mission) => void
+  /** Opens the mission form pre-scoped to the selected day — the habit tracker's "+ agregar aquí". */
+  onCreate: (dateKey: string) => void
 }
 
 const HOUR_PX = 58
@@ -25,7 +27,7 @@ function minutesOf(time: string): number {
  * timeline: timed missions sit at their hour like calendar blocks, with a live
  * "now" line on today. Untimed missions ride a lane above the clock.
  */
-export function DayView({ onEdit }: DayViewProps) {
+export function DayView({ onEdit, onCreate }: DayViewProps) {
   const missions = useGameStore((s) => s.missions)
   const goals = useGameStore((s) => s.goals)
   const completeMission = useGameStore((s) => s.completeMission)
@@ -138,13 +140,25 @@ export function DayView({ onEdit }: DayViewProps) {
         </h3>
         {selected === today && <span className="font-pixel text-[8px] text-gold-400">HOY</span>}
         <span className="ml-auto text-[11px] text-ink-500">{dayMissions.length} misión{dayMissions.length === 1 ? '' : 'es'}</span>
+        <button
+          onClick={() => onCreate(selected)}
+          title="Agregar misión este día"
+          className="flex h-6 w-6 items-center justify-center rounded-full border border-ink-600 text-ink-400 hover:border-gold-400 hover:text-gold-400"
+        >
+          <Plus size={13} />
+        </button>
       </div>
 
       {dayMissions.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-ink-700 py-10 text-center">
+        <button
+          onClick={() => onCreate(selected)}
+          className="w-full rounded-2xl border border-dashed border-ink-700 py-10 text-center transition-colors hover:border-gold-400"
+        >
           <p className="text-sm text-ink-500">Nada agendado este día.</p>
-          <p className="mt-1 text-[11px] text-ink-600">Disfruta el descanso o agrega una misión.</p>
-        </div>
+          <p className="mt-1 flex items-center justify-center gap-1 text-[11px] text-gold-400">
+            <Plus size={12} /> Crear una misión para hoy
+          </p>
+        </button>
       )}
 
       {/* Untimed lane — missions without an hour */}

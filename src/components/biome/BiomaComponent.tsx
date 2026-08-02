@@ -51,7 +51,10 @@ function AuraLayer({ biomeId, daylight }: { biomeId: BiomeId; daylight: boolean 
         : { className: 'left-[35%] top-[2%] h-12 w-24', style: { backgroundColor: 'rgba(150, 170, 255, 0.25)' } },
     ],
     montana: [
-      { className: 'left-[38%] top-[10%] h-10 w-24', style: { backgroundColor: daylight ? 'rgba(255, 255, 255, 0.35)' : 'rgba(180, 205, 255, 0.3)' } },
+      // A real halo behind the summit — sun by day, moon by night, much bigger and brighter than before.
+      daylight
+        ? { className: 'left-[30%] top-[2%] h-28 w-28', style: { backgroundColor: 'rgba(255, 236, 170, 0.55)' } }
+        : { className: 'left-[32%] top-[3%] h-20 w-20', style: { backgroundColor: 'rgba(210, 225, 255, 0.5)' } },
     ],
     ciudad: [
       daylight
@@ -221,26 +224,81 @@ function MountainOverlay({ seedKey, daylight }: OverlayProps) {
     }))
   }, [seedKey])
 
+  const stars = useMemo(() => {
+    const rand = mulberry32(seedFrom(`${seedKey}-stars`))
+    return Array.from({ length: 12 }, () => ({
+      left: rand() * 100,
+      top: rand() * 45,
+      delay: rand() * 3,
+      duration: 1.8 + rand() * 2,
+    }))
+  }, [seedKey])
+
+  // Snow now falls across the whole scene (not just the top third) — the
+  // gap that made the old animation nearly invisible.
   const snow = useMemo(() => {
     const rand = mulberry32(seedFrom(`${seedKey}-snow`))
-    return Array.from({ length: 8 }, () => ({
-      left: rand() * 96,
-      top: rand() * 30,
-      delay: rand() * 7,
-      duration: 6 + rand() * 3,
-      drift: (rand() - 0.5) * 20,
+    return Array.from({ length: 16 }, () => ({
+      left: rand() * 100,
+      top: rand() * 92,
+      delay: rand() * 8,
+      duration: 5 + rand() * 4,
+      drift: (rand() - 0.5) * 24,
+      size: rand() > 0.6 ? 2 : 1,
+    }))
+  }, [seedKey])
+
+  // Slow-drifting clouds crossing the peak — the parallax layer the summit was missing.
+  const clouds = useMemo(() => {
+    const rand = mulberry32(seedFrom(`${seedKey}-clouds`))
+    return Array.from({ length: 3 }, (_, i) => ({
+      top: 4 + i * 7 + rand() * 4,
+      width: 30 + rand() * 20,
+      delay: rand() * 10,
+      duration: 22 + rand() * 10,
     }))
   }, [seedKey])
 
   return (
     <>
+      {clouds.map((c, i) => (
+        <div
+          key={`cloud-${i}`}
+          className="anim-cloud absolute rounded-full blur-md"
+          style={{
+            top: `${c.top}%`,
+            left: '10%',
+            width: `${c.width}%`,
+            height: '10%',
+            backgroundColor: daylight ? 'rgba(255,255,255,0.4)' : 'rgba(180,195,230,0.22)',
+            animationDelay: `${c.delay}s`,
+            animationDuration: `${c.duration}s`,
+          }}
+        />
+      ))}
+
+      {/* Blowing snow sweeping across the slope, low down where the wind hits hardest */}
+      <div
+        className="anim-blizzard absolute inset-x-0 top-[72%] h-6 bg-gradient-to-r from-transparent via-white/50 to-transparent blur-[2px]"
+        style={{ animationDelay: '2s' }}
+      />
+
       {snow.map((s, i) => (
         <span
           key={`snow-${i}`}
-          className="anim-snow absolute block h-1 w-1 rounded-full bg-white/80"
-          style={{ left: `${s.left}%`, top: `${s.top}%`, animationDelay: `${s.delay}s`, animationDuration: `${s.duration}s`, '--drift': `${s.drift}px` } as CSSProperties}
+          className="anim-snow absolute block rounded-full bg-white/85"
+          style={{
+            left: `${s.left}%`,
+            top: `${s.top}%`,
+            width: s.size,
+            height: s.size,
+            animationDelay: `${s.delay}s`,
+            animationDuration: `${s.duration}s`,
+            '--drift': `${s.drift}px`,
+          } as CSSProperties}
         />
       ))}
+
       {daylight
         ? birds.map((b, i) => (
             <span
@@ -251,11 +309,18 @@ function MountainOverlay({ seedKey, daylight }: OverlayProps) {
               ⌃⌃
             </span>
           ))
-        : Array.from({ length: 5 }, (_, i) => (
+        : stars.map((s, i) => (
             <span
               key={`star-${i}`}
-              className="anim-twinkle absolute h-[2px] w-[2px] rounded-full bg-white/90"
-              style={{ left: `${12 + i * 18}%`, top: `${6 + (i % 3) * 5}%`, animationDelay: `${i * 0.7}s` }}
+              className="anim-twinkle absolute rounded-full bg-white/90"
+              style={{
+                left: `${s.left}%`,
+                top: `${s.top}%`,
+                width: 2,
+                height: 2,
+                animationDelay: `${s.delay}s`,
+                animationDuration: `${s.duration}s`,
+              }}
             />
           ))}
     </>

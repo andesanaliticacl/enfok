@@ -257,6 +257,29 @@
     transform: translateX(-8%) scaleX(1);
   }
 }
+@keyframes cloud-drift {
+  0% {
+    transform: translateX(-15%);
+  }
+  100% {
+    transform: translateX(15%);
+  }
+}
+@keyframes blizzard-sweep {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateX(-30%);
+  }
+  15%,
+  70% {
+    opacity: 0.5;
+  }
+  85% {
+    opacity: 0;
+    transform: translateX(30%);
+  }
+}
 @keyframes window-glow {
   0%,
   40%,
@@ -314,6 +337,12 @@
   }
   .anim-window {
     animation: window-glow 6s linear infinite;
+  }
+  .anim-cloud {
+    animation: cloud-drift 26s ease-in-out infinite alternate;
+  }
+  .anim-blizzard {
+    animation: blizzard-sweep 9s linear infinite;
   }
   .anim-aura {
     animation: aura-breathe 7s ease-in-out infinite;

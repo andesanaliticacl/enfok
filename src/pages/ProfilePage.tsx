@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Settings, Pencil, Globe2, Star, Sparkles, Coins, Flame, Hourglass, Trophy, Store, Rocket } from 'lucide-react'
+import { Settings, Pencil, Globe2, Star, Coins, Flame, Trophy, Store, Rocket } from 'lucide-react'
 import { AvatarAura } from '@/components/avatar/AvatarAura'
 import { ShopSection } from '@/components/profile/ShopSection'
 import { DailyVerseCard } from '@/components/profile/DailyVerseCard'
+import { PlayerStatsPanel } from '@/components/profile/PlayerStatsPanel'
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
 import { shopItem } from '@/data/shop'
 import { Input } from '@/components/ui/input'
@@ -13,6 +14,7 @@ import {
   DAILY_GOAL_PRESETS,
   dailyXpGoal,
   effectiveStreak,
+  playerStats,
   rankForLevel,
   streakAtRisk,
   xpEarnedToday,
@@ -27,7 +29,6 @@ import { lpcProvider } from '@/lib/avatar/providers/lpcProvider'
 import { biomes } from '@/data/biomes'
 import { achievements } from '@/data/achievements'
 import { PlansSection } from '@/components/planning/PlansSection'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
@@ -92,15 +93,7 @@ export function ProfilePage() {
   const claimableCount = achievements.filter(
     (a) => a.isUnlocked(achievementCtx) && !claimedAchievements.includes(a.id),
   ).length
-
-  const stats = [
-    { label: 'Nivel', value: profile.level, icon: Star },
-    { label: 'XP', value: profile.xp, icon: Sparkles },
-    { label: 'Monedas', value: profile.coins, icon: Coins },
-    { label: 'Racha', value: `${streak}d`, icon: Flame },
-    { label: 'Horas', value: Math.round(profile.hoursInvested), icon: Hourglass },
-    { label: 'Logros', value: `${unlockedAchievements}/${achievements.length}`, icon: Trophy },
-  ]
+  const fiveStats = playerStats(profile)
 
   function handleDeleteCharacter() {
     deleteCharacter()
@@ -171,40 +164,33 @@ export function ProfilePage() {
             </p>
           </section>
 
-          <section className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
-            <h2 className="mb-2 text-xs uppercase tracking-wide text-ink-400">Estadísticas</h2>
-            <div className="grid grid-cols-3 gap-3">
-              {stats.map((stat) => (
-                <Card key={stat.label}>
-                  <CardContent className="flex flex-col items-center gap-1 p-3 text-center">
-                    <stat.icon size={16} className="text-gold-400" />
-                    <p
-                      className={cn('text-sm font-semibold text-ink-50', (stat.label === 'Nivel' || stat.label === 'XP') && 'text-glow-gold')}
-                    >
-                      {stat.value}
-                    </p>
-                    <p className="text-[9px] leading-tight text-ink-400">{stat.label}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
+          <PlayerStatsPanel stats={fiveStats} />
         </div>
 
         <div className="order-1 flex flex-col lg:order-2">
           {/* Hero: the character stands directly in their world — the page background IS the biome */}
           <div className="min-h-[360px] lg:min-h-[460px]">
             <div className="relative flex h-full flex-col items-center justify-center pb-2 pt-6">
-              {/* Streak flame lives on the hero — it's the heartbeat of the game */}
-              <div
-                className={cn(
-                  'absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full bg-ink-950/80 px-2.5 py-1',
-                  streak > 0 && !atRisk ? 'text-gold-400' : atRisk ? 'text-orange-400' : 'text-ink-500',
-                )}
-                title={atRisk ? 'Completa una misión hoy para no perder la racha' : 'Racha de días activos'}
-              >
-                <Flame size={14} fill={streak > 0 ? 'currentColor' : 'none'} />
-                <span className="font-pixel text-[10px]">{streak}d</span>
+              {/* Streak, level and coins live together on the hero — the heartbeat of the game, one glance */}
+              <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5">
+                <div
+                  className={cn(
+                    'flex items-center gap-1 rounded-full bg-ink-950/80 px-2.5 py-1',
+                    streak > 0 && !atRisk ? 'text-gold-400' : atRisk ? 'text-orange-400' : 'text-ink-500',
+                  )}
+                  title={atRisk ? 'Completa una misión hoy para no perder la racha' : 'Racha de días activos'}
+                >
+                  <Flame size={14} fill={streak > 0 ? 'currentColor' : 'none'} />
+                  <span className="font-pixel text-[10px]">{streak}d</span>
+                </div>
+                <div className="flex items-center gap-1 rounded-full bg-ink-950/80 px-2.5 py-1 text-ink-200" title="Nivel">
+                  <Star size={13} className="text-gold-400" />
+                  <span className="font-pixel text-[10px]">{profile.level}</span>
+                </div>
+                <div className="flex items-center gap-1 rounded-full bg-ink-950/80 px-2.5 py-1 text-ink-200" title="Monedas">
+                  <Coins size={13} className="text-gold-400" />
+                  <span className="font-pixel text-[10px]">{profile.coins}</span>
+                </div>
               </div>
 
               <AvatarAura auraId={equippedAura}>

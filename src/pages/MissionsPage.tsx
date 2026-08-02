@@ -83,7 +83,10 @@ export function MissionsPage() {
           onEditMission={(mission) => setDialog({ open: true, mission })}
         />
       ) : view === 'dia' ? (
-        <DayView onEdit={(mission) => setDialog({ open: true, mission })} />
+        <DayView
+          onEdit={(mission) => setDialog({ open: true, mission })}
+          onCreate={(date) => setDialog({ open: true, date })}
+        />
       ) : (
         <CalendarView
           onCreateOnDate={(date) => setDialog({ open: true, date })}

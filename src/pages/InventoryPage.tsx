@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Wallet, ShoppingCart, Dumbbell, Plus, Trash2, Pencil, Check, TrendingUp, TrendingDown, Landmark, Home } from 'lucide-react'
+import { Wallet, ShoppingCart, Dumbbell, Plus, Trash2, Pencil, Check, TrendingUp, TrendingDown, Landmark, Home, ChevronRight } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { todayKey, MONTH_LABELS } from '@/lib/calendar'
 import { toClp, formatMoney, CURRENCIES } from '@/lib/planning/currency'
@@ -533,6 +533,16 @@ function GrocerySection() {
   const [price, setPrice] = useState('')
   const [category, setCategory] = useState<GroceryCategory>('otros')
   const [loggedMessage, setLoggedMessage] = useState<string | null>(null)
+  // Categories start closed — an empty set means nothing is expanded yet.
+  const [expandedCategories, setExpandedCategories] = useState<Set<GroceryCategory>>(new Set())
+
+  function toggleCategory(id: GroceryCategory) {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   const checkedTotal = checkedGroceryTotal(groceryItems)
   const basketTotal = groceryTotal(groceryItems)
@@ -668,14 +678,31 @@ function GrocerySection() {
         </div>
       </form>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
         {groceryItems.length === 0 && <p className="text-sm text-ink-400">Tu lista de compras del mes está vacía.</p>}
-        {grouped.map((group) => (
-          <div key={group.id} className="flex flex-col gap-2">
-            <h3 className="text-[11px] font-medium uppercase tracking-wide text-ink-400">
-              {group.icon} {group.label}
-            </h3>
-            {group.items.map((item) => (
+        {grouped.map((group) => {
+          const isOpen = expandedCategories.has(group.id)
+          const groupTotal = group.items.reduce((sum, item) => sum + groceryLineTotal(item), 0)
+          const checkedCount = group.items.filter((i) => i.checked).length
+          return (
+            <div key={group.id} className="rounded-xl border border-ink-800 bg-ink-900/40">
+              <button
+                onClick={() => toggleCategory(group.id)}
+                className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left"
+              >
+                <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-300">
+                  <ChevronRight size={13} className={cn('shrink-0 text-ink-500 transition-transform', isOpen && 'rotate-90')} />
+                  {group.icon} {group.label}
+                  <span className="rounded-full bg-ink-800 px-1.5 py-0.5 text-[9px] normal-case text-ink-400">
+                    {checkedCount}/{group.items.length}
+                  </span>
+                </span>
+                <span className="text-[10px] text-ink-500">${groupTotal.toLocaleString('es-CL')}</span>
+              </button>
+
+              {isOpen && (
+                <div className="flex flex-col gap-2 px-3 pb-3">
+                  {group.items.map((item) => (
               <div
                 key={item.id}
                 className={cn(
@@ -711,13 +738,16 @@ function GrocerySection() {
                 <button onClick={() => startEdit(item)} className="text-ink-500 hover:text-gold-400">
                   <Pencil size={14} />
                 </button>
-                <button onClick={() => deleteGroceryItem(item.id)} className="ml-3 text-ink-500 hover:text-red-400">
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-          </div>
-        ))}
+                    <button onClick={() => deleteGroceryItem(item.id)} className="ml-3 text-ink-500 hover:text-red-400">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {/* Sending charges Finanzas once; editing afterwards updates that same expense instead of stacking new ones */}
