@@ -108,10 +108,14 @@ export type ActivityLog = Record<string, { xp: number; missions: number }>
 
 export type FinanceEntryType = 'ingreso' | 'gasto'
 
+/** The currencies an amount can be entered in — always convertible to a CLP-equivalent for totals. */
+export type Currency = 'CLP' | 'USD'
+
 export interface FinanceEntry {
   id: string
   type: FinanceEntryType
   amount: number
+  currency: Currency
   description: string
   /** ISO date (yyyy-mm-dd). */
   date: string
@@ -122,6 +126,7 @@ export interface IncomeSource {
   id: string
   name: string
   amount: number
+  currency: Currency
 }
 
 /** A recurring monthly bill — luz, agua, arriendo, gastos comunes — counted every month without re-entering it. */
@@ -129,6 +134,7 @@ export interface FixedExpense {
   id: string
   name: string
   amount: number
+  currency: Currency
 }
 
 export type GroceryCategory =
@@ -188,6 +194,11 @@ export interface ExerciseItem {
   logs: ExerciseLog[]
 }
 
+/** The five life-facets a completed mission feeds — the player's dashboard next to their character. */
+export type PlayerStatKey = 'cuerpo' | 'disciplina' | 'mente' | 'finanzas' | 'corazon'
+
+export type PlayerStats = Record<PlayerStatKey, number>
+
 export interface PlayerProfile {
   name: string
   level: number
@@ -203,4 +214,6 @@ export interface PlayerProfile {
   xpTodayDate?: string
   /** Daily XP target, Duolingo-style. */
   dailyXpGoal?: number
+  /** Cuerpo/Disciplina/Mente/Finanzas/Corazón — accumulated from completed missions by the region they happened in. */
+  stats?: PlayerStats
 }

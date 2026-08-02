@@ -20,6 +20,7 @@ function pickGameState() {
     financeEntries: s.financeEntries,
     incomeSources: s.incomeSources,
     fixedExpenses: s.fixedExpenses,
+    usdToClp: s.usdToClp,
     unlocks: s.unlocks,
     equippedTitle: s.equippedTitle,
     equippedAura: s.equippedAura,
@@ -28,6 +29,7 @@ function pickGameState() {
     groceryItems: s.groceryItems,
     groceryPurchaseEntryId: s.groceryPurchaseEntryId,
     exerciseItems: s.exerciseItems,
+    trainingDayNames: s.trainingDayNames,
   }
 }
 

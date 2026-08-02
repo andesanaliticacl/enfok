@@ -10,11 +10,14 @@ import {
 import { applyCompletion, createMission, isDoneForNow, type MissionInput } from '@/lib/planning/missionEngine'
 import { applyMissionReward, grantXp } from '@/lib/planning/profileEngine'
 import { GROCERY_EXPENSE_DESCRIPTION, checkedGroceryTotal } from '@/lib/planning/groceryEngine'
+import { DEFAULT_USD_TO_CLP } from '@/lib/planning/currency'
 import { regionCategory } from '@/data/regionCategories'
+import { statForRegionCategory, EMPTY_PLAYER_STATS } from '@/data/playerStats'
 import { planById } from '@/data/plans'
 import type { LatLng } from '@/lib/world/layout'
 import type {
   ActivityLog,
+  Currency,
   ExerciseItem,
   FinanceEntry,
   FinanceEntryType,
@@ -54,6 +57,9 @@ interface GameState {
   financeEntries: FinanceEntry[]
   incomeSources: IncomeSource[]
   fixedExpenses: FixedExpense[]
+  /** How many CLP one USD is worth — editable, used to show one CLP-equivalent total across currencies. */
+  usdToClp: number
+  setUsdToClp: (rate: number) => void
   groceryItems: GroceryItem[]
   /** Finanzas entry the current basket is linked to — set on first send, so later sends update it instead of adding another expense. */
   groceryPurchaseEntryId: string | null
@@ -79,19 +85,19 @@ interface GameState {
   /** Grants the daily verse's XP, once per day. No-op if already read today. */
   claimDailyVerse: (xp: number) => void
 
-  addFinanceEntry: (input: { type: FinanceEntryType; amount: number; description: string; date: string }) => void
+  addFinanceEntry: (input: { type: FinanceEntryType; amount: number; currency: Currency; description: string; date: string }) => void
   updateFinanceEntry: (
     entryId: string,
-    input: { type: FinanceEntryType; amount: number; description: string; date: string },
+    input: { type: FinanceEntryType; amount: number; currency: Currency; description: string; date: string },
   ) => void
   deleteFinanceEntry: (entryId: string) => void
 
-  addIncomeSource: (input: { name: string; amount: number }) => void
-  updateIncomeSource: (sourceId: string, input: { name: string; amount: number }) => void
+  addIncomeSource: (input: { name: string; amount: number; currency: Currency }) => void
+  updateIncomeSource: (sourceId: string, input: { name: string; amount: number; currency: Currency }) => void
   deleteIncomeSource: (sourceId: string) => void
 
-  addFixedExpense: (input: { name: string; amount: number }) => void
-  updateFixedExpense: (expenseId: string, input: { name: string; amount: number }) => void
+  addFixedExpense: (input: { name: string; amount: number; currency: Currency }) => void
+  updateFixedExpense: (expenseId: string, input: { name: string; amount: number; currency: Currency }) => void
   deleteFixedExpense: (expenseId: string) => void
 
   addGroceryItem: (input: { name: string; quantity: number; category: GroceryCategory; price?: number }) => void
@@ -118,6 +124,10 @@ interface GameState {
   deleteExerciseItem: (itemId: string) => void
   logExerciseSet: (itemId: string, input: { weight: number; reps: number; date: string }) => void
   deleteExerciseLog: (itemId: string, logId: string) => void
+
+  /** Custom label per weekday's training split slot — "Grupo 3" becomes "Pecho" once renamed. */
+  trainingDayNames: Partial<Record<Weekday, string>>
+  setTrainingDayName: (day: Weekday, name: string) => void
 
   addRegion: (input: RegionInput) => string
   updateRegion: (regionId: string, input: RegionInput) => void
@@ -150,6 +160,7 @@ const STARTING_PROFILE: Omit<PlayerProfile, 'name'> = {
   coins: 0,
   streakDays: 0,
   hoursInvested: 0,
+  stats: { ...EMPTY_PLAYER_STATS },
 }
 
 /** Goal statuses and region levels are always derived from missions — recompute after any change that touches them. */
@@ -236,14 +247,27 @@ export function normalizeGameState(raw: Partial<GameState> & { places?: unknown;
   return {
     ...rest,
     activityLog: rest.activityLog ?? {},
-    financeEntries: rest.financeEntries ?? [],
-    incomeSources: rest.incomeSources ?? [],
-    fixedExpenses: rest.fixedExpenses ?? [],
     unlocks: rest.unlocks ?? [],
     equippedTitle: rest.equippedTitle ?? null,
     equippedAura: rest.equippedAura ?? null,
     claimedAchievements: rest.claimedAchievements ?? [],
     lastVerseDate: rest.lastVerseDate ?? null,
+    usdToClp: rest.usdToClp ?? DEFAULT_USD_TO_CLP,
+    trainingDayNames: rest.trainingDayNames ?? {},
+    profile: rest.profile ? { ...rest.profile, stats: { ...EMPTY_PLAYER_STATS, ...rest.profile.stats } } : rest.profile,
+    // Money entries/sources predating currencies default to CLP.
+    financeEntries: ((rest.financeEntries ?? []) as (FinanceEntry & { currency?: Currency })[]).map((e) => ({
+      ...e,
+      currency: e.currency ?? 'CLP',
+    })),
+    incomeSources: ((rest.incomeSources ?? []) as (IncomeSource & { currency?: Currency })[]).map((s) => ({
+      ...s,
+      currency: s.currency ?? 'CLP',
+    })),
+    fixedExpenses: ((rest.fixedExpenses ?? []) as (FixedExpense & { currency?: Currency })[]).map((e) => ({
+      ...e,
+      currency: e.currency ?? 'CLP',
+    })),
     // Grocery items predating categories default to 'otros'. Quantity used to be
     // free text ("2L", "3 cajas") — keep the leading number so totals still work,
     // falling back to a single unit when there isn't one.
@@ -289,9 +313,11 @@ export const useGameStore = create<GameState>()(
       financeEntries: [],
       incomeSources: [],
       fixedExpenses: [],
+      usdToClp: DEFAULT_USD_TO_CLP,
       groceryItems: [],
       groceryPurchaseEntryId: null,
       exerciseItems: [],
+      trainingDayNames: {},
       unlocks: [],
       equippedTitle: null,
       equippedAura: null,
@@ -299,6 +325,11 @@ export const useGameStore = create<GameState>()(
       lastVerseDate: null,
 
       setWorldAnchor: (anchor) => set((state) => (state.worldAnchor ? {} : { worldAnchor: anchor })),
+
+      setUsdToClp: (rate) => set({ usdToClp: rate > 0 ? rate : DEFAULT_USD_TO_CLP }),
+
+      setTrainingDayName: (day, name) =>
+        set((state) => ({ trainingDayNames: { ...state.trainingDayNames, [day]: name } })),
 
       purchaseShopItem: (itemId, price) => {
         const { profile, unlocks } = get()
@@ -425,6 +456,7 @@ export const useGameStore = create<GameState>()(
                 id: entryId,
                 type: 'gasto',
                 amount: total,
+                currency: 'CLP',
                 description: GROCERY_EXPENSE_DESCRIPTION,
                 date: todayKey(),
               },
@@ -582,17 +614,23 @@ export const useGameStore = create<GameState>()(
 
       completeMission: (missionId) => {
         const today = todayKey()
-        const mission = get().missions.find((m) => m.id === missionId)
+        const { missions: allMissions, goals: allGoals, regions: allRegions } = get()
+        const mission = allMissions.find((m) => m.id === missionId)
         // isDoneForNow also blocks re-completing a repeating mission whose next
         // occurrence is in the future — no double XP for the same cycle.
         if (!mission || isDoneForNow(mission, today)) return
+
+        // Which of the five player stats this mission feeds, via its goal's region.
+        const goal = allGoals.find((g) => g.id === mission.goalId)
+        const region = goal ? allRegions.find((r) => r.id === goal.regionId) : undefined
+        const statKey = region ? statForRegionCategory(region.category) : undefined
 
         set((state) => {
           const missions = state.missions.map((m) => (m.id === missionId ? applyCompletion(m, today) : m))
           return {
             missions,
             ...deriveAfterMissionChange(state.goals, missions, state.regions),
-            profile: applyMissionReward(state.profile, mission, today),
+            profile: applyMissionReward(state.profile, mission, today, statKey),
             activityLog: logActivity(state.activityLog, today, mission.xp),
             lastGainedXp: mission.xp,
           }
@@ -669,9 +707,11 @@ export const useGameStore = create<GameState>()(
           financeEntries: [],
           incomeSources: [],
           fixedExpenses: [],
+          usdToClp: DEFAULT_USD_TO_CLP,
           groceryItems: [],
           groceryPurchaseEntryId: null,
           exerciseItems: [],
+          trainingDayNames: {},
           unlocks: [],
           equippedTitle: null,
           equippedAura: null,

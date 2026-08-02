@@ -2,20 +2,22 @@ import { useState } from 'react'
 import { Wallet, ShoppingCart, Dumbbell, Plus, Trash2, Pencil, Check, TrendingUp, TrendingDown, Landmark, Home } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { todayKey, MONTH_LABELS } from '@/lib/calendar'
+import { toClp, formatMoney, CURRENCIES } from '@/lib/planning/currency'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FinanceBarChart } from '@/components/inventory/FinanceBarChart'
 import { FinanceLineChart, type MonthlyTotal } from '@/components/inventory/FinanceLineChart'
+import { CurrencyConverter } from '@/components/inventory/CurrencyConverter'
 import { ExerciseSection } from '@/components/inventory/ExerciseSection'
 import { GROCERY_CATEGORIES } from '@/data/groceryCategories'
 import { checkedGroceryTotal, groceryLineTotal, groceryTotal } from '@/lib/planning/groceryEngine'
 import { cn } from '@/lib/utils'
-import type { FinanceEntry, FinanceEntryType, GroceryCategory } from '@/types'
+import type { Currency, FinanceEntry, FinanceEntryType, GroceryCategory } from '@/types'
 
-/** Last `count` months (oldest first, current month last), aggregated from the already-dated entries — no separate history storage needed. */
-function buildMonthlyTotals(entries: FinanceEntry[], count: number): MonthlyTotal[] {
+/** Last `count` months (oldest first, current month last), aggregated in one CLP-equivalent — no separate history storage needed. */
+function buildMonthlyTotals(entries: FinanceEntry[], count: number, usdToClp: number): MonthlyTotal[] {
   const now = new Date()
   const months: MonthlyTotal[] = []
   for (let i = count - 1; i >= 0; i--) {
@@ -27,10 +29,32 @@ function buildMonthlyTotals(entries: FinanceEntry[], count: number): MonthlyTota
   for (const entry of entries) {
     const month = byKey.get(entry.date.slice(0, 7))
     if (!month) continue
-    if (entry.type === 'ingreso') month.ingreso += entry.amount
-    else month.gasto += entry.amount
+    const amountClp = toClp(entry.amount, entry.currency, usdToClp)
+    if (entry.type === 'ingreso') month.ingreso += amountClp
+    else month.gasto += amountClp
   }
   return months
+}
+
+/** Small pill row to pick CLP or USD for an amount input. */
+function CurrencyChips({ value, onChange }: { value: Currency; onChange: (c: Currency) => void }) {
+  return (
+    <div className="flex gap-1">
+      {CURRENCIES.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          onClick={() => onChange(c.id)}
+          className={cn(
+            'rounded-full border border-ink-600 px-2 py-1 text-[10px] font-medium text-ink-300',
+            value === c.id && 'border-gold-400 bg-gold-500/20 text-gold-400',
+          )}
+        >
+          {c.id}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 type Tab = 'finanzas' | 'compras' | 'ejercicios'
@@ -83,25 +107,34 @@ function FinanceSection() {
   const addFixedExpense = useGameStore((s) => s.addFixedExpense)
   const updateFixedExpense = useGameStore((s) => s.updateFixedExpense)
   const deleteFixedExpense = useGameStore((s) => s.deleteFixedExpense)
+  const usdToClp = useGameStore((s) => s.usdToClp)
 
   const [view, setView] = useState<'resumen' | 'tendencia'>('resumen')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [type, setType] = useState<FinanceEntryType>('gasto')
   const [amount, setAmount] = useState('')
+  const [currency, setCurrency] = useState<Currency>('CLP')
   const [description, setDescription] = useState('')
 
   const [sourceEditingId, setSourceEditingId] = useState<string | null>(null)
   const [sourceName, setSourceName] = useState('')
   const [sourceAmount, setSourceAmount] = useState('')
+  const [sourceCurrency, setSourceCurrency] = useState<Currency>('CLP')
 
   const [expenseEditingId, setExpenseEditingId] = useState<string | null>(null)
   const [expenseName, setExpenseName] = useState('')
   const [expenseAmount, setExpenseAmount] = useState('')
+  const [expenseCurrency, setExpenseCurrency] = useState<Currency>('CLP')
 
-  const fixedIncome = incomeSources.reduce((sum, s) => sum + s.amount, 0)
-  const fixedExpensesTotal = fixedExpenses.reduce((sum, e) => sum + e.amount, 0)
-  const entriesIncome = financeEntries.filter((e) => e.type === 'ingreso').reduce((sum, e) => sum + e.amount, 0)
-  const entriesExpense = financeEntries.filter((e) => e.type === 'gasto').reduce((sum, e) => sum + e.amount, 0)
+  // Every total below is a CLP-equivalent sum — so a peso and a dollar always add up correctly.
+  const fixedIncome = incomeSources.reduce((sum, s) => sum + toClp(s.amount, s.currency, usdToClp), 0)
+  const fixedExpensesTotal = fixedExpenses.reduce((sum, e) => sum + toClp(e.amount, e.currency, usdToClp), 0)
+  const entriesIncome = financeEntries
+    .filter((e) => e.type === 'ingreso')
+    .reduce((sum, e) => sum + toClp(e.amount, e.currency, usdToClp), 0)
+  const entriesExpense = financeEntries
+    .filter((e) => e.type === 'gasto')
+    .reduce((sum, e) => sum + toClp(e.amount, e.currency, usdToClp), 0)
   const totalIncome = fixedIncome + entriesIncome
   const totalExpense = fixedExpensesTotal + entriesExpense
   const balance = totalIncome - totalExpense
@@ -110,6 +143,7 @@ function FinanceSection() {
     setEditingId(null)
     setType('gasto')
     setAmount('')
+    setCurrency('CLP')
     setDescription('')
   }
 
@@ -118,9 +152,9 @@ function FinanceSection() {
     const parsed = Number(amount)
     if (!description.trim() || !parsed || parsed <= 0) return
     if (editingId) {
-      updateFinanceEntry(editingId, { type, amount: parsed, description: description.trim(), date: todayKey() })
+      updateFinanceEntry(editingId, { type, amount: parsed, currency, description: description.trim(), date: todayKey() })
     } else {
-      addFinanceEntry({ type, amount: parsed, description: description.trim(), date: todayKey() })
+      addFinanceEntry({ type, amount: parsed, currency, description: description.trim(), date: todayKey() })
     }
     resetEntryForm()
   }
@@ -129,6 +163,7 @@ function FinanceSection() {
     setEditingId(entry.id)
     setType(entry.type)
     setAmount(String(entry.amount))
+    setCurrency(entry.currency)
     setDescription(entry.description)
   }
 
@@ -136,6 +171,7 @@ function FinanceSection() {
     setSourceEditingId(null)
     setSourceName('')
     setSourceAmount('')
+    setSourceCurrency('CLP')
   }
 
   function handleSourceSubmit(e: React.FormEvent) {
@@ -143,9 +179,9 @@ function FinanceSection() {
     const parsed = Number(sourceAmount)
     if (!sourceName.trim() || !parsed || parsed <= 0) return
     if (sourceEditingId) {
-      updateIncomeSource(sourceEditingId, { name: sourceName.trim(), amount: parsed })
+      updateIncomeSource(sourceEditingId, { name: sourceName.trim(), amount: parsed, currency: sourceCurrency })
     } else {
-      addIncomeSource({ name: sourceName.trim(), amount: parsed })
+      addIncomeSource({ name: sourceName.trim(), amount: parsed, currency: sourceCurrency })
     }
     resetSourceForm()
   }
@@ -154,12 +190,14 @@ function FinanceSection() {
     setSourceEditingId(source.id)
     setSourceName(source.name)
     setSourceAmount(String(source.amount))
+    setSourceCurrency(source.currency)
   }
 
   function resetExpenseForm() {
     setExpenseEditingId(null)
     setExpenseName('')
     setExpenseAmount('')
+    setExpenseCurrency('CLP')
   }
 
   function handleExpenseSubmit(e: React.FormEvent) {
@@ -167,9 +205,9 @@ function FinanceSection() {
     const parsed = Number(expenseAmount)
     if (!expenseName.trim() || !parsed || parsed <= 0) return
     if (expenseEditingId) {
-      updateFixedExpense(expenseEditingId, { name: expenseName.trim(), amount: parsed })
+      updateFixedExpense(expenseEditingId, { name: expenseName.trim(), amount: parsed, currency: expenseCurrency })
     } else {
-      addFixedExpense({ name: expenseName.trim(), amount: parsed })
+      addFixedExpense({ name: expenseName.trim(), amount: parsed, currency: expenseCurrency })
     }
     resetExpenseForm()
   }
@@ -178,19 +216,22 @@ function FinanceSection() {
     setExpenseEditingId(expense.id)
     setExpenseName(expense.name)
     setExpenseAmount(String(expense.amount))
+    setExpenseCurrency(expense.currency)
   }
 
   return (
     <div className="flex flex-col gap-4">
       <Card>
         <CardContent className="flex flex-col items-center gap-1 p-4 text-center">
-          <p className="text-xs uppercase tracking-wide text-ink-400">Balance</p>
+          <p className="text-xs uppercase tracking-wide text-ink-400">Balance (equivalente en CLP)</p>
           <p className={cn('text-2xl font-semibold', balance >= 0 ? 'text-gold-400 text-glow-gold' : 'text-red-400')}>
-            ${balance.toLocaleString('es-CL')}
+            ${Math.round(balance).toLocaleString('es-CL')}
           </p>
-          <p className="text-[10px] text-ink-500">Incluye ingresos y gastos fijos + movimientos registrados</p>
+          <p className="text-[10px] text-ink-500">Suma ingresos y gastos fijos + movimientos, en pesos o dólares por igual</p>
         </CardContent>
       </Card>
+
+      <CurrencyConverter />
 
       <div className="flex gap-2">
         <button
@@ -216,16 +257,21 @@ function FinanceSection() {
       {view === 'tendencia' ? (
         <Card>
           <CardContent className="p-4">
-            <FinanceLineChart months={buildMonthlyTotals(financeEntries, 6)} />
+            <FinanceLineChart months={buildMonthlyTotals(financeEntries, 6, usdToClp)} />
             <p className="mt-3 text-[10px] text-ink-500">
-              Últimos 6 meses, según la fecha de cada movimiento registrado.
+              Últimos 6 meses, según la fecha de cada movimiento registrado (equivalente en CLP).
             </p>
           </CardContent>
         </Card>
       ) : (
         <Card>
           <CardContent className="p-4">
-            <FinanceBarChart income={totalIncome} expense={totalExpense} />
+            <FinanceBarChart
+              fixedIncome={fixedIncome}
+              spontaneousIncome={entriesIncome}
+              fixedExpense={fixedExpensesTotal}
+              spontaneousExpense={entriesExpense}
+            />
           </CardContent>
         </Card>
       )}
@@ -236,33 +282,38 @@ function FinanceSection() {
           <h2 className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-ink-400">
             <Landmark size={14} /> Ingresos fijos
           </h2>
-          <span className="text-xs font-medium text-emerald-400">${fixedIncome.toLocaleString('es-CL')}/mes</span>
+          <span className="text-xs font-medium text-emerald-400">${Math.round(fixedIncome).toLocaleString('es-CL')}/mes</span>
         </div>
 
-        <form onSubmit={handleSourceSubmit} className="mb-3 flex gap-2">
-          <Input
-            placeholder="Sueldo, freelance, etc."
-            value={sourceName}
-            onChange={(e) => setSourceName(e.target.value)}
-            className="flex-1"
-          />
-          <Input
-            type="number"
-            min="0"
-            step="1"
-            placeholder="Monto"
-            value={sourceAmount}
-            onChange={(e) => setSourceAmount(e.target.value)}
-            className="w-28"
-          />
-          <Button type="submit" size="icon">
-            <Plus size={16} />
-          </Button>
-          {sourceEditingId && (
-            <Button type="button" variant="ghost" size="sm" onClick={resetSourceForm}>
-              Cancelar
+        <form onSubmit={handleSourceSubmit} className="mb-3 flex flex-col gap-2">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Sueldo, freelance, etc."
+              value={sourceName}
+              onChange={(e) => setSourceName(e.target.value)}
+              className="flex-1"
+            />
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              placeholder="Monto"
+              value={sourceAmount}
+              onChange={(e) => setSourceAmount(e.target.value)}
+              className="w-24"
+            />
+            <Button type="submit" size="icon">
+              <Plus size={16} />
             </Button>
-          )}
+          </div>
+          <div className="flex items-center gap-2">
+            <CurrencyChips value={sourceCurrency} onChange={setSourceCurrency} />
+            {sourceEditingId && (
+              <Button type="button" variant="ghost" size="sm" onClick={resetSourceForm}>
+                Cancelar
+              </Button>
+            )}
+          </div>
         </form>
 
         <div className="flex flex-col gap-2">
@@ -279,7 +330,14 @@ function FinanceSection() {
             >
               <span className="text-sm text-ink-50">{source.name}</span>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-emerald-400">${source.amount.toLocaleString('es-CL')}</span>
+                <span className="text-right text-sm font-medium text-emerald-400">
+                  {formatMoney(source.amount, source.currency)}
+                  {source.currency === 'USD' && (
+                    <span className="block text-[9px] font-normal text-ink-500">
+                      ≈ ${Math.round(toClp(source.amount, 'USD', usdToClp)).toLocaleString('es-CL')}
+                    </span>
+                  )}
+                </span>
                 <button onClick={() => startEditSource(source)} className="text-ink-500 hover:text-gold-400">
                   <Pencil size={14} />
                 </button>
@@ -298,33 +356,38 @@ function FinanceSection() {
           <h2 className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-ink-400">
             <Home size={14} /> Gastos fijos
           </h2>
-          <span className="text-xs font-medium text-red-400">${fixedExpensesTotal.toLocaleString('es-CL')}/mes</span>
+          <span className="text-xs font-medium text-red-400">${Math.round(fixedExpensesTotal).toLocaleString('es-CL')}/mes</span>
         </div>
 
-        <form onSubmit={handleExpenseSubmit} className="mb-3 flex gap-2">
-          <Input
-            placeholder="Luz, agua, arriendo, gastos comunes..."
-            value={expenseName}
-            onChange={(e) => setExpenseName(e.target.value)}
-            className="flex-1"
-          />
-          <Input
-            type="number"
-            min="0"
-            step="1"
-            placeholder="Monto"
-            value={expenseAmount}
-            onChange={(e) => setExpenseAmount(e.target.value)}
-            className="w-28"
-          />
-          <Button type="submit" size="icon">
-            <Plus size={16} />
-          </Button>
-          {expenseEditingId && (
-            <Button type="button" variant="ghost" size="sm" onClick={resetExpenseForm}>
-              Cancelar
+        <form onSubmit={handleExpenseSubmit} className="mb-3 flex flex-col gap-2">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Luz, agua, arriendo, gastos comunes..."
+              value={expenseName}
+              onChange={(e) => setExpenseName(e.target.value)}
+              className="flex-1"
+            />
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              placeholder="Monto"
+              value={expenseAmount}
+              onChange={(e) => setExpenseAmount(e.target.value)}
+              className="w-24"
+            />
+            <Button type="submit" size="icon">
+              <Plus size={16} />
             </Button>
-          )}
+          </div>
+          <div className="flex items-center gap-2">
+            <CurrencyChips value={expenseCurrency} onChange={setExpenseCurrency} />
+            {expenseEditingId && (
+              <Button type="button" variant="ghost" size="sm" onClick={resetExpenseForm}>
+                Cancelar
+              </Button>
+            )}
+          </div>
         </form>
 
         <div className="flex flex-col gap-2">
@@ -341,7 +404,14 @@ function FinanceSection() {
             >
               <span className="text-sm text-ink-50">{expense.name}</span>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-red-400">${expense.amount.toLocaleString('es-CL')}</span>
+                <span className="text-right text-sm font-medium text-red-400">
+                  {formatMoney(expense.amount, expense.currency)}
+                  {expense.currency === 'USD' && (
+                    <span className="block text-[9px] font-normal text-ink-500">
+                      ≈ ${Math.round(toClp(expense.amount, 'USD', usdToClp)).toLocaleString('es-CL')}
+                    </span>
+                  )}
+                </span>
                 <button onClick={() => startEditExpense(expense)} className="text-ink-500 hover:text-gold-400">
                   <Pencil size={14} />
                 </button>
@@ -377,14 +447,18 @@ function FinanceSection() {
             <TrendingUp size={14} /> Ingreso
           </button>
         </div>
-        <Input
-          type="number"
-          min="0"
-          step="1"
-          placeholder="Monto"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
+        <div className="flex gap-2">
+          <Input
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Monto"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="flex-1"
+          />
+          <CurrencyChips value={currency} onChange={setCurrency} />
+        </div>
         <Input placeholder="Descripción" value={description} onChange={(e) => setDescription(e.target.value)} />
         <div className="flex gap-2">
           <Button type="submit" size="sm" className="flex-1">
@@ -420,8 +494,13 @@ function FinanceSection() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className={cn('text-sm font-medium', entry.type === 'ingreso' ? 'text-emerald-400' : 'text-red-400')}>
-                {entry.type === 'ingreso' ? '+' : '-'}${entry.amount.toLocaleString('es-CL')}
+              <span className={cn('text-right text-sm font-medium', entry.type === 'ingreso' ? 'text-emerald-400' : 'text-red-400')}>
+                {entry.type === 'ingreso' ? '+' : '-'}{formatMoney(entry.amount, entry.currency)}
+                {entry.currency === 'USD' && (
+                  <span className="block text-[9px] font-normal text-ink-500">
+                    ≈ ${Math.round(toClp(entry.amount, 'USD', usdToClp)).toLocaleString('es-CL')}
+                  </span>
+                )}
               </span>
               <button onClick={() => startEditEntry(entry)} className="text-ink-500 hover:text-gold-400">
                 <Pencil size={14} />

@@ -1,5 +1,11 @@
 import { addDaysToKey, todayKey } from '@/lib/calendar'
-import type { Mission, PlayerProfile } from '@/types'
+import { EMPTY_PLAYER_STATS } from '@/data/playerStats'
+import type { Mission, PlayerProfile, PlayerStatKey } from '@/types'
+
+/** Always-populated stats, even for profiles saved before the dashboard existed. */
+export function playerStats(profile: PlayerProfile): Record<PlayerStatKey, number> {
+  return { ...EMPTY_PLAYER_STATS, ...profile.stats }
+}
 
 export const DEFAULT_DAILY_XP_GOAL = 50
 
@@ -74,9 +80,16 @@ export function grantXp(profile: PlayerProfile, amount: number, today = todayKey
 /**
  * Every profile consequence of completing one mission, in one place:
  * XP + level-up, coins, streak (extend if yesterday was active, restart if not),
- * today's XP counter, and invested hours from the mission's estimated duration.
+ * today's XP counter, invested hours from the mission's estimated duration, and
+ * — when the mission's region is known — a bump to that facet of the player's
+ * five-stat dashboard (Cuerpo/Disciplina/Mente/Finanzas/Corazón).
  */
-export function applyMissionReward(profile: PlayerProfile, mission: Mission, today = todayKey()): PlayerProfile {
+export function applyMissionReward(
+  profile: PlayerProfile,
+  mission: Mission,
+  today = todayKey(),
+  statKey?: PlayerStatKey,
+): PlayerProfile {
   const yesterday = addDaysToKey(today, -1)
   const streakDays =
     profile.lastActivityDate === today
@@ -84,6 +97,9 @@ export function applyMissionReward(profile: PlayerProfile, mission: Mission, tod
       : profile.lastActivityDate === yesterday
         ? profile.streakDays + 1
         : 1
+
+  const stats = playerStats(profile)
+  if (statKey) stats[statKey] += Math.max(1, mission.xp)
 
   return applyLevelUp({
     ...profile,
@@ -94,5 +110,6 @@ export function applyMissionReward(profile: PlayerProfile, mission: Mission, tod
     xpToday: xpEarnedToday(profile, today) + mission.xp,
     xpTodayDate: today,
     hoursInvested: Math.round((profile.hoursInvested + (mission.estimatedMinutes ?? 0) / 60) * 10) / 10,
+    stats,
   })
 }
