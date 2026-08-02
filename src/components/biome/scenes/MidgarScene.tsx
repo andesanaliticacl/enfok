@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { particles } from '@/lib/biome/random'
 import type { SceneProps } from './types'
 
@@ -70,6 +71,37 @@ export function MidgarScene({ daylight, seedKey }: SceneProps) {
         <rect x="0" y="26" width="160" height="4" fill={steelLit} />
         <rect x="0" y="30" width="160" height="1.5" fill={daylight ? '#2f3a4a' : '#080c12'} />
       </g>
+
+      {/* A dedicated perch, clear of the random skyline, so it always lands somewhere sensible */}
+      <rect x="112" y={DECK_Y - 34} width="11" height="3" fill={steelLit} />
+      {daylight ? (
+        /* Someone sitting quietly at the edge, watching the city */
+        <g>
+          <path
+            d={`M114,${DECK_Y - 34} Q113,${DECK_Y - 40} 117.5,${DECK_Y - 40} Q122,${DECK_Y - 40} 121,${DECK_Y - 34} Z`}
+            fill="#12151c"
+          />
+          <circle cx="117.5" cy={DECK_Y - 41.5} r="1.6" fill="#12151c" />
+        </g>
+      ) : (
+        /* A bat-signal, scanning the clouds */
+        <g
+          className="anim-searchlight"
+          style={{ transformBox: 'fill-box', transformOrigin: '50% 100%' } as CSSProperties}
+        >
+          <polygon points={`115,${DECK_Y - 34} 108,10 128,10`} fill="#ffe9a0" opacity="0.16" />
+          <polygon points={`115.5,${DECK_Y - 34} 111,16 122,16`} fill="#fff6d8" opacity="0.22" />
+          <g transform="translate(117, 15) scale(0.85)">
+            {/* The projection glow on the clouds, with the bat symbol as a dark cutout on top */}
+            <ellipse cx="0" cy="0" rx="6.5" ry="5" fill="#fff6d8" opacity="0.5" />
+            <path
+              d="M-5,0 Q-3,-2.4 -1.6,0.2 Q-0.8,-3.2 0,0.4 Q0.8,-3.2 1.6,0.2 Q3,-2.4 5,0 Q2.6,2.6 0,1.4 Q-2.6,2.6 -5,0 Z"
+              fill="#100b18"
+              opacity="0.92"
+            />
+          </g>
+        </g>
+      )}
 
       {/* Neon signage on the buildings */}
       {neon.map((n, i) => (

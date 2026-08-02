@@ -28,6 +28,19 @@ export function AbismoScene({ daylight, seedKey }: SceneProps) {
     delay: rand() * 6,
   }))
 
+  const angels = particles(seedKey, 'angels', 3, (rand, i) => ({
+    x: 26 + i * 52 + rand() * 14,
+    y: 26 + rand() * 14,
+    dur: 4 + rand() * 2,
+    delay: rand() * 3,
+  }))
+
+  const claws = particles(seedKey, 'claws', 6, (rand, i) => ({
+    x: 12 + i * 24 + rand() * 12,
+    dur: 6 + rand() * 5,
+    delay: rand() * 8,
+  }))
+
   return (
     <>
       <defs>
@@ -109,6 +122,28 @@ export function AbismoScene({ daylight, seedKey }: SceneProps) {
           <ellipse cx="80" cy="88" rx="110" ry="10" fill="#ffffff" opacity="0.95" />
           <ellipse className="anim-fog" cx="40" cy="84" rx="46" ry="6" fill="#ffffff" opacity="0.6" />
           <ellipse className="anim-fog" cx="120" cy="86" rx="50" ry="6" fill="#ffffff" opacity="0.55" style={{ animationDelay: '3s' }} />
+
+          {/* Angels drifting near the gate, halos and wings gently bobbing */}
+          {angels.map((a, i) => (
+            <g
+              key={`angel-${i}`}
+              className="anim-angel"
+              style={
+                {
+                  transformBox: 'fill-box',
+                  transformOrigin: '50% 100%',
+                  animationDuration: `${a.dur}s`,
+                  animationDelay: `${a.delay}s`,
+                } as CSSProperties
+              }
+            >
+              <ellipse cx={a.x - 2.2} cy={a.y + 0.6} rx="2.2" ry="1" fill="#fff6de" opacity="0.85" transform={`rotate(-20 ${a.x - 2.2} ${a.y + 0.6})`} />
+              <ellipse cx={a.x + 2.2} cy={a.y + 0.6} rx="2.2" ry="1" fill="#fff6de" opacity="0.85" transform={`rotate(20 ${a.x + 2.2} ${a.y + 0.6})`} />
+              <ellipse cx={a.x} cy={a.y + 0.4} rx="1.1" ry="0.4" fill="#f5e6a8" opacity="0.9" />
+              <polygon points={`${a.x - 1.1},${a.y + 3.4} ${a.x + 1.1},${a.y + 3.4} ${a.x + 1.7},${a.y - 0.6} ${a.x - 1.7},${a.y - 0.6}`} fill="#fffaf0" />
+              <circle cx={a.x} cy={a.y - 1.6} r="1" fill="#ffe9c2" />
+            </g>
+          ))}
         </>
       ) : (
         <>
@@ -117,9 +152,31 @@ export function AbismoScene({ daylight, seedKey }: SceneProps) {
           <path d="M160,90 L160,54 L150,40 L140,58 L128,36 L116,60 L106,50 L100,90 Z" fill="#100405" />
           <path d="M60,90 L66,66 L74,74 L80,58 L88,74 L96,66 L100,90 Z" fill="#1a0708" />
 
+          {/* Tiny horned watchers peering over the spires */}
+          {[[16, 46], [144, 42]].map(([x, y], i) => (
+            <g key={`imp-${i}`}>
+              <polygon points={`${x - 1.6},${y + 1.4} ${x - 2.4},${y - 0.6} ${x - 0.6},${y + 0.4}`} fill="#1a0708" />
+              <polygon points={`${x + 1.6},${y + 1.4} ${x + 2.4},${y - 0.6} ${x + 0.6},${y + 0.4}`} fill="#1a0708" />
+              <circle cx={x} cy={y + 1.6} r="1.6" fill="#0c0304" />
+              <circle className="anim-torch" cx={x - 0.5} cy={y + 1.4} r="0.35" fill="#ff5a1f" style={{ animationDelay: `${i * 0.6}s` }} />
+              <circle className="anim-torch" cx={x + 0.5} cy={y + 1.4} r="0.35" fill="#ff5a1f" style={{ animationDelay: `${i * 0.6}s` }} />
+            </g>
+          ))}
+
           {/* Lava lake with a pulsing glow */}
           <rect x="0" y="80" width="160" height="10" fill="url(#abi-lava)" className="anim-lava" />
           <rect x="0" y="79" width="160" height="1.5" fill="#ffd98a" opacity="0.8" className="anim-lava" style={{ animationDelay: '0.8s' }} />
+
+          {/* Clawed hands straining up from the lava, then sinking back under */}
+          {claws.map((c, i) => (
+            <path
+              key={`claw-${i}`}
+              className="anim-lava-reach"
+              d={`M${c.x - 1.4},80 L${c.x - 1},76 L${c.x - 0.6},77.4 L${c.x - 0.25},75.6 L${c.x},77.2 L${c.x + 0.25},75.6 L${c.x + 0.6},77.4 L${c.x + 1},76 L${c.x + 1.4},80 Z`}
+              fill="#1a0403"
+              style={{ transformBox: 'fill-box', transformOrigin: '50% 100%', animationDuration: `${c.dur}s`, animationDelay: `${c.delay}s` } as CSSProperties}
+            />
+          ))}
 
           {/* Glowing cracks climbing the rock */}
           {[

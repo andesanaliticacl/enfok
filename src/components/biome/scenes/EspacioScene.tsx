@@ -3,13 +3,21 @@ import type { SceneProps } from './types'
 
 /** Deep space — a ringed world and a living nebula. "Day" is a nearby star flooding the system with light; night is the far side. */
 export function EspacioScene({ daylight, seedKey }: SceneProps) {
-  const stars = particles(seedKey, 'stars', 46, (rand) => ({
+  // Stars mostly sit dim and unseen, then flare — a slow "appearance", not a busy shimmer.
+  const stars = particles(seedKey, 'stars', 40, (rand) => ({
     x: rand() * 160,
     y: rand() * 90,
-    r: 0.3 + rand() * 0.9,
-    dur: 1.6 + rand() * 3,
-    delay: rand() * 4,
+    r: 0.4 + rand() * 1,
+    dur: 9 + rand() * 12,
+    delay: rand() * 14,
   }))
+
+  const ufoTravel = particles(seedKey, 'ufo', 1, (rand) => ({
+    y: 30 + rand() * 20,
+    dur: 34 + rand() * 14,
+    delay: rand() * 10,
+    dist: 46 + rand() * 20,
+  }))[0]
 
   const asteroids = particles(seedKey, 'asteroids', 7, (rand) => ({
     x: rand() * 160,
@@ -63,11 +71,11 @@ export function EspacioScene({ daylight, seedKey }: SceneProps) {
       <ellipse className="anim-nebula" cx="128" cy="62" rx="40" ry="24" fill="url(#esp-neb-b)" style={{ animationDelay: '4s' }} />
       <ellipse className="anim-nebula" cx="96" cy="16" rx="30" ry="14" fill="url(#esp-neb-a)" style={{ animationDelay: '7s' }} />
 
-      {/* Starfield */}
+      {/* Starfield — sparse, slow flares rather than a busy shimmer */}
       {stars.map((s, i) => (
         <circle
           key={`star-${i}`}
-          className="anim-twinkle"
+          className="anim-star-flash"
           cx={s.x}
           cy={s.y}
           r={s.r}
@@ -76,39 +84,39 @@ export function EspacioScene({ daylight, seedKey }: SceneProps) {
         />
       ))}
 
-      {/* A distant spiral galaxy */}
+      {/* A distant spiral galaxy, tucked in the corner clear of the planet */}
       <g opacity={daylight ? 0.5 : 0.7}>
-        <ellipse cx="22" cy="72" rx="11" ry="3.5" fill="#cbb6ff" opacity="0.35" transform="rotate(-20 22 72)" />
-        <ellipse cx="22" cy="72" rx="5" ry="1.8" fill="#ffffff" opacity="0.6" transform="rotate(-20 22 72)" />
-        <circle cx="22" cy="72" r="1.4" fill="#ffffff" />
+        <ellipse cx="12" cy="82" rx="11" ry="3.5" fill="#cbb6ff" opacity="0.35" transform="rotate(-20 12 82)" />
+        <ellipse cx="12" cy="82" rx="5" ry="1.8" fill="#ffffff" opacity="0.6" transform="rotate(-20 12 82)" />
+        <circle cx="12" cy="82" r="1.4" fill="#ffffff" />
       </g>
 
       {/* The system's star — blazing by day, a distant point at night */}
       <circle cx="140" cy="18" r={daylight ? 26 : 12} fill="url(#esp-star)" className="anim-aura" />
       <circle cx="140" cy="18" r={daylight ? 7 : 2.5} fill="#fffbe8" />
 
-      {/* Ringed planet */}
+      {/* Ringed planet — shifted left, off the sun/nebula-crowded right side */}
       <g>
-        <ellipse cx="66" cy="52" rx="34" ry="7" fill="none" stroke={daylight ? '#e0b0ff' : '#5a4a78'} strokeWidth="2.4" opacity="0.5" transform="rotate(-16 66 52)" />
-        <circle cx="66" cy="52" r="17" fill="url(#esp-planet)" />
+        <ellipse cx="46" cy="52" rx="34" ry="7" fill="none" stroke={daylight ? '#e0b0ff' : '#5a4a78'} strokeWidth="2.4" opacity="0.5" transform="rotate(-16 46 52)" />
+        <circle cx="46" cy="52" r="17" fill="url(#esp-planet)" />
         {/* Terminator — the planet's night side */}
-        <path d="M66,35 A17,17 0 0,1 66,69 A22,17 0 0,0 66,35 Z" fill="#000000" opacity={daylight ? 0.35 : 0.55} />
+        <path d="M46,35 A17,17 0 0,1 46,69 A22,17 0 0,0 46,35 Z" fill="#000000" opacity={daylight ? 0.35 : 0.55} />
         {/* Front half of the ring, drawn over the planet */}
         <path
-          d="M32,52 A34,7 0 0,0 100,52"
+          d="M12,52 A34,7 0 0,0 80,52"
           fill="none"
           stroke={daylight ? '#e0b0ff' : '#5a4a78'}
           strokeWidth="2.4"
           opacity="0.75"
-          transform="rotate(-16 66 52)"
+          transform="rotate(-16 46 52)"
         />
         {/* Atmospheric rim light */}
-        <circle cx="66" cy="52" r="17" fill="none" stroke={daylight ? '#ffd0a0' : '#8f7fd0'} strokeWidth="0.8" opacity="0.6" />
+        <circle cx="46" cy="52" r="17" fill="none" stroke={daylight ? '#ffd0a0' : '#8f7fd0'} strokeWidth="0.8" opacity="0.6" />
       </g>
 
       {/* A small moon */}
-      <circle cx="104" cy="72" r="4" fill={daylight ? '#c9c2d8' : '#3a3450'} />
-      <circle cx="102.5" cy="70.5" r="1.2" fill={daylight ? '#a89fc0' : '#2a2440'} />
+      <circle cx="84" cy="72" r="4" fill={daylight ? '#c9c2d8' : '#3a3450'} />
+      <circle cx="82.5" cy="70.5" r="1.2" fill={daylight ? '#a89fc0' : '#2a2440'} />
 
       {/* Drifting asteroids */}
       {asteroids.map((a, i) => (
@@ -123,7 +131,20 @@ export function EspacioScene({ daylight, seedKey }: SceneProps) {
         />
       ))}
 
-      {/* Shooting stars */}
+      {/* Subtle UFO, drifting past on its own slow pass */}
+      <g
+        className="anim-ufo"
+        style={{ animationDuration: `${ufoTravel.dur}s`, animationDelay: `${ufoTravel.delay}s`, '--ufo-x': `${ufoTravel.dist}px` } as React.CSSProperties}
+      >
+        <g className="anim-ufo-wobble" transform={`translate(20, ${ufoTravel.y})`} opacity="0.75">
+          <ellipse cx="0" cy="0" rx="6" ry="1.6" fill={daylight ? '#9fb0c9' : '#7ee8c9'} opacity="0.9" />
+          <ellipse cx="0" cy="-1.1" rx="2.6" ry="1.6" fill={daylight ? '#d8e4f2' : '#c8fff0'} opacity="0.95" />
+          <ellipse cx="0" cy="0.6" rx="7.5" ry="0.8" fill={daylight ? '#6b7fa0' : '#4fd6b0'} opacity="0.5" />
+          <circle className="anim-glow-pulse" cx="0" cy="1.6" r="0.8" fill={daylight ? '#a8d8ff' : '#9fffe0'} opacity="0.8" />
+        </g>
+      </g>
+
+      {/* Shooting stars — the scene's favorite detail, so there are plenty */}
       <line className="anim-shooting-star" x1="10" y1="10" x2="26" y2="20" stroke="#ffffff" strokeWidth="0.7" />
       <line
         className="anim-shooting-star"
@@ -144,6 +165,26 @@ export function EspacioScene({ daylight, seedKey }: SceneProps) {
         stroke="#cfe8ff"
         strokeWidth="0.5"
         style={{ animationDelay: '6.2s', animationDuration: '11s' }}
+      />
+      <line
+        className="anim-shooting-star"
+        x1="150"
+        y1="30"
+        x2="136"
+        y2="42"
+        stroke="#ffffff"
+        strokeWidth="0.6"
+        style={{ animationDelay: '9.5s', animationDuration: '8s' }}
+      />
+      <line
+        className="anim-shooting-star"
+        x1="50"
+        y1="8"
+        x2="64"
+        y2="18"
+        stroke="#dceeff"
+        strokeWidth="0.5"
+        style={{ animationDelay: '13s', animationDuration: '10s' }}
       />
     </>
   )

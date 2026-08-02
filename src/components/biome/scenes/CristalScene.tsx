@@ -23,12 +23,13 @@ export function CristalScene({ daylight, seedKey }: SceneProps) {
     w: 3 + rand() * 3,
   }))
 
-  const sparkles = particles(seedKey, 'sparkles', 18, (rand) => ({
+  // Tiny, bright, unhurried — a diamond-glint appearance rather than a shimmer.
+  const sparkles = particles(seedKey, 'sparkles', 20, (rand) => ({
     x: rand() * 160,
-    y: 20 + rand() * 60,
-    r: 0.4 + rand() * 0.8,
-    dur: 2 + rand() * 3,
-    delay: rand() * 5,
+    y: 18 + rand() * 64,
+    r: 0.35 + rand() * 0.55,
+    dur: 7 + rand() * 10,
+    delay: rand() * 12,
   }))
 
   const drips = particles(seedKey, 'drips', 5, (rand, i) => ({
@@ -171,16 +172,15 @@ export function CristalScene({ daylight, seedKey }: SceneProps) {
         />
       ))}
 
-      {/* Floating dust motes catching the light */}
+      {/* Diamond-glint motes — small, sharp, and unhurried in both light and dark */}
       {sparkles.map((s, i) => (
         <circle
           key={`sparkle-${i}`}
-          className="anim-twinkle"
+          className="anim-star-flash"
           cx={s.x}
           cy={s.y}
           r={s.r}
-          fill={daylight ? '#ffffff' : '#7fb8d4'}
-          opacity={daylight ? 0.9 : 0.5}
+          fill={daylight ? '#ffffff' : '#bfe8ff'}
           style={{ animationDuration: `${s.dur}s`, animationDelay: `${s.delay}s` }}
         />
       ))}

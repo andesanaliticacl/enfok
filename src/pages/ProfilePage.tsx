@@ -210,9 +210,7 @@ export function ProfilePage() {
                 </p>
                 {biome && biomeId && (
                   /* Names the world by what it is *right now* — "El Infierno" after dark, "El Cielo" by day */
-                  <p className="font-pixel text-[9px] text-ink-200">
-                    {biome.emoji} {biomeVariantName(biomeId, biomeVariant)}
-                  </p>
+                  <p className="font-pixel text-[9px] text-ink-200">{biomeVariantName(biomeId, biomeVariant)}</p>
                 )}
 
                 <div className="mt-2 w-40">
@@ -249,7 +247,6 @@ export function ProfilePage() {
           <CollapsibleSection
             title="Logros"
             legendary
-            defaultOpen
             icon={<Trophy size={14} />}
             badge={
               <span className="flex items-center gap-2">

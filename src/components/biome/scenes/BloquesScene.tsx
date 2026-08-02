@@ -3,8 +3,13 @@ import type { SceneProps } from './types'
 
 const BLOCK = 8
 const COLS = 20
+const CRAFT_COL = 9
 
-/** A voxel world: sunlit grass and blocky trees by day, torch-lit and watched by glowing eyes at night. */
+type OreType = 'diamond' | 'coal' | 'lapis'
+const ORE_COLOR: Record<OreType, string> = { diamond: '#7ff5ee', coal: '#1a1a1a', lapis: '#2f4fd6' }
+const ORE_TYPES: OreType[] = ['diamond', 'coal', 'lapis']
+
+/** A voxel world: sunlit grass, blocky trees and a crafting table by day, torches and shuffling mobs at night. */
 export function BloquesScene({ daylight, seedKey }: SceneProps) {
   // A chunky heightmap — each column's grass line snaps to the block grid.
   const heights = (() => {
@@ -21,6 +26,7 @@ export function BloquesScene({ daylight, seedKey }: SceneProps) {
   const grassTop = daylight ? '#7cc44f' : '#284a24'
   const dirt = daylight ? '#8a5a3b' : '#2e1e14'
   const stone = daylight ? '#7d7d7d' : '#242424'
+  const stoneVein = daylight ? '#6a6a6a' : '#1c1c1c'
   const trunk = daylight ? '#6b4423' : '#241609'
   const leaves = daylight ? '#3f8f2f' : '#16301a'
 
@@ -47,6 +53,24 @@ export function BloquesScene({ daylight, seedKey }: SceneProps) {
     x: 14 + i * 38 + rand() * 14,
     y: 62 + rand() * 12,
     delay: rand() * 4,
+  }))
+
+  // Ore veins tucked into the stone layer — a handful of fixed spots so they
+  // read clearly rather than a noisy speckle.
+  const ores = particles(seedKey, 'ores', 6, (rand, i) => {
+    const col = (3 + i * 3 + Math.floor(rand() * 2)) % COLS
+    const stoneRows = Math.max(0, heights[col] - 3)
+    const row = stoneRows > 0 ? Math.floor(rand() * stoneRows) : 0
+    return { col, row, type: ORE_TYPES[i % ORE_TYPES.length] }
+  })
+
+  // Mobs burn in daylight — small fires flare where one caught the sun; at
+  // night the same spots become the mobs themselves, shuffling across.
+  const mobSpots = particles(seedKey, 'mobs', 3, (rand, i) => ({
+    col: 4 + i * 6 + Math.floor(rand() * 3),
+    dur: 22 + rand() * 14,
+    delay: rand() * 12,
+    skeleton: i % 2 === 0,
   }))
 
   return (
@@ -124,6 +148,7 @@ export function BloquesScene({ daylight, seedKey }: SceneProps) {
       {heights.map((h, col) => {
         const x = col * BLOCK
         const topY = 90 - h * BLOCK
+        const stoneRows = Math.max(0, h - 3)
         return (
           <g key={`col-${col}`}>
             {/* Grass cap */}
@@ -133,29 +158,85 @@ export function BloquesScene({ daylight, seedKey }: SceneProps) {
             {Array.from({ length: Math.min(2, h - 1) }, (_, d) => (
               <rect key={`d-${d}`} x={x} y={topY + BLOCK * (d + 1)} width={BLOCK} height={BLOCK} fill={dirt} />
             ))}
-            {/* Stone below */}
-            {Array.from({ length: Math.max(0, h - 3) }, (_, s) => (
-              <rect key={`s-${s}`} x={x} y={topY + BLOCK * (s + 3)} width={BLOCK} height={BLOCK} fill={stone} />
-            ))}
+            {/* Stone below, with the occasional ore vein */}
+            {Array.from({ length: stoneRows }, (_, s) => {
+              const y = topY + BLOCK * (s + 3)
+              const ore = ores.find((o) => o.col === col && o.row === s)
+              return (
+                <g key={`s-${s}`}>
+                  <rect x={x} y={y} width={BLOCK} height={BLOCK} fill={stone} />
+                  {ore && (
+                    <g>
+                      <circle cx={x + 2.5} cy={y + 3} r="1" fill={ORE_COLOR[ore.type]} />
+                      <circle cx={x + 5.2} cy={y + 4.6} r="1" fill={ORE_COLOR[ore.type]} />
+                      <circle cx={x + 3.6} cy={y + 6} r="1" fill={ORE_COLOR[ore.type]} />
+                    </g>
+                  )}
+                </g>
+              )
+            })}
             {/* Block outlines keep the voxel grid readable */}
             <rect x={x} y={topY} width={BLOCK} height={h * BLOCK} fill="none" stroke="#000000" strokeWidth="0.4" opacity="0.16" />
+            {/* Faint seams between stone rows */}
+            {Array.from({ length: stoneRows }, (_, s) => (
+              <line
+                key={`seam-${s}`}
+                x1={x}
+                y1={topY + BLOCK * (s + 3)}
+                x2={x + BLOCK}
+                y2={topY + BLOCK * (s + 3)}
+                stroke={stoneVein}
+                strokeWidth="0.3"
+                opacity="0.4"
+              />
+            ))}
           </g>
         )
       })}
 
-      {/* Blocky trees planted on the surface */}
+      {/* Blocky trees — trunk clearly sticking out beneath the canopy, no floating gap */}
       {trees.map((t, i) => {
         const col = Math.min(t.col, COLS - 2)
         const x = col * BLOCK
         const groundY = 90 - heights[col] * BLOCK
         return (
           <g key={`tree-${i}`}>
-            <rect x={x + 2.5} y={groundY - 12} width="3" height="12" fill={trunk} />
-            <rect x={x - 6} y={groundY - 24} width="16" height="8" fill={leaves} />
-            <rect x={x - 2.5} y={groundY - 30} width="9" height="6" fill={leaves} />
+            <rect x={x + 2.5} y={groundY - 14} width="3" height="14" fill={trunk} />
+            <rect x={x - 6} y={groundY - 22} width="16" height="8" fill={leaves} />
+            <rect x={x - 2.5} y={groundY - 28} width="9" height="6" fill={leaves} />
           </g>
         )
       })}
+
+      {/* A crafting table — its 2x2 grid top face is the tell */}
+      {(() => {
+        const col = CRAFT_COL
+        const x = col * BLOCK
+        const groundY = 90 - heights[Math.min(col, COLS - 1)] * BLOCK
+        const wood = daylight ? '#9c6b3f' : '#2e2013'
+        const woodDark = daylight ? '#7a5230' : '#20160d'
+        const grid = daylight ? '#d8c39a' : '#4a3a26'
+        return (
+          <g>
+            <rect x={x} y={groundY - BLOCK} width={BLOCK} height={BLOCK} fill={wood} />
+            <rect x={x} y={groundY - BLOCK} width={BLOCK} height={BLOCK} fill="none" stroke={woodDark} strokeWidth="0.5" />
+            {[0, 1].map((r) =>
+              [0, 1].map((c) => (
+                <rect
+                  key={`craft-${r}-${c}`}
+                  x={x + 1 + c * 3.4}
+                  y={groundY - BLOCK + 1 + r * 3.4}
+                  width="2.6"
+                  height="2.6"
+                  fill="none"
+                  stroke={grid}
+                  strokeWidth="0.5"
+                />
+              )),
+            )}
+          </g>
+        )
+      })()}
 
       {/* Torches on the surface — the only safe light at night */}
       {!daylight &&
@@ -179,6 +260,47 @@ export function BloquesScene({ daylight, seedKey }: SceneProps) {
             </g>
           )
         })}
+
+      {/* Mobs burn in the daylight — small fires where the sun caught one; at night they're the mobs themselves */}
+      {mobSpots.map((m, i) => {
+        const col = Math.min(m.col, COLS - 2)
+        const x = col * BLOCK
+        const groundY = 90 - heights[col] * BLOCK
+        if (daylight) {
+          return (
+            <g key={`fire-${i}`} className="anim-torch" style={{ animationDelay: `${i * 0.7}s` }}>
+              <polygon points={`${x + 4},${groundY} ${x + 1.8},${groundY - 5.5} ${x + 4},${groundY - 3.5} ${x + 6.2},${groundY - 6.5} ${x + 4},${groundY} ${x + 6.5},${groundY}`} fill="#ff7a1f" />
+              <polygon points={`${x + 4},${groundY} ${x + 2.8},${groundY - 3} ${x + 4},${groundY - 2} ${x + 5.4},${groundY - 3.6}`} fill="#ffd24a" />
+            </g>
+          )
+        }
+        return (
+          <g
+            key={`mob-${i}`}
+            className="anim-mob-walk"
+            style={{ animationDuration: `${m.dur}s`, animationDelay: `${m.delay}s` }}
+          >
+            <g transform={`translate(0, ${groundY - 7})`}>
+              {m.skeleton ? (
+                <>
+                  <rect x="-1.3" y="0" width="2.6" height="4.5" fill="#d8d4c8" />
+                  <rect x="-1.6" y="-2.4" width="3.2" height="2.6" fill="#e8e4d8" />
+                  <rect x="-1" y="4.5" width="0.9" height="2.5" fill="#c8c4b8" />
+                  <rect x="0.1" y="4.5" width="0.9" height="2.5" fill="#c8c4b8" />
+                </>
+              ) : (
+                <>
+                  <rect x="-1.4" y="0" width="2.8" height="4.5" fill="#3f7a45" />
+                  <rect x="-1.6" y="-2.4" width="3.2" height="2.6" fill="#4f8f52" />
+                  <rect x="-1" y="4.5" width="0.9" height="2.5" fill="#2f5a34" />
+                  <rect x="0.1" y="4.5" width="0.9" height="2.5" fill="#2f5a34" />
+                  <rect x="-2.3" y="0.3" width="0.9" height="3" fill="#3f7a45" />
+                </>
+              )}
+            </g>
+          </g>
+        )
+      })}
 
       {/* Something is watching from the dark */}
       {!daylight &&

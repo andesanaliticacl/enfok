@@ -175,7 +175,7 @@ export function CastilloScene({ daylight, seedKey }: SceneProps) {
           d="M76,72 L76,61 Q80,55.5 84,61 L84,72 Z"
           fill={daylight ? '#5d4429' : '#160f24'}
         />
-        {/* Banners on the two tall towers */}
+        {/* Banners on the two tall towers — pinned to the pole, billowing in place, never sliding sideways */}
         {[56, 104].map((x, i) => (
           <g key={`banner-${i}`}>
             <rect x={x} y="14" width="0.8" height="19" fill={trim} />
@@ -183,7 +183,13 @@ export function CastilloScene({ daylight, seedKey }: SceneProps) {
               className="anim-banner"
               d={`M${x + 0.8},15 L${x + 9},17.5 L${x + 0.8},20 Z`}
               fill={daylight ? '#d4af37' : '#5b3f74'}
-              style={{ animationDelay: `${i * 0.6}s` } as CSSProperties}
+              style={
+                {
+                  transformBox: 'fill-box',
+                  transformOrigin: '0% 50%',
+                  animationDelay: `${i * 0.8}s`,
+                } as CSSProperties
+              }
             />
           </g>
         ))}
@@ -202,6 +208,31 @@ export function CastilloScene({ daylight, seedKey }: SceneProps) {
 
       {/* Ground */}
       <rect x="0" y="72" width="160" height="18" fill="url(#cas-ground)" />
+
+      {/* A small story in the courtyard: a knight kneeling before his princess by
+          day — only his helmet and her crown left resting on the ground by night. */}
+      {daylight ? (
+        <g>
+          {/* Kneeling knight — a still moment; the scene has motion enough elsewhere */}
+          <line x1="106" y1="72" x2="106" y2="64" stroke="#8a8f9e" strokeWidth="0.6" />
+          <rect x="105" y="63.5" width="2" height="1" fill="#c7ccd8" />
+          <polygon points="102,72 107,72 106,65.5 103,65.5" fill="#5a6478" />
+          <circle cx="104.5" cy="63.5" r="1.7" fill="#7d879c" />
+          <polygon points="104.5,61.6 105.6,63 103.4,63" fill="#5a6478" />
+          {/* Princess */}
+          <polygon points="112,72 120,72 117.5,62.5 114.5,62.5" fill="#b0538f" />
+          <circle cx="116" cy="61" r="1.7" fill="#e8bd93" />
+          <path d="M114.4,60.4 Q116,58.6 117.6,60.4 L117,61.6 L115,61.6 Z" fill="#f2cf5b" />
+        </g>
+      ) : (
+        <g className="anim-crystal" style={{ animationDuration: '6s' }}>
+          {/* The helmet, resting where he knelt */}
+          <ellipse cx="105" cy="71" rx="2.2" ry="1.3" fill="#3a3f52" transform="rotate(-12 105 71)" />
+          <path d="M103.2,71 Q105,69.2 106.8,71" fill="none" stroke="#4d5468" strokeWidth="0.5" />
+          {/* Her crown, set down beside it */}
+          <path d="M113,72 L113.6,70 L114.6,71.4 L115.6,69.6 L116.6,71.4 L117.6,70 L118.2,72 Z" fill="#8a7228" opacity="0.85" />
+        </g>
+      )}
 
       {/* Ghost wisps drifting over the grounds (night only) */}
       {!daylight &&

@@ -326,9 +326,7 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
               >
                 {/* Only a bottom scrim, so the scene itself is the preview */}
                 <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-ink-950/95 to-transparent" />
-                <span className="relative font-pixel text-[10px] text-ink-50">
-                  {biome.emoji} {biome.name}
-                </span>
+                <span className="relative font-pixel text-[10px] text-ink-50">{biome.name}</span>
                 {/* The whole point of the biome: what it turns into */}
                 <span className="relative text-[9px] leading-tight text-ink-300">
                   ☀ {biome.dayName} · ☾ {biome.nightName}
