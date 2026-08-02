@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { getRecoloredImage } from '@/lib/avatar/recolor'
-import { LPC_DOWN_FRAME_POSITION, LPC_IDLE_FRAME_2_X } from '@/lib/avatar/providers/lpcProvider'
+import { LPC_DOWN_FRAME_POSITION, LPC_UP_FRAME_POSITION, LPC_IDLE_FRAME_2_X } from '@/lib/avatar/providers/lpcProvider'
 import type { ResolvedLayer } from '@/lib/avatar/types'
 
 interface AvatarLayerImageProps {
   layer: ResolvedLayer
   /** Idle animation frame: 0 = rest, 1 = the breathing/blink frame of 2-column idle sheets. */
   frame?: 0 | 1
+  /** 'front' (default) faces the viewer; 'back' turns the character around — used by the Exercise body map. */
+  facing?: 'front' | 'back'
 }
 
 // Legacy sheets (e.g. the skeleton walk sheet) are wider than the 2-column idle
@@ -27,7 +29,7 @@ function getSheetWidth(url: string): Promise<number> {
   return pending
 }
 
-export function AvatarLayerImage({ layer, frame = 0 }: AvatarLayerImageProps) {
+export function AvatarLayerImage({ layer, frame = 0, facing = 'front' }: AvatarLayerImageProps) {
   const [src, setSrc] = useState(layer.imageUrl)
   const [isIdleSheet, setIsIdleSheet] = useState(false)
 
@@ -54,13 +56,17 @@ export function AvatarLayerImage({ layer, frame = 0 }: AvatarLayerImageProps) {
   }, [layer.imageUrl, layer.recolorTargetHex, layer.singleFrame])
 
   const frameX = frame === 1 && isIdleSheet && !layer.singleFrame ? LPC_IDLE_FRAME_2_X : 0
+  // Single-frame layers (hand-painted overrides, some baked hats) only ever
+  // have the one front-facing image — showing them on a back-turned character
+  // would paste a front graphic on a back pose, so they just stay put.
+  const rowY = (facing === 'back' && !layer.singleFrame ? LPC_UP_FRAME_POSITION : LPC_DOWN_FRAME_POSITION).split(' ')[1]
 
   return (
     <div
       className="absolute inset-0"
       style={{
         backgroundImage: `url(${src})`,
-        backgroundPosition: layer.singleFrame ? '0px 0px' : `${frameX}px ${LPC_DOWN_FRAME_POSITION.split(' ')[1]}`,
+        backgroundPosition: layer.singleFrame ? '0px 0px' : `${frameX}px ${rowY}`,
         backgroundRepeat: 'no-repeat',
         imageRendering: 'pixelated',
         zIndex: layer.zIndex,

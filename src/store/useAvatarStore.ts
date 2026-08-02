@@ -12,9 +12,11 @@ const DEFAULT_AVATAR: AvatarConfig = {
     eyes: 'default',
     hair: 'plain',
     beard: 'none',
-    shirt: 'tshirt',
-    pants: 'default',
-    shoes: 'default',
+    // Characters start bare — no clothes, no accessories — so the very first
+    // thing a new player does is dress their aventurero, not inherit a preset.
+    shirt: 'none',
+    pants: 'none',
+    shoes: 'none',
     hat: 'none',
   },
   colors: {

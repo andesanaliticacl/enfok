@@ -530,6 +530,12 @@ export const lpcProvider: AvatarAssetProvider = {
 }
 
 export const LPC_DOWN_FRAME_POSITION = `0px ${DOWN_ROW_Y}px`
+/**
+ * Universal LPC sheets order their 4-direction rows up/left/down/right — row 0
+ * (y=0) is the "up" pose, which reads as facing away from the viewer. That's
+ * the back view the Exercise section's "Espalda" mode turns the character to.
+ */
+export const LPC_UP_FRAME_POSITION = '0px 0px'
 /** X offset of the second idle frame (the breathing/blink frame) in a 128px-wide idle sheet. */
 export const LPC_IDLE_FRAME_2_X = -FRAME_SIZE
 

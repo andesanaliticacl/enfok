@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Plus, Trash2, Pencil, Trophy, CalendarClock } from 'lucide-react'
+import { Plus, Trash2, Pencil, Trophy, CalendarClock, Check, X, Medal } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { todayKey } from '@/lib/calendar'
 import { MUSCLE_GROUPS, muscleGroup } from '@/data/muscleGroups'
 import { WEEKDAYS, todayWeekday } from '@/data/weekdays'
-import { BodyMap } from '@/components/inventory/BodyMap'
+import { ExerciseAvatarMap } from '@/components/inventory/ExerciseAvatarMap'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -22,18 +22,24 @@ function lastLog(item: ExerciseItem) {
   return item.logs[0] ?? null
 }
 
+const PODIUM_MEDAL = ['🥇', '🥈', '🥉']
+
 export function ExerciseSection() {
   const exerciseItems = useGameStore((s) => s.exerciseItems)
   const addExerciseItem = useGameStore((s) => s.addExerciseItem)
   const updateExerciseItem = useGameStore((s) => s.updateExerciseItem)
   const deleteExerciseItem = useGameStore((s) => s.deleteExerciseItem)
   const logExerciseSet = useGameStore((s) => s.logExerciseSet)
+  const trainingDayNames = useGameStore((s) => s.trainingDayNames)
+  const setTrainingDayName = useGameStore((s) => s.setTrainingDayName)
 
-  const [browseBy, setBrowseBy] = useState<'musculo' | 'dia'>('musculo')
+  const [browseBy, setBrowseBy] = useState<'musculo' | 'dia' | 'ranking'>('musculo')
   const [view, setView] = useState<'frente' | 'espalda'>('frente')
   const [selectedGroup, setSelectedGroup] = useState<MuscleGroup | null>(null)
   const [selectedDay, setSelectedDay] = useState<Weekday>(todayWeekday())
   const [recordMessage, setRecordMessage] = useState<string | null>(null)
+  const [renamingDay, setRenamingDay] = useState<Weekday | null>(null)
+  const [dayNameDraft, setDayNameDraft] = useState('')
 
   const [name, setName] = useState('')
   const [formGroup, setFormGroup] = useState<MuscleGroup>('otros')
@@ -49,12 +55,15 @@ export function ExerciseSection() {
     return acc
   }, {})
 
-  const visibleGroups = MUSCLE_GROUPS.filter((g) => g.view === view)
   const groupItems = selectedGroup ? exerciseItems.filter((i) => i.muscleGroup === selectedGroup) : []
   const dayItems = exerciseItems.filter((i) => i.trainingDays.includes(selectedDay))
 
   const today = todayWeekday()
-  const todayGroup = WEEKDAYS.find((d) => d.id === today)!.group
+
+  function dayLabel(day: Weekday): string {
+    const def = WEEKDAYS.find((d) => d.id === day)!
+    return trainingDayNames[day] ?? `Grupo ${def.group}`
+  }
 
   function resetForm() {
     setEditingId(null)
@@ -112,6 +121,20 @@ export function ExerciseSection() {
     setLoggingId(null)
   }
 
+  function startRenameDay(day: Weekday) {
+    setRenamingDay(day)
+    setDayNameDraft(trainingDayNames[day] ?? '')
+  }
+
+  function commitRenameDay() {
+    if (renamingDay && dayNameDraft.trim()) setTrainingDayName(renamingDay, dayNameDraft.trim())
+    setRenamingDay(null)
+  }
+
+  // Renaming only applies once a muscle-group context already fixes it — the
+  // add-exercise form no longer re-asks for the group when it's already known
+  // from tapping the body map. It only shows when there's no such context
+  // (e.g. adding straight from the "Por día" tab).
   function renderExerciseForm() {
     return (
       <form onSubmit={handleAddSubmit} className="flex flex-col gap-2">
@@ -132,21 +155,23 @@ export function ExerciseSection() {
           )}
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {MUSCLE_GROUPS.map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => setFormGroup(g.id)}
-              className={cn(
-                'rounded-full border border-ink-600 px-2 py-0.5 text-[10px] text-ink-300',
-                formGroup === g.id && 'border-gold-400 bg-gold-500/20 text-gold-400',
-              )}
-            >
-              {g.icon} {g.label}
-            </button>
-          ))}
-        </div>
+        {!selectedGroup && (
+          <div className="flex flex-wrap gap-1.5">
+            {MUSCLE_GROUPS.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => setFormGroup(g.id)}
+                className={cn(
+                  'rounded-full border border-ink-600 px-2 py-0.5 text-[10px] text-ink-300',
+                  formGroup === g.id && 'border-gold-400 bg-gold-500/20 text-gold-400',
+                )}
+              >
+                {g.icon} {g.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-1.5">
           {WEEKDAYS.map((d) => (
@@ -247,6 +272,13 @@ export function ExerciseSection() {
     )
   }
 
+  // All logged sets across every exercise, for the personal-records ranking.
+  const allLogs = exerciseItems
+    .flatMap((item) => item.logs.map((log) => ({ ...log, exerciseName: item.name, exerciseId: item.id })))
+    .sort((a, b) => b.weight - a.weight)
+  const podium = allLogs.slice(0, 3)
+  const rest = allLogs.slice(3)
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2">
@@ -267,6 +299,15 @@ export function ExerciseSection() {
           )}
         >
           Por día
+        </button>
+        <button
+          onClick={() => setBrowseBy('ranking')}
+          className={cn(
+            'flex-1 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
+            browseBy === 'ranking' && 'bg-ink-800 text-gold-400',
+          )}
+        >
+          Ranking
         </button>
       </div>
 
@@ -300,26 +341,11 @@ export function ExerciseSection() {
           </div>
 
           <div className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
-            <BodyMap view={view} selected={selectedGroup} counts={counts} onSelect={selectMuscleGroup} />
-
-            <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-              {[...visibleGroups, muscleGroup('otros')].map((group) => (
-                <button
-                  key={group.id}
-                  onClick={() => selectMuscleGroup(group.id)}
-                  className={cn(
-                    'rounded-full border border-ink-600 px-2.5 py-1 text-[11px] text-ink-300',
-                    selectedGroup === group.id && 'border-gold-400 bg-gold-500/20 text-gold-400',
-                  )}
-                >
-                  {group.icon} {group.label} {counts[group.id] ? `(${counts[group.id]})` : ''}
-                </button>
-              ))}
-            </div>
+            <ExerciseAvatarMap view={view} selected={selectedGroup} counts={counts} onSelect={selectMuscleGroup} />
           </div>
 
           {!selectedGroup && (
-            <p className="text-center text-sm text-ink-400">Toca un grupo muscular para ver o agregar tus ejercicios.</p>
+            <p className="text-center text-sm text-ink-400">Toca un grupo muscular en tu personaje para ver o agregar tus ejercicios.</p>
           )}
 
           {selectedGroup && (
@@ -337,7 +363,7 @@ export function ExerciseSection() {
             </div>
           )}
         </>
-      ) : (
+      ) : browseBy === 'dia' ? (
         <>
           <div className="panel-bevel rounded-2xl border border-ink-700 bg-ink-900/85 p-4">
             <div className="flex flex-wrap justify-center gap-1.5">
@@ -352,19 +378,45 @@ export function ExerciseSection() {
                   )}
                 >
                   <span className="font-medium">{d.short}</span>
-                  <span className="text-[9px] text-ink-500">Grupo {d.group}</span>
+                  <span className="max-w-[64px] truncate text-[9px] text-ink-500">{dayLabel(d.id)}</span>
                 </button>
               ))}
             </div>
             <p className="mt-3 text-center text-[10px] text-ink-500">
-              Hoy es {WEEKDAYS.find((d) => d.id === today)?.label} · Grupo de entreno {todayGroup}
+              Hoy es {WEEKDAYS.find((d) => d.id === today)?.label} · {dayLabel(today)}
             </p>
           </div>
 
           <div className="flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-ink-50">
-              {WEEKDAYS.find((d) => d.id === selectedDay)?.label} · Grupo {WEEKDAYS.find((d) => d.id === selectedDay)?.group}
-            </h2>
+            <div className="flex items-center gap-2">
+              {renamingDay === selectedDay ? (
+                <div className="flex flex-1 items-center gap-1.5">
+                  <Input
+                    autoFocus
+                    value={dayNameDraft}
+                    onChange={(e) => setDayNameDraft(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && commitRenameDay()}
+                    placeholder="Ej. Pecho"
+                    className="h-8 flex-1 text-sm"
+                  />
+                  <button onClick={commitRenameDay} className="text-emerald-400 hover:text-emerald-300">
+                    <Check size={16} />
+                  </button>
+                  <button onClick={() => setRenamingDay(null)} className="text-ink-500 hover:text-ink-300">
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-sm font-semibold text-ink-50">
+                    {WEEKDAYS.find((d) => d.id === selectedDay)?.label} · {dayLabel(selectedDay)}
+                  </h2>
+                  <button onClick={() => startRenameDay(selectedDay)} className="text-ink-500 hover:text-gold-400">
+                    <Pencil size={13} />
+                  </button>
+                </>
+              )}
+            </div>
             {editingId && renderExerciseForm()}
             <div className="flex flex-col gap-2">
               {dayItems.length === 0 && (
@@ -376,6 +428,49 @@ export function ExerciseSection() {
             </div>
           </div>
         </>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {allLogs.length === 0 ? (
+            <p className="text-center text-sm text-ink-400">Registra tu primer ejercicio para empezar tu ranking de marcas.</p>
+          ) : (
+            <>
+              {/* Podium: your 3 heaviest lifts ever, across every exercise */}
+              <div className="flex items-end justify-center gap-3">
+                {[1, 0, 2].map((podiumIdx) => {
+                  const entry = podium[podiumIdx]
+                  if (!entry) return <div key={podiumIdx} className="w-20" />
+                  const height = podiumIdx === 0 ? 'h-24' : podiumIdx === 1 ? 'h-16' : 'h-12'
+                  return (
+                    <div key={entry.id} className="flex w-20 flex-col items-center gap-1">
+                      <span className="text-2xl">{PODIUM_MEDAL[podiumIdx]}</span>
+                      <p className="truncate text-[10px] font-medium text-ink-100">{entry.exerciseName}</p>
+                      <p className="font-pixel text-[10px] text-gold-400">{entry.weight}kg</p>
+                      <div className={cn('flex w-full items-end justify-center rounded-t-lg bg-ink-800', height)}>
+                        <Medal size={16} className="mb-1.5 text-ink-500" />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Full record list, heaviest to lightest */}
+              <div className="flex flex-col gap-1.5">
+                {rest.map((entry, i) => (
+                  <div key={entry.id} className="flex items-center justify-between rounded-lg border border-ink-800 bg-ink-900/60 px-3 py-1.5">
+                    <span className="flex items-center gap-2 text-xs text-ink-200">
+                      <span className="w-5 text-ink-500">{i + 4}.</span>
+                      {entry.exerciseName}
+                    </span>
+                    <span className="flex items-center gap-2 text-[11px] text-ink-400">
+                      <span className="font-pixel text-[10px] text-gold-400">{entry.weight}kg</span>
+                      x{entry.reps} · {entry.date}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       )}
     </div>
   )

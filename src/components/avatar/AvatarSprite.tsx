@@ -10,6 +10,8 @@ interface AvatarSpriteProps {
   className?: string
   /** Plays the subtle idle animation (breathing sway + blink) using the sheets' second idle frame. */
   animate?: boolean
+  /** 'front' (default) faces the viewer; 'back' turns the character around. */
+  facing?: 'front' | 'back'
 }
 
 const provider = lpcProvider
@@ -51,7 +53,7 @@ function useIdleFrame(enabled: boolean): 0 | 1 {
   return frame
 }
 
-export function AvatarSprite({ config, size = 192, className, animate = false }: AvatarSpriteProps) {
+export function AvatarSprite({ config, size = 192, className, animate = false, facing = 'front' }: AvatarSpriteProps) {
   const frame = useIdleFrame(animate)
 
   const layers = useMemo(() => {
@@ -97,7 +99,7 @@ export function AvatarSprite({ config, size = 192, className, animate = false }:
         }}
       >
         {layers.map((layer) => (
-          <AvatarLayerImage key={layer.category} layer={layer} frame={frame} />
+          <AvatarLayerImage key={layer.category} layer={layer} frame={frame} facing={facing} />
         ))}
       </div>
     </div>
