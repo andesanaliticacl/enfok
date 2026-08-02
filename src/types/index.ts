@@ -77,13 +77,17 @@ export interface Region {
   lng?: number
 }
 
-export type BiomeId = 'valle' | 'ciudad' | 'playa' | 'bosque' | 'montana' | 'espacio'
+export type BiomeId = 'castillo' | 'abismo' | 'midgar' | 'cristal' | 'espacio' | 'bloques'
 
 export interface Biome {
   id: BiomeId
   name: string
   emoji: string
   color: string
+  /** What the world becomes from 07:00 to 19:59. */
+  dayName: string
+  /** …and what it turns into after dark. */
+  nightName: string
 }
 
 export interface AchievementContext {

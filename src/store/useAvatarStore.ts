@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { lpcProvider } from '@/lib/avatar/providers/lpcProvider'
+import { migrateBiomeId } from '@/data/biomes'
 import type { AvatarConfig } from '@/lib/avatar/types'
 import type { BiomeId } from '@/types'
 
@@ -193,6 +194,8 @@ export const useAvatarStore = create<AvatarState>()(
         return {
           ...current,
           ...persistedState,
+          // Retired biomes (valle, playa, …) map onto their closest new world.
+          biome: migrateBiomeId(persistedState.biome),
           biomeStickers: persistedState.biomeStickers ?? current.biomeStickers,
           avatar: {
             ...current.avatar,

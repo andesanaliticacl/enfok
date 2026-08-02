@@ -322,11 +322,17 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
                 biomeId={biome.id}
                 variant={biomeVariant}
                 vignette={false}
-                className="flex h-full flex-col items-center justify-center gap-2 p-5"
+                className="flex h-full min-h-[104px] flex-col items-center justify-end gap-1 p-3"
               >
-                <div className="absolute inset-0 bg-ink-950/40" />
-                <span className="relative text-4xl">{biome.emoji}</span>
-                <span className="relative font-pixel text-[10px] text-ink-50">{biome.name}</span>
+                {/* Only a bottom scrim, so the scene itself is the preview */}
+                <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-ink-950/95 to-transparent" />
+                <span className="relative font-pixel text-[10px] text-ink-50">
+                  {biome.emoji} {biome.name}
+                </span>
+                {/* The whole point of the biome: what it turns into */}
+                <span className="relative text-[9px] leading-tight text-ink-300">
+                  ☀ {biome.dayName} · ☾ {biome.nightName}
+                </span>
               </BiomaComponent>
             </motion.button>
           ))}

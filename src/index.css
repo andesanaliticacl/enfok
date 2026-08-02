@@ -90,18 +90,20 @@
     transform: translateX(110%) translateY(0);
   }
 }
+/* A slow pulse with one soft dip — reads as neon without the epileptic strobe. */
 @keyframes neon-flicker {
   0%,
-  19%,
-  21%,
-  23%,
-  80%,
   100% {
     opacity: 1;
   }
-  20%,
-  22% {
-    opacity: 0.35;
+  40% {
+    opacity: 0.72;
+  }
+  55% {
+    opacity: 0.9;
+  }
+  70% {
+    opacity: 0.66;
   }
 }
 @keyframes twinkle {
@@ -232,12 +234,12 @@
 @keyframes aura-breathe {
   0%,
   100% {
-    opacity: 0.3;
+    opacity: 0.38;
     transform: scale(1);
   }
   50% {
-    opacity: 0.6;
-    transform: scale(1.15);
+    opacity: 0.58;
+    transform: scale(1.06);
   }
 }
 @keyframes crab-walk {
@@ -280,15 +282,146 @@
     transform: translateX(30%);
   }
 }
-@keyframes window-glow {
-  0%,
-  40%,
-  100% {
+/* --- Biome scene effects (SVG scenery) --- */
+@keyframes wisp-float {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  20% {
     opacity: 0.85;
   }
-  45%,
-  55% {
-    opacity: 0.25;
+  50% {
+    transform: translate(var(--drift, 8px), -14px);
+  }
+  80% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(calc(var(--drift, 8px) * -0.7), -26px);
+    opacity: 0;
+  }
+}
+@keyframes ray-sweep {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: scaleY(0.94);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scaleY(1.06);
+  }
+}
+@keyframes lightning-flash {
+  0%,
+  91%,
+  100% {
+    opacity: 0;
+  }
+  92%,
+  94% {
+    opacity: 0.85;
+  }
+  93% {
+    opacity: 0.15;
+  }
+}
+@keyframes drip-fall {
+  0%,
+  60% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  65% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(var(--fall, 20px));
+    opacity: 0;
+  }
+}
+@keyframes beacon-blink {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes traffic-move {
+  0% {
+    transform: translateX(-10%);
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(110%);
+    opacity: 0;
+  }
+}
+/* Gentle breathing rather than a strobe — a torch should sway, not snap. */
+@keyframes torch-flicker {
+  0%,
+  100% {
+    opacity: 0.92;
+    transform: scale(1);
+  }
+  33% {
+    opacity: 0.78;
+    transform: scale(0.98);
+  }
+  66% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+@keyframes lava-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes crystal-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes banner-wave {
+  0%,
+  100% {
+    transform: skewX(0deg) scaleX(1);
+  }
+  50% {
+    transform: skewX(-6deg) scaleX(0.94);
+  }
+}
+@keyframes orbit-drift {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(var(--travel, 40px));
+  }
+}
+@keyframes window-glow {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.4;
   }
 }
 
@@ -306,7 +439,7 @@
     animation: bird-fly linear infinite;
   }
   .anim-neon {
-    animation: neon-flicker 4.2s linear infinite;
+    animation: neon-flicker 7s ease-in-out infinite;
   }
   .anim-twinkle {
     animation: twinkle 2.4s ease-in-out infinite;
@@ -336,13 +469,47 @@
     animation: nebula-pulse 9s ease-in-out infinite;
   }
   .anim-window {
-    animation: window-glow 6s linear infinite;
+    animation: window-glow 9s ease-in-out infinite;
   }
   .anim-cloud {
     animation: cloud-drift 26s ease-in-out infinite alternate;
   }
   .anim-blizzard {
     animation: blizzard-sweep 9s linear infinite;
+  }
+  .anim-wisp {
+    animation: wisp-float 11s ease-in-out infinite;
+  }
+  .anim-ray {
+    animation: ray-sweep 9s ease-in-out infinite;
+  }
+  .anim-lightning {
+    animation: lightning-flash 16s ease-in-out infinite;
+  }
+  .anim-drip {
+    animation: drip-fall 6s ease-in infinite;
+  }
+  .anim-beacon {
+    animation: beacon-blink 4s ease-in-out infinite;
+  }
+  .anim-traffic {
+    animation: traffic-move 11s ease-in-out infinite;
+  }
+  .anim-torch {
+    animation: torch-flicker 4.5s ease-in-out infinite;
+  }
+  .anim-lava {
+    animation: lava-glow 5.5s ease-in-out infinite;
+  }
+  .anim-crystal {
+    animation: crystal-pulse 6.5s ease-in-out infinite;
+  }
+  .anim-banner {
+    animation: banner-wave 3s ease-in-out infinite;
+    transform-origin: top left;
+  }
+  .anim-orbit {
+    animation: orbit-drift 40s linear infinite alternate;
   }
   .anim-aura {
     animation: aura-breathe 7s ease-in-out infinite;

@@ -26,7 +26,7 @@ import { isSupabaseConfigured } from '@/lib/supabase/client'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { BiomaComponent } from '@/components/biome/BiomaComponent'
 import { lpcProvider } from '@/lib/avatar/providers/lpcProvider'
-import { biomes } from '@/data/biomes'
+import { biomes, biomeVariantName } from '@/data/biomes'
 import { achievements } from '@/data/achievements'
 import { PlansSection } from '@/components/planning/PlansSection'
 import { Button } from '@/components/ui/button'
@@ -111,7 +111,8 @@ export function ProfilePage() {
         vignette={false}
         className="absolute inset-0"
       />
-      <div className="pointer-events-none absolute inset-0 bg-ink-950/50" />
+      {/* Light scrim only — the scenes are vivid now, a heavy veil flattened them to grey */}
+      <div className="pointer-events-none absolute inset-0 bg-ink-950/30" />
 
       <div className="relative z-10 w-full px-4 pt-6 pb-4 md:px-10 xl:px-16">
       {/* Daily verse greets the player once a day, full width above everything */}
@@ -207,9 +208,10 @@ export function ProfilePage() {
                 <p className="font-pixel text-[10px] text-gold-400 text-glow-gold">
                   Nivel {profile.level} · {rank}
                 </p>
-                {biome && (
+                {biome && biomeId && (
+                  /* Names the world by what it is *right now* — "El Infierno" after dark, "El Cielo" by day */
                   <p className="font-pixel text-[9px] text-ink-200">
-                    {biome.emoji} {biome.name}
+                    {biome.emoji} {biomeVariantName(biomeId, biomeVariant)}
                   </p>
                 )}
 
