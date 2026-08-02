@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, Pencil, Trophy, CalendarClock, Check, X, Medal } from 'lucide-react'
+import { Plus, Trash2, Pencil, Trophy, CalendarClock, Check, X, Medal, XCircle } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { todayKey } from '@/lib/calendar'
 import { MUSCLE_GROUPS, muscleGroup } from '@/data/muscleGroups'
@@ -30,6 +30,7 @@ export function ExerciseSection() {
   const updateExerciseItem = useGameStore((s) => s.updateExerciseItem)
   const deleteExerciseItem = useGameStore((s) => s.deleteExerciseItem)
   const logExerciseSet = useGameStore((s) => s.logExerciseSet)
+  const deleteExerciseLog = useGameStore((s) => s.deleteExerciseLog)
   const trainingDayNames = useGameStore((s) => s.trainingDayNames)
   const setTrainingDayName = useGameStore((s) => s.setTrainingDayName)
 
@@ -441,7 +442,14 @@ export function ExerciseSection() {
                   if (!entry) return <div key={podiumIdx} className="w-20" />
                   const height = podiumIdx === 0 ? 'h-24' : podiumIdx === 1 ? 'h-16' : 'h-12'
                   return (
-                    <div key={entry.id} className="flex w-20 flex-col items-center gap-1">
+                    <div key={entry.id} className="group relative flex w-20 flex-col items-center gap-1">
+                      <button
+                        onClick={() => deleteExerciseLog(entry.exerciseId, entry.id)}
+                        title="Quitar del ranking"
+                        className="absolute -top-1 right-1 text-ink-600 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+                      >
+                        <XCircle size={14} />
+                      </button>
                       <span className="text-2xl">{PODIUM_MEDAL[podiumIdx]}</span>
                       <p className="truncate text-[10px] font-medium text-ink-100">{entry.exerciseName}</p>
                       <p className="font-pixel text-[10px] text-gold-400">{entry.weight}kg</p>
@@ -464,6 +472,13 @@ export function ExerciseSection() {
                     <span className="flex items-center gap-2 text-[11px] text-ink-400">
                       <span className="font-pixel text-[10px] text-gold-400">{entry.weight}kg</span>
                       x{entry.reps} · {entry.date}
+                      <button
+                        onClick={() => deleteExerciseLog(entry.exerciseId, entry.id)}
+                        title="Quitar del ranking"
+                        className="text-ink-600 hover:text-red-400"
+                      >
+                        <XCircle size={13} />
+                      </button>
                     </span>
                   </div>
                 ))}
