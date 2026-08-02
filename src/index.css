@@ -479,15 +479,6 @@
     transform: rotate(4deg);
   }
 }
-/* A mob shuffling slowly past — a straight, unhurried crossing. */
-@keyframes mob-walk {
-  0% {
-    transform: translateX(-10%);
-  }
-  100% {
-    transform: translateX(170%);
-  }
-}
 @keyframes angel-hover {
   0%,
   100% {
@@ -626,9 +617,6 @@
   }
   .anim-searchlight {
     animation: searchlight-sway 9s ease-in-out infinite;
-  }
-  .anim-mob-walk {
-    animation: mob-walk linear infinite;
   }
   .anim-aura {
     animation: aura-breathe 7s ease-in-out infinite;

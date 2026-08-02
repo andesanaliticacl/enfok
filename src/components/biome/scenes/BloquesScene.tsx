@@ -73,6 +73,15 @@ export function BloquesScene({ daylight, seedKey }: SceneProps) {
     skeleton: i % 2 === 0,
   }))
 
+  // The actual grass-top contour, so a walking mob's feet ride the hills
+  // instead of floating over the low spots or sinking into the high ones.
+  const groundPath = (() => {
+    const pts = heights.map((h, col) => [col * BLOCK, 90 - h * BLOCK])
+    const first = pts[0]
+    const last = pts[pts.length - 1]
+    return `M${first[0] - 20},${first[1]} L${pts.map((p) => p.join(',')).join(' L')} L${last[0] + 20},${last[1]}`
+  })()
+
   return (
     <>
       <defs>
@@ -274,30 +283,27 @@ export function BloquesScene({ daylight, seedKey }: SceneProps) {
             </g>
           )
         }
+        // Local (0,0) is the mob's feet — animateMotion below carries that
+        // point along groundPath, so shapes only need their offset from feet.
         return (
-          <g
-            key={`mob-${i}`}
-            className="anim-mob-walk"
-            style={{ animationDuration: `${m.dur}s`, animationDelay: `${m.delay}s` }}
-          >
-            <g transform={`translate(0, ${groundY - 7})`}>
-              {m.skeleton ? (
-                <>
-                  <rect x="-1.3" y="0" width="2.6" height="4.5" fill="#d8d4c8" />
-                  <rect x="-1.6" y="-2.4" width="3.2" height="2.6" fill="#e8e4d8" />
-                  <rect x="-1" y="4.5" width="0.9" height="2.5" fill="#c8c4b8" />
-                  <rect x="0.1" y="4.5" width="0.9" height="2.5" fill="#c8c4b8" />
-                </>
-              ) : (
-                <>
-                  <rect x="-1.4" y="0" width="2.8" height="4.5" fill="#3f7a45" />
-                  <rect x="-1.6" y="-2.4" width="3.2" height="2.6" fill="#4f8f52" />
-                  <rect x="-1" y="4.5" width="0.9" height="2.5" fill="#2f5a34" />
-                  <rect x="0.1" y="4.5" width="0.9" height="2.5" fill="#2f5a34" />
-                  <rect x="-2.3" y="0.3" width="0.9" height="3" fill="#3f7a45" />
-                </>
-              )}
-            </g>
+          <g key={`mob-${i}`}>
+            {m.skeleton ? (
+              <>
+                <rect x="-1.3" y="-7" width="2.6" height="4.5" fill="#d8d4c8" />
+                <rect x="-1.6" y="-9.4" width="3.2" height="2.6" fill="#e8e4d8" />
+                <rect x="-1" y="-2.5" width="0.9" height="2.5" fill="#c8c4b8" />
+                <rect x="0.1" y="-2.5" width="0.9" height="2.5" fill="#c8c4b8" />
+              </>
+            ) : (
+              <>
+                <rect x="-1.4" y="-7" width="2.8" height="4.5" fill="#3f7a45" />
+                <rect x="-1.6" y="-9.4" width="3.2" height="2.6" fill="#4f8f52" />
+                <rect x="-1" y="-2.5" width="0.9" height="2.5" fill="#2f5a34" />
+                <rect x="0.1" y="-2.5" width="0.9" height="2.5" fill="#2f5a34" />
+                <rect x="-2.3" y="-6.7" width="0.9" height="3" fill="#3f7a45" />
+              </>
+            )}
+            <animateMotion dur={`${m.dur}s`} begin={`${m.delay}s`} repeatCount="indefinite" rotate="0" path={groundPath} />
           </g>
         )
       })}
