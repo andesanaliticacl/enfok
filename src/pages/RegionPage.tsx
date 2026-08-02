@@ -77,18 +77,26 @@ export function RegionPage() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Button size="icon" variant="ghost" title="Editar región" onClick={() => setRegionDialogOpen(true)}>
             <Settings2 size={18} />
           </Button>
-          <Button size="icon" onClick={() => setGoalDialog({ open: true })}>
-            <Plus size={18} />
+          <Button size="sm" onClick={() => setGoalDialog({ open: true })}>
+            <Plus size={16} /> Nueva meta
           </Button>
         </div>
       </header>
 
       {goals.length === 0 && (
-        <p className="text-sm text-ink-400">Todavía no hay metas en esta región. Crea la primera.</p>
+        <div className="rounded-2xl border border-dashed border-ink-700 p-6 text-center">
+          <p className="mb-1 text-sm text-ink-300">Este lugar aún no tiene metas.</p>
+          <p className="mb-3 text-[11px] text-ink-500">
+            Una meta es algo que quieres lograr aquí (ej. "entrenar 3 veces por semana"). Sus misiones serán tus tareas.
+          </p>
+          <Button size="sm" onClick={() => setGoalDialog({ open: true })}>
+            <Plus size={16} /> Nueva meta
+          </Button>
+        </div>
       )}
 
       <div className="flex flex-col gap-4">

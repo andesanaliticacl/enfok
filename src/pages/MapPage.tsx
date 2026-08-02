@@ -5,14 +5,18 @@ import { MapPin, Plus, LocateFixed, X } from 'lucide-react'
 import { useGameStore, type RegionInput } from '@/store/useGameStore'
 import { useAvatarStore } from '@/store/useAvatarStore'
 import { regionProgress, goalProgress } from '@/lib/planning/goalEngine'
+import { isDoneForNow } from '@/lib/planning/missionEngine'
+import { todayKey } from '@/lib/calendar'
 import { layoutRegions, DEFAULT_WORLD_CENTER, type LatLng } from '@/lib/world/layout'
 import { GOOGLE_MAPS_API_KEY, type GeocodeResult } from '@/lib/world/geocode'
 import { LocationSearch } from '@/components/world/LocationSearch'
 import { WORLD_MAP_STYLE } from '@/data/mapStyle'
 import { RegionMarker } from '@/components/world/RegionMarker'
 import { RegionFormDialog } from '@/components/world/RegionFormDialog'
+import { RegionSheet } from '@/components/world/RegionSheet'
 import { MissionMarker } from '@/components/world/MissionMarker'
 import { GoalMarker } from '@/components/world/GoalMarker'
+import { GoalFormDialog } from '@/components/planning/GoalFormDialog'
 import { AvatarSprite } from '@/components/avatar/AvatarSprite'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -24,6 +28,7 @@ export function MapPage() {
   const goals = useGameStore((s) => s.goals)
   const missions = useGameStore((s) => s.missions)
   const addRegion = useGameStore((s) => s.addRegion)
+  const addGoal = useGameStore((s) => s.addGoal)
   const completeMission = useGameStore((s) => s.completeMission)
   const profile = useGameStore((s) => s.profile)
   const avatar = useAvatarStore((s) => s.avatar)
@@ -41,6 +46,8 @@ export function MapPage() {
   const [center, setCenter] = useState<LatLng>(worldAnchor ?? DEFAULT_WORLD_CENTER)
   const [addingRegion, setAddingRegion] = useState(false)
   const [pendingLocation, setPendingLocation] = useState<LatLng | null>(null)
+  const [selectedRegion, setSelectedRegion] = useState<Region | null>(null)
+  const [goalDialog, setGoalDialog] = useState<{ open: boolean; regionId?: string }>({ open: false })
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null)
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [locating, setLocating] = useState(false)
@@ -95,6 +102,22 @@ export function MapPage() {
 
   const missionsWithLocation = useMemo(() => missions.filter((m) => m.location), [missions])
   const goalsWithLocation = useMemo(() => goals.filter((g) => g.location), [goals])
+
+  // Pending missions per region — drives the badge on each region marker.
+  const pendingByRegion = useMemo(() => {
+    const today = todayKey()
+    const goalRegion = new Map(goals.map((g) => [g.id, g.regionId]))
+    const counts: Record<string, number> = {}
+    for (const m of missions) {
+      if (isDoneForNow(m, today)) continue
+      const regionId = goalRegion.get(m.goalId)
+      if (regionId) counts[regionId] = (counts[regionId] ?? 0) + 1
+    }
+    return counts
+  }, [missions, goals])
+
+  /** Goal → its region, so a goal/mission popup can jump to the right place. */
+  const regionOfGoal = (goalId: string) => regions.find((r) => r.id === goals.find((g) => g.id === goalId)?.regionId)
 
   function handleMapClick(e: google.maps.MapMouseEvent) {
     if (!addingRegion || !e.latLng) return
@@ -157,6 +180,12 @@ export function MapPage() {
                 lat={region.lat}
                 lng={region.lng}
                 progress={regionProgress(region.id, goals, missions)}
+                pending={pendingByRegion[region.id] ?? 0}
+                onClick={(r) => {
+                  setSelectedGoal(null)
+                  setSelectedMission(null)
+                  setSelectedRegion(r)
+                }}
               />
             ))}
 
@@ -250,60 +279,98 @@ export function MapPage() {
         onSubmit={handleCreateRegion}
       />
 
-      {selectedMission && (
-        <div className="absolute inset-x-4 bottom-20 z-20 flex items-center justify-between gap-2 rounded-xl border border-ink-700 bg-ink-900 p-3">
-          <div className="min-w-0">
-            <p className="truncate text-sm text-ink-50">{selectedMission.title}</p>
-            <p className="truncate text-[10px] text-ink-400">{selectedMission.location?.address}</p>
+      {selectedRegion && (
+        <RegionSheet
+          region={selectedRegion}
+          onClose={() => setSelectedRegion(null)}
+          onNewGoal={(regionId) => {
+            setSelectedRegion(null)
+            setGoalDialog({ open: true, regionId })
+          }}
+        />
+      )}
+
+      <GoalFormDialog
+        open={goalDialog.open}
+        onClose={() => setGoalDialog({ open: false })}
+        defaultRegionId={goalDialog.regionId}
+        onSubmit={(input) => addGoal(input)}
+      />
+
+      {selectedMission && (() => {
+        const goal = goals.find((g) => g.id === selectedMission.goalId)
+        const region = regionOfGoal(selectedMission.goalId)
+        return (
+          <div className="absolute inset-x-4 bottom-20 z-20 flex items-center justify-between gap-2 rounded-xl border border-ink-700 bg-ink-900 p-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm text-ink-50">🎯 {selectedMission.title}</p>
+              {/* The context that was missing: which goal/place this belongs to */}
+              <p className="truncate text-[10px] text-ink-400">
+                {goal ? `${goal.icon} ${goal.name}` : ''}
+                {region ? ` · ${region.emoji} ${region.name}` : ''}
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              {selectedMission.status !== 'completada' && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    completeMission(selectedMission.id)
+                    setSelectedMission(null)
+                  }}
+                >
+                  Completar
+                </Button>
+              )}
+              {region && (
+                <Button variant="outline" size="sm" onClick={() => navigate(`/region/${region.id}`)}>
+                  Abrir región
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => setSelectedMission(null)}>
+                Cerrar
+              </Button>
+            </div>
           </div>
-          <div className="flex shrink-0 gap-2">
-            {selectedMission.status !== 'completada' && (
+        )
+      })()}
+
+      {selectedGoal && (() => {
+        const region = regionOfGoal(selectedGoal.id)
+        return (
+          <div className="absolute inset-x-4 bottom-20 z-20 flex items-center justify-between gap-2 rounded-xl border border-ink-700 bg-ink-900 p-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm text-ink-50">
+                {selectedGoal.icon} {selectedGoal.name}
+              </p>
+              <p className="truncate text-[10px] text-ink-400">
+                {region ? `${region.emoji} ${region.name}` : selectedGoal.location?.address}
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
               <Button
                 size="sm"
                 onClick={() => {
-                  completeMission(selectedMission.id)
-                  setSelectedMission(null)
+                  navigate(region ? `/region/${region.id}` : '/misiones')
+                  setSelectedGoal(null)
                 }}
               >
-                Completar
+                Ver misiones
               </Button>
-            )}
-            <Button variant="ghost" size="sm" onClick={() => setSelectedMission(null)}>
-              Cerrar
-            </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedGoal(null)}>
+                Cerrar
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-
-      {selectedGoal && (
-        <div className="absolute inset-x-4 bottom-20 z-20 flex items-center justify-between gap-2 rounded-xl border border-ink-700 bg-ink-900 p-3">
-          <div className="min-w-0">
-            <p className="truncate text-sm text-ink-50">
-              {selectedGoal.icon} {selectedGoal.name}
-            </p>
-            <p className="truncate text-[10px] text-ink-400">{selectedGoal.location?.address}</p>
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <Button
-              size="sm"
-              onClick={() => {
-                navigate('/misiones')
-                setSelectedGoal(null)
-              }}
-            >
-              Ver misiones
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSelectedGoal(null)}>
-              Cerrar
-            </Button>
-          </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
 
 function FallbackWorld({ regions, goals, missions }: { regions: Region[]; goals: Goal[]; missions: Mission[] }) {
+  const navigate = useNavigate()
+  const today = todayKey()
   return (
     <div className="flex h-full flex-col overflow-y-auto px-4 pt-4">
       <p className="mb-4 text-xs text-ink-400">
@@ -313,23 +380,32 @@ function FallbackWorld({ regions, goals, missions }: { regions: Region[]; goals:
         <p className="text-sm text-ink-400">Todavía no tienes regiones. Con el mapa activo podrás crearlas tocando el lugar real donde están.</p>
       )}
       <div className="flex flex-col gap-3">
-        {regions.map((region) => (
-          <div key={region.id} className="flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900 p-3">
-            <span className="text-xl">{region.emoji}</span>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-ink-50">{region.name}</p>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-ink-800">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${regionProgress(region.id, goals, missions)}%`,
-                    backgroundColor: region.color,
-                  }}
-                />
+        {regions.map((region) => {
+          const pending = missions.filter(
+            (m) => goals.some((g) => g.id === m.goalId && g.regionId === region.id) && !isDoneForNow(m, today),
+          ).length
+          return (
+            <button
+              key={region.id}
+              onClick={() => navigate(`/region/${region.id}`)}
+              className="flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-900 p-3 text-left hover:border-gold-400"
+            >
+              <span className="text-xl">{region.emoji}</span>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-ink-50">{region.name}</p>
+                  {pending > 0 && <span className="font-pixel text-[9px] text-gold-400">{pending} pend.</span>}
+                </div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-ink-800">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${regionProgress(region.id, goals, missions)}%`, backgroundColor: region.color }}
+                  />
+                </div>
               </div>
-            </div>
-          </div>
-        ))}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
