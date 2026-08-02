@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, Pencil, Trophy, CalendarClock, Check, X, Medal, XCircle } from 'lucide-react'
+import { Plus, Pencil, Trophy, CalendarClock, Check, X, Medal } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { todayKey } from '@/lib/calendar'
 import { MUSCLE_GROUPS, muscleGroup } from '@/data/muscleGroups'
@@ -7,6 +7,7 @@ import { WEEKDAYS, todayWeekday } from '@/data/weekdays'
 import { ExerciseAvatarMap } from '@/components/inventory/ExerciseAvatarMap'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ConfirmDeleteButton } from '@/components/ui/ConfirmDeleteButton'
 import { cn } from '@/lib/utils'
 import type { ExerciseItem, MuscleGroup, Weekday } from '@/types'
 
@@ -207,9 +208,7 @@ export function ExerciseSection() {
             <button onClick={() => startEdit(item)} className="text-ink-500 hover:text-gold-400">
               <Pencil size={14} />
             </button>
-            <button onClick={() => deleteExerciseItem(item.id)} className="text-ink-500 hover:text-red-400">
-              <Trash2 size={14} />
-            </button>
+            <ConfirmDeleteButton onConfirm={() => deleteExerciseItem(item.id)} title="Eliminar ejercicio" />
           </div>
         </div>
 
@@ -443,13 +442,14 @@ export function ExerciseSection() {
                   const height = podiumIdx === 0 ? 'h-24' : podiumIdx === 1 ? 'h-16' : 'h-12'
                   return (
                     <div key={entry.id} className="group relative flex w-20 flex-col items-center gap-1">
-                      <button
-                        onClick={() => deleteExerciseLog(entry.exerciseId, entry.id)}
-                        title="Quitar del ranking"
-                        className="absolute -top-1 right-1 text-ink-600 opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
-                      >
-                        <XCircle size={14} />
-                      </button>
+                      <div className="absolute -top-1 right-1 z-10 opacity-0 transition-opacity group-hover:opacity-100">
+                        <ConfirmDeleteButton
+                          onConfirm={() => deleteExerciseLog(entry.exerciseId, entry.id)}
+                          title="Quitar del ranking"
+                          variant="close"
+                          size={13}
+                        />
+                      </div>
                       <span className="text-2xl">{PODIUM_MEDAL[podiumIdx]}</span>
                       <p className="truncate text-[10px] font-medium text-ink-100">{entry.exerciseName}</p>
                       <p className="font-pixel text-[10px] text-gold-400">{entry.weight}kg</p>
@@ -472,13 +472,12 @@ export function ExerciseSection() {
                     <span className="flex items-center gap-2 text-[11px] text-ink-400">
                       <span className="font-pixel text-[10px] text-gold-400">{entry.weight}kg</span>
                       x{entry.reps} · {entry.date}
-                      <button
-                        onClick={() => deleteExerciseLog(entry.exerciseId, entry.id)}
+                      <ConfirmDeleteButton
+                        onConfirm={() => deleteExerciseLog(entry.exerciseId, entry.id)}
                         title="Quitar del ranking"
-                        className="text-ink-600 hover:text-red-400"
-                      >
-                        <XCircle size={13} />
-                      </button>
+                        variant="close"
+                        size={13}
+                      />
                     </span>
                   </div>
                 ))}

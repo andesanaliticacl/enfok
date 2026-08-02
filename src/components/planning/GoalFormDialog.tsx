@@ -41,11 +41,13 @@ export function GoalFormDialog({ open, onClose, defaultRegionId, goal, onSubmit,
   const regions = useGameStore((s) => s.regions)
   const [regionId, setRegionId] = useState<RegionId>(defaultRegionId ?? '')
   const [form, setForm] = useState(EMPTY_FORM)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const { isLoaded: mapsLoaded } = useJsApiLoader({ googleMapsApiKey: GOOGLE_MAPS_API_KEY ?? '' })
 
   useEffect(() => {
     if (!open) return
+    setConfirmDelete(false)
     if (goal) {
       setRegionId(goal.regionId)
       setForm({
@@ -227,12 +229,18 @@ export function GoalFormDialog({ open, onClose, defaultRegionId, goal, onSubmit,
           {goal && onDelete && (
             <Button
               variant="outline"
+              className={confirmDelete ? 'border-red-700 text-red-300' : undefined}
               onClick={() => {
+                if (!confirmDelete) {
+                  setConfirmDelete(true)
+                  return
+                }
                 onDelete()
                 onClose()
               }}
+              onBlur={() => setConfirmDelete(false)}
             >
-              Eliminar
+              {confirmDelete ? '¿Seguro? Sí, eliminar' : 'Eliminar'}
             </Button>
           )}
           <Button onClick={handleSubmit} className="flex-1">

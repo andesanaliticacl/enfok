@@ -620,10 +620,11 @@ export const useGameStore = create<GameState>()(
         // occurrence is in the future — no double XP for the same cycle.
         if (!mission || isDoneForNow(mission, today)) return
 
-        // Which of the five player stats this mission feeds, via its goal's region.
+        // Which of the five player stats this mission feeds — an explicit
+        // statFocus on the mission wins; otherwise infer from its goal's region.
         const goal = allGoals.find((g) => g.id === mission.goalId)
         const region = goal ? allRegions.find((r) => r.id === goal.regionId) : undefined
-        const statKey = region ? statForRegionCategory(region.category) : undefined
+        const statKey = mission.statFocus ?? (region ? statForRegionCategory(region.category) : undefined)
 
         set((state) => {
           const missions = state.missions.map((m) => (m.id === missionId ? applyCompletion(m, today) : m))

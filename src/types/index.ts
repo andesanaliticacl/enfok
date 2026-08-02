@@ -38,6 +38,8 @@ export interface Mission {
   /** ISO date (yyyy-mm-dd) of the most recent completion. */
   lastCompletedOn?: string
   location?: MissionLocation
+  /** Which of the five player stats this mission bumps on completion — overrides the region-based guess. Undefined = infer from the goal's region. */
+  statFocus?: PlayerStatKey
 }
 
 export interface Goal {

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Wallet, ShoppingCart, Dumbbell, Plus, Trash2, Pencil, Check, TrendingUp, TrendingDown, Landmark, Home, ChevronRight } from 'lucide-react'
+import { Wallet, ShoppingCart, Dumbbell, Plus, Pencil, Check, TrendingUp, TrendingDown, Landmark, Home, ChevronRight } from 'lucide-react'
+import { ConfirmDeleteButton } from '@/components/ui/ConfirmDeleteButton'
 import { useGameStore } from '@/store/useGameStore'
 import { todayKey, MONTH_LABELS } from '@/lib/calendar'
 import { toClp, formatMoney, CURRENCIES } from '@/lib/planning/currency'
@@ -341,9 +342,7 @@ function FinanceSection() {
                 <button onClick={() => startEditSource(source)} className="text-ink-500 hover:text-gold-400">
                   <Pencil size={14} />
                 </button>
-                <button onClick={() => deleteIncomeSource(source.id)} className="text-ink-500 hover:text-red-400">
-                  <Trash2 size={14} />
-                </button>
+                <ConfirmDeleteButton onConfirm={() => deleteIncomeSource(source.id)} title="Eliminar ingreso fijo" />
               </div>
             </div>
           ))}
@@ -415,9 +414,7 @@ function FinanceSection() {
                 <button onClick={() => startEditExpense(expense)} className="text-ink-500 hover:text-gold-400">
                   <Pencil size={14} />
                 </button>
-                <button onClick={() => deleteFixedExpense(expense.id)} className="text-ink-500 hover:text-red-400">
-                  <Trash2 size={14} />
-                </button>
+                <ConfirmDeleteButton onConfirm={() => deleteFixedExpense(expense.id)} title="Eliminar gasto fijo" />
               </div>
             </div>
           ))}
@@ -505,9 +502,7 @@ function FinanceSection() {
               <button onClick={() => startEditEntry(entry)} className="text-ink-500 hover:text-gold-400">
                 <Pencil size={14} />
               </button>
-              <button onClick={() => deleteFinanceEntry(entry.id)} className="text-ink-500 hover:text-red-400">
-                <Trash2 size={14} />
-              </button>
+              <ConfirmDeleteButton onConfirm={() => deleteFinanceEntry(entry.id)} title="Eliminar movimiento" />
             </div>
           </div>
         ))}
@@ -738,9 +733,7 @@ function GrocerySection() {
                 <button onClick={() => startEdit(item)} className="text-ink-500 hover:text-gold-400">
                   <Pencil size={14} />
                 </button>
-                    <button onClick={() => deleteGroceryItem(item.id)} className="ml-3 text-ink-500 hover:text-red-400">
-                      <Trash2 size={14} />
-                    </button>
+                    <ConfirmDeleteButton onConfirm={() => deleteGroceryItem(item.id)} title="Eliminar producto" className="ml-3" />
                   </div>
                 ))}
                 </div>

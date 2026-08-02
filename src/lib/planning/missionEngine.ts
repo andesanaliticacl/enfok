@@ -1,5 +1,5 @@
 import { todayKey } from '@/lib/calendar'
-import type { Mission, MissionLocation, MissionRepeat, Priority } from '@/types'
+import type { Mission, MissionLocation, MissionRepeat, PlayerStatKey, Priority } from '@/types'
 
 export interface MissionInput {
   goalId: string
@@ -14,6 +14,7 @@ export interface MissionInput {
   tags: string[]
   repeat: MissionRepeat
   location?: MissionLocation
+  statFocus?: PlayerStatKey
 }
 
 export function createMission(input: MissionInput): Mission {

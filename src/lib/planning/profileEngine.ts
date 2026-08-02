@@ -98,8 +98,11 @@ export function applyMissionReward(
         ? profile.streakDays + 1
         : 1
 
+  // Every completion bumps its stat by exactly 1, regardless of the mission's
+  // XP/coin reward — the stat dashboard tracks how many missions of that kind
+  // you've done, not how much they were worth.
   const stats = playerStats(profile)
-  if (statKey) stats[statKey] += Math.max(1, mission.xp)
+  if (statKey) stats[statKey] += 1
 
   return applyLevelUp({
     ...profile,

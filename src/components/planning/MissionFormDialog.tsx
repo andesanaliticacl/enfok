@@ -8,14 +8,21 @@ import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { useGameStore } from '@/store/useGameStore'
 import { GOOGLE_MAPS_API_KEY, geocodeAddress } from '@/lib/world/geocode'
+import { PLAYER_STATS, statForRegionCategory } from '@/data/playerStats'
+import { cn } from '@/lib/utils'
 import type { MissionInput } from '@/lib/planning/missionEngine'
-import type { Mission, MissionLocation, MissionRepeat, Priority } from '@/types'
+import type { Mission, MissionLocation, MissionRepeat, PlayerStatKey, Priority } from '@/types'
 
 const DIFFICULTY_PRESETS = [
   { id: 'facil', label: 'Fácil', icon: '🟢', xp: 10, coins: 2 },
   { id: 'media', label: 'Media', icon: '🟡', xp: 20, coins: 5 },
   { id: 'dificil', label: 'Difícil', icon: '🔴', xp: 40, coins: 10 },
 ] as const
+type Difficulty = (typeof DIFFICULTY_PRESETS)[number]['id']
+
+function difficultyFor(xp: number): Difficulty {
+  return DIFFICULTY_PRESETS.reduce((closest, p) => (Math.abs(p.xp - xp) < Math.abs(closest.xp - xp) ? p : closest)).id
+}
 
 interface MissionFormDialogProps {
   open: boolean
@@ -35,10 +42,9 @@ function emptyForm(defaultGoalId?: string, defaultDate?: string) {
     date: defaultDate ?? new Date().toISOString().slice(0, 10),
     time: '',
     priority: 'media' as Priority,
-    xp: 20,
-    coins: 5,
+    difficulty: 'media' as Difficulty,
     estimatedMinutes: '',
-    tags: '',
+    statFocus: undefined as PlayerStatKey | undefined,
     repeat: 'ninguna' as MissionRepeat,
     locationQuery: '',
     location: undefined as MissionLocation | undefined,
@@ -55,15 +61,18 @@ export function MissionFormDialog({
   onDelete,
 }: MissionFormDialogProps) {
   const goals = useGameStore((s) => s.goals)
+  const regions = useGameStore((s) => s.regions)
   const [form, setForm] = useState(emptyForm(defaultGoalId, defaultDate))
   const [geocoding, setGeocoding] = useState(false)
   const [geocodeError, setGeocodeError] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const { isLoaded: mapsLoaded } = useJsApiLoader({ googleMapsApiKey: GOOGLE_MAPS_API_KEY ?? '' })
 
   useEffect(() => {
     if (!open) return
     setGeocodeError(null)
+    setConfirmDelete(false)
     if (mission) {
       setForm({
         goalId: mission.goalId,
@@ -72,10 +81,9 @@ export function MissionFormDialog({
         date: mission.date,
         time: mission.time ?? '',
         priority: mission.priority,
-        xp: mission.xp,
-        coins: mission.coins,
+        difficulty: difficultyFor(mission.xp),
         estimatedMinutes: mission.estimatedMinutes ? String(mission.estimatedMinutes) : '',
-        tags: mission.tags.join(', '),
+        statFocus: mission.statFocus,
         repeat: mission.repeat,
         locationQuery: mission.location?.address ?? '',
         location: mission.location,
@@ -84,6 +92,11 @@ export function MissionFormDialog({
       setForm(emptyForm(defaultGoalId, defaultDate))
     }
   }, [open, mission, defaultGoalId, defaultDate])
+
+  // The region a mission's goal lives in — what "Automático" would pick for the attribute.
+  const selectedGoal = goals.find((g) => g.id === form.goalId)
+  const selectedRegion = selectedGoal ? regions.find((r) => r.id === selectedGoal.regionId) : undefined
+  const autoStat = selectedRegion ? statForRegionCategory(selectedRegion.category) : undefined
 
   function handleAddressChange(value: string) {
     setGeocodeError(null)
@@ -108,6 +121,7 @@ export function MissionFormDialog({
 
   function handleSubmit() {
     if (!form.title.trim() || !form.goalId || !form.date) return
+    const preset = DIFFICULTY_PRESETS.find((p) => p.id === form.difficulty)!
     onSubmit({
       goalId: form.goalId,
       title: form.title.trim(),
@@ -115,13 +129,11 @@ export function MissionFormDialog({
       date: form.date,
       time: form.time || undefined,
       priority: form.priority,
-      xp: Math.max(0, Number(form.xp) || 0),
-      coins: Math.max(0, Number(form.coins) || 0),
+      xp: preset.xp,
+      coins: preset.coins,
       estimatedMinutes: form.estimatedMinutes ? Math.max(0, Number(form.estimatedMinutes)) : undefined,
-      tags: form.tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
+      tags: mission?.tags ?? [],
+      statFocus: form.statFocus,
       repeat: form.repeat,
       location: form.location,
     })
@@ -194,58 +206,70 @@ export function MissionFormDialog({
           </Select>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-ink-400">Dificultad sugerida:</span>
-          {DIFFICULTY_PRESETS.map((d) => (
+        {/* Difficulty is the only lever now — XP and coins are always exactly what the preset says, never hand-typed. */}
+        <div>
+          <label className="mb-1.5 block text-xs text-ink-400">
+            Dificultad <span className="text-ink-600">(fija la XP y monedas al completar)</span>
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {DIFFICULTY_PRESETS.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, difficulty: d.id }))}
+                className={cn(
+                  'flex flex-col items-center gap-0.5 rounded-xl border border-ink-600 bg-ink-900 py-2 text-xs text-ink-200',
+                  form.difficulty === d.id && 'border-gold-400 bg-gold-500/10 text-gold-400',
+                )}
+              >
+                <span>{d.icon} {d.label}</span>
+                <span className="text-[10px] text-ink-500">{d.xp} XP · {d.coins}🪙</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <label className="text-xs text-ink-400">
+          Duración estimada (opcional)
+          <Input
+            type="number"
+            placeholder="Minutos"
+            className="mt-1"
+            value={form.estimatedMinutes}
+            onChange={(e) => setForm((f) => ({ ...f, estimatedMinutes: e.target.value }))}
+          />
+        </label>
+
+        {/* Which stat this mission trains — invisible to the reward the player sees, it just nudges the dashboard. */}
+        <div>
+          <label className="mb-1.5 block text-xs text-ink-400">Atributo que entrena</label>
+          <div className="flex flex-wrap gap-1.5">
             <button
-              key={d.id}
               type="button"
-              onClick={() => setForm((f) => ({ ...f, xp: d.xp, coins: d.coins }))}
-              className="rounded-full border border-ink-600 px-3 py-1 text-xs text-ink-200 hover:border-gold-400"
+              onClick={() => setForm((f) => ({ ...f, statFocus: undefined }))}
+              className={cn(
+                'rounded-full border border-ink-600 px-2.5 py-1 text-[11px] text-ink-300',
+                form.statFocus === undefined && 'border-gold-400 bg-gold-500/20 text-gold-400',
+              )}
+              title={autoStat ? `Según la región de la meta: ${PLAYER_STATS.find((s) => s.key === autoStat)?.label}` : 'Según la región de la meta'}
             >
-              {d.icon} {d.label}
+              ✨ Automático
             </button>
-          ))}
+            {PLAYER_STATS.map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, statFocus: s.key }))}
+                className={cn(
+                  'rounded-full border border-ink-600 px-2.5 py-1 text-[11px] text-ink-300',
+                  form.statFocus === s.key && 'border-gold-400 bg-gold-500/20 text-gold-400',
+                )}
+              >
+                {s.icon} {s.label}
+              </button>
+            ))}
+          </div>
         </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <label className="text-xs text-ink-400">
-            XP al completar
-            <Input
-              type="number"
-              placeholder="XP"
-              className="mt-1"
-              value={form.xp}
-              onChange={(e) => setForm((f) => ({ ...f, xp: Number(e.target.value) }))}
-            />
-          </label>
-          <label className="text-xs text-ink-400">
-            Monedas al completar
-            <Input
-              type="number"
-              placeholder="Monedas"
-              className="mt-1"
-              value={form.coins}
-              onChange={(e) => setForm((f) => ({ ...f, coins: Number(e.target.value) }))}
-            />
-          </label>
-          <label className="text-xs text-ink-400">
-            Duración estimada
-            <Input
-              type="number"
-              placeholder="Minutos"
-              className="mt-1"
-              value={form.estimatedMinutes}
-              onChange={(e) => setForm((f) => ({ ...f, estimatedMinutes: e.target.value }))}
-            />
-          </label>
-        </div>
-
-        <Input
-          placeholder="Etiquetas separadas por coma"
-          value={form.tags}
-          onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
-        />
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-ink-400">Ubicación (opcional)</label>
@@ -296,12 +320,18 @@ export function MissionFormDialog({
           {mission && onDelete && (
             <Button
               variant="outline"
+              className={confirmDelete ? 'border-red-700 text-red-300' : undefined}
               onClick={() => {
+                if (!confirmDelete) {
+                  setConfirmDelete(true)
+                  return
+                }
                 onDelete()
                 onClose()
               }}
+              onBlur={() => setConfirmDelete(false)}
             >
-              Eliminar
+              {confirmDelete ? '¿Seguro? Sí, eliminar' : 'Eliminar'}
             </Button>
           )}
           <Button onClick={handleSubmit} className="flex-1">
