@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { List, Calendar as CalendarIcon, GitBranch, Plus } from 'lucide-react'
+import { CalendarDays, Calendar as CalendarIcon, GitBranch, Plus } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
-import { MissionsListView } from '@/components/planning/MissionsListView'
 import { TodayHeader } from '@/components/planning/TodayHeader'
 import { CalendarView } from '@/components/planning/CalendarView'
+import { DayView } from '@/components/planning/DayView'
 import { GoalTreeView } from '@/components/planning/GoalTreeView'
 import { XpToast } from '@/components/missions/XpToast'
 import { MissionFormDialog } from '@/components/planning/MissionFormDialog'
@@ -22,7 +22,7 @@ export function MissionsPage() {
   const updateGoal = useGameStore((s) => s.updateGoal)
   const deleteGoal = useGameStore((s) => s.deleteGoal)
 
-  const [view, setView] = useState<'lista' | 'calendario' | 'arbol'>('lista')
+  const [view, setView] = useState<'arbol' | 'dia' | 'calendario'>('dia')
   const [dialog, setDialog] = useState<{ open: boolean; mission?: Mission; date?: string; goalId?: string }>({
     open: false,
   })
@@ -48,13 +48,22 @@ export function MissionsPage() {
 
       <div className="mb-6 flex gap-2">
         <button
-          onClick={() => setView('lista')}
+          onClick={() => setView('arbol')}
           className={cn(
             'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
-            view === 'lista' && 'bg-ink-800 text-gold-400',
+            view === 'arbol' && 'bg-ink-800 text-gold-400',
           )}
         >
-          <List size={14} /> Lista
+          <GitBranch size={14} /> Árbol
+        </button>
+        <button
+          onClick={() => setView('dia')}
+          className={cn(
+            'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
+            view === 'dia' && 'bg-ink-800 text-gold-400',
+          )}
+        >
+          <CalendarDays size={14} /> Mi día
         </button>
         <button
           onClick={() => setView('calendario')}
@@ -65,29 +74,20 @@ export function MissionsPage() {
         >
           <CalendarIcon size={14} /> Calendario
         </button>
-        <button
-          onClick={() => setView('arbol')}
-          className={cn(
-            'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
-            view === 'arbol' && 'bg-ink-800 text-gold-400',
-          )}
-        >
-          <GitBranch size={14} /> Árbol
-        </button>
       </div>
 
-      {view === 'lista' ? (
-        <MissionsListView onEdit={(mission) => setDialog({ open: true, mission })} />
-      ) : view === 'calendario' ? (
-        <CalendarView
-          onCreateOnDate={(date) => setDialog({ open: true, date })}
-          onEdit={(mission) => setDialog({ open: true, mission })}
-        />
-      ) : (
+      {view === 'arbol' ? (
         <GoalTreeView
           onEditGoal={(goal) => setGoalDialog({ open: true, goal })}
           onCreateMission={(goalId) => setDialog({ open: true, goalId })}
           onEditMission={(mission) => setDialog({ open: true, mission })}
+        />
+      ) : view === 'dia' ? (
+        <DayView onEdit={(mission) => setDialog({ open: true, mission })} />
+      ) : (
+        <CalendarView
+          onCreateOnDate={(date) => setDialog({ open: true, date })}
+          onEdit={(mission) => setDialog({ open: true, mission })}
         />
       )}
 
