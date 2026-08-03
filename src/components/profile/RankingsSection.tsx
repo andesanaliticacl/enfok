@@ -15,6 +15,9 @@ const TABS: { id: RankingTab; label: string; icon: typeof Trophy }[] = [
 
 const MEDALS = ['🥇', '🥈', '🥉']
 
+/** A podium is three. Beyond that it stops being a ranking and becomes a list. */
+const PODIUM_SIZE = 3
+
 /** Podium colouring for the top three, plain ink after that. */
 function rankAccent(index: number): string {
   return index === 0 ? 'text-gold-400' : index < 3 ? 'text-ink-100' : 'text-ink-300'
@@ -41,6 +44,7 @@ export function RankingsSection() {
     })
     .filter((row): row is NonNullable<typeof row> => row !== null)
     .sort((a, b) => b.best.weight - a.best.weight)
+    .slice(0, PODIUM_SIZE)
 
   // Fixed sources count as one recurring line alongside the one-off entries.
   const incomeRanking = [
@@ -48,14 +52,18 @@ export function RankingsSection() {
     ...financeEntries
       .filter((e) => e.type === 'ingreso')
       .map((e) => ({ id: e.id, label: e.description, clp: toClp(e.amount, e.currency, usdToClp), tag: e.date })),
-  ].sort((a, b) => b.clp - a.clp)
+  ]
+    .sort((a, b) => b.clp - a.clp)
+    .slice(0, PODIUM_SIZE)
 
   const expenseRanking = [
     ...fixedExpenses.map((e) => ({ id: e.id, label: e.name, clp: toClp(e.amount, e.currency, usdToClp), tag: 'Fijo' })),
     ...financeEntries
       .filter((e) => e.type === 'gasto')
       .map((e) => ({ id: e.id, label: e.description, clp: toClp(e.amount, e.currency, usdToClp), tag: e.date })),
-  ].sort((a, b) => b.clp - a.clp)
+  ]
+    .sort((a, b) => b.clp - a.clp)
+    .slice(0, PODIUM_SIZE)
 
   return (
     <div className="flex flex-col gap-3">

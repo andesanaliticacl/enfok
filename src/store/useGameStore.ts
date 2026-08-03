@@ -196,6 +196,8 @@ interface GameState {
   startNewProfile: (name: string) => void
   clearLastGainedXp: () => void
   resetToFreshStart: () => void
+  /** Replaces everything with a previously exported backup, run through the same migrations as a normal load. */
+  importSnapshot: (data: Record<string, unknown>) => void
 }
 
 const STARTING_PROFILE: Omit<PlayerProfile, 'name'> = {
@@ -945,6 +947,11 @@ export const useGameStore = create<GameState>()(
           systems: [],
           people: [],
         }),
+
+      // Runs the file through normalizeGameState, the same path a saved game
+      // takes on load — so an older backup is migrated instead of breaking.
+      importSnapshot: (data) =>
+        set((state) => ({ ...state, ...normalizeGameState(data as Partial<GameState>) })),
     }),
     {
       name: 'questly-game-state-v2',

@@ -165,12 +165,58 @@ export function journalToMarkdown(state: GameState): string {
   return lines.join('\n')
 }
 
+export const SNAPSHOT_VERSION = 1
+
+/** What a backup file looks like once parsed — enough to tell the user what they're about to restore. */
+export interface SnapshotSummary {
+  profileName: string
+  exportedAt: string
+  missions: number
+  financeEntries: number
+  exercises: number
+  systems: number
+}
+
+/**
+ * Reads a backup file and rejects anything that isn't one, so a wrong file can
+ * never half-overwrite a profile. Returns the parsed payload plus a summary to
+ * show before applying it.
+ */
+export function parseSnapshot(raw: string): { data: Record<string, unknown>; summary: SnapshotSummary } {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error('El archivo no es un JSON válido.')
+  }
+
+  if (!parsed || typeof parsed !== 'object') throw new Error('El archivo no tiene el formato esperado.')
+  const data = parsed as Record<string, unknown>
+  if (!data.profile || typeof data.profile !== 'object') {
+    throw new Error('Este archivo no parece un respaldo de Enfok.')
+  }
+
+  const count = (key: string) => (Array.isArray(data[key]) ? (data[key] as unknown[]).length : 0)
+  return {
+    data,
+    summary: {
+      profileName: (data.profile as { name?: string }).name ?? 'Sin nombre',
+      exportedAt: typeof data.exportedAt === 'string' ? data.exportedAt : 'fecha desconocida',
+      missions: count('missions'),
+      financeEntries: count('financeEntries'),
+      exercises: count('exerciseItems'),
+      systems: count('systems'),
+    },
+  }
+}
+
 /** Full machine-readable snapshot — a real backup you can keep or re-import later. */
-export function journalToJson(state: GameState): string {
+export function journalToJson(state: GameState, avatarState?: unknown): string {
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
-      version: 1,
+      version: SNAPSHOT_VERSION,
+      avatarState,
       profile: state.profile,
       regions: state.regions,
       goals: state.goals,
@@ -180,14 +226,22 @@ export function journalToJson(state: GameState): string {
       incomeSources: state.incomeSources,
       fixedExpenses: state.fixedExpenses,
       groceryItems: state.groceryItems,
+      groceryPurchaseEntryId: state.groceryPurchaseEntryId,
       exerciseItems: state.exerciseItems,
       trainingDayNames: state.trainingDayNames,
       moodLog: state.moodLog,
       journalNotes: state.journalNotes,
       systems: state.systems,
+      // Without the roster, every step's personId would point at nobody on restore.
+      people: state.people,
       enabledModules: state.enabledModules,
       unlocks: state.unlocks,
+      equippedTitle: state.equippedTitle,
+      equippedAura: state.equippedAura,
       claimedAchievements: state.claimedAchievements,
+      lastVerseDate: state.lastVerseDate,
+      usdToClp: state.usdToClp,
+      worldAnchor: state.worldAnchor,
     },
     null,
     2,

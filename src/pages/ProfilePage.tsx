@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Settings, Pencil, Globe2, Star, Coins, Flame, Trophy, Store, Rocket, Medal, NotebookPen, Boxes } from 'lucide-react'
+import { Settings, Pencil, Globe2, Star, Coins, Flame, Trophy, Store, Rocket, Medal, Database, Boxes } from 'lucide-react'
 import { AvatarAura } from '@/components/avatar/AvatarAura'
 import { ShopSection } from '@/components/profile/ShopSection'
 import { RankingsSection } from '@/components/profile/RankingsSection'
-import { JournalSection } from '@/components/profile/JournalSection'
+import { MyDataSection } from '@/components/profile/MyDataSection'
 import { ModulesSection } from '@/components/profile/ModulesSection'
 import { INVENTORY_MODULES } from '@/data/inventoryModules'
 import { DailyVerseCard } from '@/components/profile/DailyVerseCard'
@@ -330,14 +330,6 @@ export function ProfilePage() {
           </CollapsibleSection>
 
           <CollapsibleSection
-            title="Bitácora"
-            icon={<NotebookPen size={14} />}
-            badge={<span className="text-[10px] text-ink-500">Exportable</span>}
-          >
-            <JournalSection />
-          </CollapsibleSection>
-
-          <CollapsibleSection
             title="Mi inventario"
             icon={<Boxes size={14} />}
             badge={<span className="text-[10px] text-ink-500">{enabledModules.length}/{INVENTORY_MODULES.length}</span>}
@@ -347,6 +339,15 @@ export function ProfilePage() {
 
           <CollapsibleSection title="Planes exprés" icon={<Rocket size={14} />}>
             <PlansSection />
+          </CollapsibleSection>
+
+          {/* Last on purpose: it's the "everything about this profile" drawer, not a daily-use panel */}
+          <CollapsibleSection
+            title="Mi data"
+            icon={<Database size={14} />}
+            badge={<span className="text-[10px] text-ink-500">Guardar · Cargar</span>}
+          >
+            <MyDataSection />
           </CollapsibleSection>
         </div>
       </div>
