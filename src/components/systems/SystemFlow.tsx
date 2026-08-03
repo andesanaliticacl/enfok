@@ -1,5 +1,6 @@
-import { ArrowRight, RotateCcw } from 'lucide-react'
+import { ArrowRight, RotateCcw, Zap } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
+import { dependencyDef } from '@/lib/systems/autonomy'
 import { cn } from '@/lib/utils'
 import type { LifeSystem } from '@/types'
 
@@ -46,8 +47,19 @@ export function SystemFlow({ system, activeStepId, onStepClick }: SystemFlowProp
             )}
             style={activeStepId === step.id ? undefined : { borderColor: `${system.color}66` }}
           >
-            <span className="text-[9px] font-medium" style={{ color: system.color }}>
-              {index + 1}
+            {/* The dot answers "does this need me?" before you read the label */}
+            <span className="flex w-full items-center justify-between gap-1">
+              <span className="text-[9px] font-medium" style={{ color: system.color }}>
+                {index + 1}
+              </span>
+              <span className="flex items-center gap-0.5">
+                {step.automated && <Zap size={9} className="text-gold-400" />}
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: dependencyDef(step.dependency).color }}
+                  title={dependencyDef(step.dependency).label}
+                />
+              </span>
             </span>
             <span className="text-[11px] leading-tight text-ink-50">{step.label}</span>
             {step.note && <span className="mt-0.5 text-[9px] leading-tight text-ink-500">{step.note}</span>}

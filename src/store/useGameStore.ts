@@ -41,6 +41,7 @@ import type {
   LifeSystem,
   Person,
   SystemStep,
+  StepDependency,
 } from '@/types'
 
 export interface RegionInput {
@@ -153,14 +154,32 @@ interface GameState {
   deleteJournalNote: (noteId: string) => void
 
   systems: LifeSystem[]
-  addSystem: (input: { name: string; icon: string; color: string; steps: string[]; loops: boolean }) => string
-  updateSystem: (systemId: string, input: { name: string; icon: string; color: string; loops: boolean }) => void
+  addSystem: (input: {
+    name: string
+    icon: string
+    color: string
+    steps: string[]
+    loops: boolean
+    objective?: string
+    produces?: string[]
+  }) => string
+  updateSystem: (
+    systemId: string,
+    input: { name: string; icon: string; color: string; loops: boolean; objective?: string; produces?: string[] },
+  ) => void
   deleteSystem: (systemId: string) => void
   addSystemStep: (systemId: string, label: string) => void
   updateSystemStep: (
     systemId: string,
     stepId: string,
-    input: { label: string; note?: string; personId?: string; role?: string },
+    input: {
+      label: string
+      note?: string
+      personId?: string
+      role?: string
+      dependency: StepDependency
+      automated?: boolean
+    },
   ) => void
 
   /** Tu equipo: quiénes son y qué roles cumplen. Compartido por todos los sistemas. */
@@ -374,7 +393,11 @@ function migratePeopleAndSystems(
 
   const systems = (rawSystems ?? []).map((system) => ({
     ...system,
-    steps: system.steps.map((step) => {
+    // Systems saved before the autonomy model default to "all on me", which is
+    // the honest starting point rather than a flattering one.
+    produces: Array.isArray(system.produces) ? system.produces : [],
+    steps: system.steps.map((rawStep) => {
+      const step: SystemStep = { ...rawStep, dependency: rawStep.dependency ?? 'mia' }
       const legacy = step as SystemStep & { owner?: string }
       if (!legacy.owner?.trim() || legacy.personId) {
         const { owner: _dropped, ...clean } = legacy
@@ -472,7 +495,14 @@ export const useGameStore = create<GameState>()(
           icon: input.icon,
           color: input.color,
           loops: input.loops,
-          steps: input.steps.map((label) => ({ id: `step-${crypto.randomUUID()}`, label })),
+          objective: input.objective,
+          produces: input.produces ?? [],
+          // Everything starts on your shoulders — the work is moving each step off them.
+          steps: input.steps.map((label) => ({
+            id: `step-${crypto.randomUUID()}`,
+            label,
+            dependency: 'mia' as const,
+          })),
         }
         set((state) => ({ systems: [...state.systems, system] }))
         return system.id
@@ -488,7 +518,9 @@ export const useGameStore = create<GameState>()(
       addSystemStep: (systemId, label) =>
         set((state) => ({
           systems: state.systems.map((s) =>
-            s.id === systemId ? { ...s, steps: [...s.steps, { id: `step-${crypto.randomUUID()}`, label }] } : s,
+            s.id === systemId
+              ? { ...s, steps: [...s.steps, { id: `step-${crypto.randomUUID()}`, label, dependency: 'mia' as const }] }
+              : s,
           ),
         })),
 

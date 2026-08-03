@@ -253,6 +253,12 @@ export interface Person {
   roles: string[]
 }
 
+/**
+ * Cuánto te necesita este paso. Es la única métrica que importa: un sistema
+ * maduro es el que puede correr sin ti.
+ */
+export type StepDependency = 'mia' | 'parcial' | 'libre'
+
 export interface SystemStep {
   id: string
   label: string
@@ -261,6 +267,10 @@ export interface SystemStep {
   personId?: string
   /** Cuál de sus roles cumple aquí (una persona puede ser Editor en un paso y Comercial en otro). */
   role?: string
+  /** 🔴 depende de mí · 🟡 parcialmente delegado · 🟢 funciona sin mí. */
+  dependency: StepDependency
+  /** El paso lo hace una herramienta, no una persona. */
+  automated?: boolean
 }
 
 /**
@@ -273,6 +283,10 @@ export interface LifeSystem {
   name: string
   icon: string
   color: string
+  /** 🎯 Una frase: qué produce esto y con qué grado de independencia. */
+  objective?: string
+  /** Los activos que construye (confianza, clientes, libertad...). Máximo 4 visibles. */
+  produces: string[]
   steps: SystemStep[]
   /** The last step feeds the first — the system compounds instead of ending. */
   loops: boolean

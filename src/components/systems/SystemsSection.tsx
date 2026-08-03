@@ -1,14 +1,16 @@
 import { useState } from 'react'
-import { Plus, ChevronUp, ChevronDown, Sparkles, RotateCcw, UserRound, UserPlus, Users, Pencil } from 'lucide-react'
+import { Plus, ChevronUp, ChevronDown, Sparkles, RotateCcw, UserRound, UserPlus, Users, Pencil, Target, Zap } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { SYSTEM_TEMPLATES, SYSTEM_COLORS, SYSTEM_ICONS } from '@/data/systemTemplates'
 import { SystemFlow, initialsOf } from '@/components/systems/SystemFlow'
+import { SystemHealthPanel } from '@/components/systems/SystemHealthPanel'
+import { DEPENDENCIES } from '@/lib/systems/autonomy'
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
 import { ConfirmDeleteButton } from '@/components/ui/ConfirmDeleteButton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import type { LifeSystem, Person } from '@/types'
+import type { LifeSystem, Person, StepDependency } from '@/types'
 
 export function SystemsSection() {
   const systems = useGameStore((s) => s.systems)
@@ -34,9 +36,15 @@ export function SystemsSection() {
     <div className="flex flex-col gap-4">
       <div>
         <h2 className="text-sm font-semibold text-ink-50">Tus sistemas</h2>
-        <p className="mt-1 text-[11px] leading-relaxed text-ink-400">
-          Un sistema es un proceso que se repite: lo dibujas una vez y después solo lo ejecutas. Cada paso puede tener un
-          encargado, para que nada quede sin dueño.
+        {/* The whole screen exists to make this question unavoidable */}
+        <p className="mt-1 font-pixel text-[10px] leading-relaxed text-gold-400">
+          ¿Puede funcionar sin mí?
+        </p>
+        <p className="mt-1.5 text-[11px] leading-relaxed text-ink-400">
+          Un sistema tiene cinco partes: <strong className="text-ink-300">objetivo</strong>,{' '}
+          <strong className="text-ink-300">proceso</strong>, <strong className="text-ink-300">responsables</strong>,{' '}
+          <strong className="text-ink-300">métricas</strong> y <strong className="text-ink-300">mejora continua</strong>.
+          Aquí no ganas por trabajar más, sino por lograr que cada paso dependa menos de ti.
         </p>
       </div>
 
@@ -118,6 +126,8 @@ export function SystemsSection() {
                       color: template.color,
                       steps: template.steps,
                       loops: template.loops,
+                      objective: template.objective,
+                      produces: template.produces,
                     })
                   }
                 >
@@ -150,8 +160,13 @@ function SystemCard({ system }: { system: LifeSystem }) {
   const [stepNote, setStepNote] = useState('')
   const [stepPersonId, setStepPersonId] = useState<string | undefined>(undefined)
   const [stepRole, setStepRole] = useState('')
+  const [stepDependency, setStepDependency] = useState<StepDependency>('mia')
+  const [stepAutomated, setStepAutomated] = useState(false)
   const [newPersonName, setNewPersonName] = useState('')
   const [newStep, setNewStep] = useState('')
+  const [editingSystem, setEditingSystem] = useState(false)
+  const [draftObjective, setDraftObjective] = useState('')
+  const [draftProduces, setDraftProduces] = useState('')
 
   const editingStep = system.steps.find((s) => s.id === editingStepId)
   const ownedCount = system.steps.filter((s) => s.personId).length
@@ -165,6 +180,8 @@ function SystemCard({ system }: { system: LifeSystem }) {
     setStepNote(step.note ?? '')
     setStepPersonId(step.personId)
     setStepRole(step.role ?? '')
+    setStepDependency(step.dependency)
+    setStepAutomated(!!step.automated)
     setNewPersonName('')
   }
 
@@ -188,8 +205,28 @@ function SystemCard({ system }: { system: LifeSystem }) {
       note: stepNote.trim() || undefined,
       personId: stepPersonId,
       role: role || undefined,
+      dependency: stepDependency,
+      automated: stepAutomated,
     })
     setEditingStepId(null)
+  }
+
+  function startEditSystem() {
+    setEditingSystem(true)
+    setDraftObjective(system.objective ?? '')
+    setDraftProduces(system.produces.join(', '))
+  }
+
+  function saveSystemMeta() {
+    updateSystem(system.id, {
+      name: system.name,
+      icon: system.icon,
+      color: system.color,
+      loops: system.loops,
+      objective: draftObjective.trim() || undefined,
+      produces: draftProduces.split(',').map((p) => p.trim()).filter(Boolean).slice(0, 4),
+    })
+    setEditingSystem(false)
   }
 
   function handleAddStep(e: React.FormEvent) {
@@ -223,8 +260,39 @@ function SystemCard({ system }: { system: LifeSystem }) {
         >
           <RotateCcw size={11} /> Ciclo
         </button>
+        <button onClick={startEditSystem} title="Objetivo y activos" className="text-ink-500 hover:text-gold-400">
+          <Target size={14} />
+        </button>
         <ConfirmDeleteButton onConfirm={() => deleteSystem(system.id)} title="Eliminar sistema" />
       </div>
+
+      {editingSystem ? (
+        <div className="mb-3 flex flex-col gap-2 rounded-xl border border-gold-400/50 bg-ink-950/60 p-3">
+          <p className="text-[10px] uppercase tracking-wide text-gold-400">¿Qué persigue este sistema?</p>
+          <Input
+            placeholder="Ej: Publicar cada semana sin depender de mí"
+            value={draftObjective}
+            onChange={(e) => setDraftObjective(e.target.value)}
+          />
+          <Input
+            placeholder="Produce: Confianza, Clientes, Dinero (máx. 4)"
+            value={draftProduces}
+            onChange={(e) => setDraftProduces(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button size="sm" onClick={saveSystemMeta}>
+              Guardar
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditingSystem(false)}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="mb-3">
+          <SystemHealthPanel system={system} />
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <SystemFlow system={system} activeStepId={editingStepId} onStepClick={startEditStep} />
@@ -235,6 +303,38 @@ function SystemCard({ system }: { system: LifeSystem }) {
           <p className="text-[10px] uppercase tracking-wide text-gold-400">Editando paso</p>
           <Input placeholder="Nombre del paso" value={stepLabel} onChange={(e) => setStepLabel(e.target.value)} />
           <Input placeholder="Detalle (opcional)" value={stepNote} onChange={(e) => setStepNote(e.target.value)} />
+
+          {/* The question the whole screen exists to answer, asked per step */}
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[10px] uppercase tracking-wide text-ink-400">¿Cuánto depende de ti?</p>
+            <div className="flex flex-wrap gap-1.5">
+              {DEPENDENCIES.map((dep) => (
+                <button
+                  key={dep.key}
+                  type="button"
+                  onClick={() => setStepDependency(dep.key)}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-full border border-ink-600 px-2 py-1 text-[10px] text-ink-300',
+                    stepDependency === dep.key && 'bg-ink-800 text-ink-50',
+                  )}
+                  style={stepDependency === dep.key ? { borderColor: dep.color } : undefined}
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: dep.color }} />
+                  {dep.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setStepAutomated((v) => !v)}
+              className={cn(
+                'flex items-center gap-1.5 self-start rounded-full border border-ink-600 px-2 py-1 text-[10px] text-ink-300',
+                stepAutomated && 'border-gold-400 bg-gold-500/20 text-gold-400',
+              )}
+            >
+              <Zap size={11} /> Lo hace una herramienta, no una persona
+            </button>
+          </div>
 
           <div className="flex flex-col gap-1.5">
             <p className="text-[10px] uppercase tracking-wide text-ink-400">Encargado</p>

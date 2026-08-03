@@ -5,6 +5,10 @@ export interface SystemTemplate {
   color: string
   /** Why this system exists — the payoff of not rebuilding it every time. */
   summary: string
+  /** 🎯 La frase que define cuándo este sistema está "listo". */
+  objective: string
+  /** Los activos que construye. */
+  produces: string[]
   steps: string[]
   loops: boolean
 }
@@ -17,6 +21,8 @@ export const SYSTEM_TEMPLATES: SystemTemplate[] = [
     icon: '🎬',
     color: '#d47a4a',
     summary: 'Una idea se convierte en piezas para todas las plataformas, sin rehacer nada desde cero.',
+    objective: 'Publicar contenido cada semana sin depender completamente de mí.',
+    produces: ['Confianza', 'Comunidad', 'Clientes'],
     steps: [
       'Idea',
       'Grabación',
@@ -37,6 +43,8 @@ export const SYSTEM_TEMPLATES: SystemTemplate[] = [
     icon: '🤝',
     color: '#4a9b6e',
     summary: 'Del primer contacto al caso de éxito, y del caso de éxito a más clientes.',
+    objective: 'Convertir interesados en clientes sin que cada venta pase por mí.',
+    produces: ['Clientes', 'Dinero'],
     steps: [
       'Cliente llega',
       'Formulario',
@@ -57,6 +65,8 @@ export const SYSTEM_TEMPLATES: SystemTemplate[] = [
     icon: '🆘',
     color: '#4a7fd4',
     summary: 'Cada emergencia atendida hace crecer la red que atenderá la siguiente.',
+    objective: 'Que una emergencia se resuelva aunque yo no esté conectado.',
+    produces: ['Impacto', 'Casos de éxito', 'Credibilidad'],
     steps: [
       'Emergencia',
       'Ciudadanos',

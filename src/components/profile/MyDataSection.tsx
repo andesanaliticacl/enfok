@@ -15,6 +15,14 @@ export function MyDataSection() {
   const profileName = useGameStore((s) => s.profile.name)
   const importSnapshot = useGameStore((s) => s.importSnapshot)
 
+  // What's on screen right now, so the user can compare it against the file
+  // instead of guessing what "reemplazar" costs them. Selected as separate
+  // primitives — returning an object here would be a new reference every render.
+  const currentMissions = useGameStore((s) => s.missions.length)
+  const currentFinance = useGameStore((s) => s.financeEntries.length)
+  const currentExercises = useGameStore((s) => s.exerciseItems.length)
+  const currentSystems = useGameStore((s) => s.systems.length)
+
   const fileRef = useRef<HTMLInputElement>(null)
   const [pending, setPending] = useState<{ data: Record<string, unknown>; summary: SnapshotSummary } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -90,26 +98,64 @@ export function MyDataSection() {
       {error && <p className="text-[11px] text-red-400">{error}</p>}
       {done && <p className="text-center text-[11px] text-emerald-400">{done}</p>}
 
-      {/* Restoring wipes the current profile — never do it on a single tap */}
+      {/* Restoring wipes the current profile — never do it on a single tap, and
+          never without showing exactly what disappears. */}
       {pending && (
-        <div className="flex flex-col gap-2 rounded-xl border border-gold-400/60 bg-ink-950/70 p-3">
-          <p className="flex items-center gap-1.5 text-[11px] font-medium text-gold-400">
-            <AlertTriangle size={13} /> Esto reemplaza tus datos actuales
+        <div className="flex flex-col gap-3 rounded-xl border border-red-500/60 bg-red-950/25 p-3">
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-red-300">
+            <AlertTriangle size={14} /> Cargar NO fusiona: reemplaza todo
           </p>
+
+          <p className="text-[10px] leading-relaxed text-ink-200">
+            Tus datos actuales se <strong className="text-red-300">borran por completo</strong> y quedan solo los del
+            archivo. Lo que hayas hecho después de ese respaldo se pierde y no se puede deshacer.
+          </p>
+
+          {/* Side-by-side is what makes the trade concrete */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-ink-700 bg-ink-950/60 p-2">
+              <p className="mb-1 text-[9px] uppercase tracking-wide text-red-300">Ahora (se borra)</p>
+              <p className="text-[10px] leading-relaxed text-ink-400">
+                {currentMissions} misiones
+                <br />
+                {currentFinance} movimientos
+                <br />
+                {currentExercises} ejercicios
+                <br />
+                {currentSystems} sistemas
+              </p>
+            </div>
+            <div className="rounded-lg border border-ink-700 bg-ink-950/60 p-2">
+              <p className="mb-1 text-[9px] uppercase tracking-wide text-emerald-300">Queda esto</p>
+              <p className="text-[10px] leading-relaxed text-ink-400">
+                {pending.summary.missions} misiones
+                <br />
+                {pending.summary.financeEntries} movimientos
+                <br />
+                {pending.summary.exercises} ejercicios
+                <br />
+                {pending.summary.systems} sistemas
+              </p>
+            </div>
+          </div>
+
           <p className="text-[10px] leading-relaxed text-ink-300">
-            Respaldo de <strong className="text-ink-50">{pending.summary.profileName}</strong>
+            Perfil del archivo: <strong className="text-ink-50">{pending.summary.profileName}</strong>
             <br />
-            {new Date(pending.summary.exportedAt).toLocaleString('es-CL')}
-            <br />
-            {pending.summary.missions} misiones · {pending.summary.financeEntries} movimientos ·{' '}
-            {pending.summary.exercises} ejercicios · {pending.summary.systems} sistemas
+            Guardado el {new Date(pending.summary.exportedAt).toLocaleString('es-CL')}
           </p>
+
+          {/* The one action that makes this safe, offered right where the risk is */}
+          <Button size="sm" variant="outline" onClick={handleSaveBackup}>
+            <Download size={13} /> Guardar primero lo que tengo ahora
+          </Button>
+
           <div className="flex gap-2">
-            <Button size="sm" className="flex-1" onClick={confirmImport}>
-              Cargar y reemplazar
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setPending(null)}>
+            <Button size="sm" variant="ghost" className="flex-1" onClick={() => setPending(null)}>
               Cancelar
+            </Button>
+            <Button size="sm" className="flex-1 bg-red-600 text-ink-50 hover:bg-red-500" onClick={confirmImport}>
+              Borrar y reemplazar
             </Button>
           </div>
         </div>
