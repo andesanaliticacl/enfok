@@ -8,7 +8,9 @@ import {
   type GoalInput,
 } from '@/lib/planning/goalEngine'
 import { applyCompletion, createMission, isDoneForNow, type MissionInput } from '@/lib/planning/missionEngine'
-import { applyMissionReward, grantXp } from '@/lib/planning/profileEngine'
+import { applyMissionReward, grantXp, playerStats } from '@/lib/planning/profileEngine'
+import { MOOD_CHECKIN_HEART } from '@/data/moods'
+import { CORE_MODULE_IDS } from '@/data/inventoryModules'
 import { GROCERY_EXPENSE_DESCRIPTION, checkedGroceryTotal } from '@/lib/planning/groceryEngine'
 import { DEFAULT_USD_TO_CLP } from '@/lib/planning/currency'
 import { regionCategory } from '@/data/regionCategories'
@@ -32,6 +34,13 @@ import type {
   PlayerProfile,
   Region,
   RegionCategory,
+  InventoryModuleId,
+  MoodKey,
+  MoodEntry,
+  JournalNote,
+  LifeSystem,
+  Person,
+  SystemStep,
 } from '@/types'
 
 export interface RegionInput {
@@ -128,6 +137,42 @@ interface GameState {
   /** Custom label per weekday's training split slot — "Grupo 3" becomes "Pecho" once renamed. */
   trainingDayNames: Partial<Record<Weekday, string>>
   setTrainingDayName: (day: Weekday, name: string) => void
+
+  /** Inventory modules switched on. Finanzas is core and always present. */
+  enabledModules: InventoryModuleId[]
+  enableModule: (id: InventoryModuleId) => void
+  disableModule: (id: InventoryModuleId) => void
+
+  /** One emotional check-in per day — feeds Corazón and the bitácora. */
+  moodLog: MoodEntry[]
+  /** Records today's mood (+1 Corazón). No-op if today is already logged. */
+  logMood: (mood: MoodKey, note?: string) => void
+
+  journalNotes: JournalNote[]
+  addJournalNote: (text: string) => void
+  deleteJournalNote: (noteId: string) => void
+
+  systems: LifeSystem[]
+  addSystem: (input: { name: string; icon: string; color: string; steps: string[]; loops: boolean }) => string
+  updateSystem: (systemId: string, input: { name: string; icon: string; color: string; loops: boolean }) => void
+  deleteSystem: (systemId: string) => void
+  addSystemStep: (systemId: string, label: string) => void
+  updateSystemStep: (
+    systemId: string,
+    stepId: string,
+    input: { label: string; note?: string; personId?: string; role?: string },
+  ) => void
+
+  /** Tu equipo: quiénes son y qué roles cumplen. Compartido por todos los sistemas. */
+  people: Person[]
+  /** Crea la persona y devuelve su id — usable al vuelo desde un bloque. */
+  addPerson: (input: { name: string; roles: string[] }) => string
+  updatePerson: (personId: string, input: { name: string; roles: string[] }) => void
+  /** La borra del equipo y la desasigna de cualquier paso que la tuviera. */
+  deletePerson: (personId: string) => void
+  deleteSystemStep: (systemId: string, stepId: string) => void
+  /** Moves a step one slot up (-1) or down (+1) in the chain. */
+  moveSystemStep: (systemId: string, stepId: string, direction: -1 | 1) => void
 
   addRegion: (input: RegionInput) => string
   updateRegion: (regionId: string, input: RegionInput) => void
@@ -254,6 +299,19 @@ export function normalizeGameState(raw: Partial<GameState> & { places?: unknown;
     lastVerseDate: rest.lastVerseDate ?? null,
     usdToClp: rest.usdToClp ?? DEFAULT_USD_TO_CLP,
     trainingDayNames: rest.trainingDayNames ?? {},
+    moodLog: rest.moodLog ?? [],
+    journalNotes: rest.journalNotes ?? [],
+    ...migratePeopleAndSystems(rest.people, rest.systems),
+    // Saves from before modules existed had every section always visible, so a
+    // section holding real data must come back switched ON — otherwise upgrading
+    // would look like the data vanished.
+    enabledModules:
+      rest.enabledModules ??
+      ([
+        ...CORE_MODULE_IDS,
+        ...((rest.groceryItems ?? []).length > 0 ? (['compras'] as const) : []),
+        ...((rest.exerciseItems ?? []).length > 0 ? (['ejercicios'] as const) : []),
+      ] as InventoryModuleId[]),
     profile: rest.profile ? { ...rest.profile, stats: { ...EMPTY_PLAYER_STATS, ...rest.profile.stats } } : rest.profile,
     // Money entries/sources predating currencies default to CLP.
     financeEntries: ((rest.financeEntries ?? []) as (FinanceEntry & { currency?: Currency })[]).map((e) => ({
@@ -300,6 +358,46 @@ export function normalizeGameState(raw: Partial<GameState> & { places?: unknown;
 
 const REGION_CATEGORY_IDS: RegionCategory[] = ['casa', 'trabajo', 'gimnasio', 'universidad', 'banco', 'parque', 'otro']
 
+/**
+ * Owners used to be free text on each step. They're a real roster now, so any
+ * legacy `owner` string becomes a Person (deduped by name, collecting every role
+ * they were given across steps) and the step points at them instead.
+ */
+function migratePeopleAndSystems(
+  rawPeople: Person[] | undefined,
+  rawSystems: LifeSystem[] | undefined,
+): { people: Person[]; systems: LifeSystem[] } {
+  const people: Person[] = rawPeople ? [...rawPeople] : []
+  const byName = new Map(people.map((p) => [p.name.toLowerCase(), p]))
+
+  const systems = (rawSystems ?? []).map((system) => ({
+    ...system,
+    steps: system.steps.map((step) => {
+      const legacy = step as SystemStep & { owner?: string }
+      if (!legacy.owner?.trim() || legacy.personId) {
+        const { owner: _dropped, ...clean } = legacy
+        return clean
+      }
+
+      const name = legacy.owner.trim()
+      let person = byName.get(name.toLowerCase())
+      if (!person) {
+        person = { id: `person-${crypto.randomUUID()}`, name, roles: [] }
+        people.push(person)
+        byName.set(name.toLowerCase(), person)
+      }
+      if (legacy.role?.trim() && !person.roles.includes(legacy.role.trim())) {
+        person.roles.push(legacy.role.trim())
+      }
+
+      const { owner: _dropped, ...clean } = legacy
+      return { ...clean, personId: person.id }
+    }),
+  }))
+
+  return { people, systems }
+}
+
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
@@ -323,8 +421,131 @@ export const useGameStore = create<GameState>()(
       equippedAura: null,
       claimedAchievements: [],
       lastVerseDate: null,
+      enabledModules: [...CORE_MODULE_IDS],
+      moodLog: [],
+      journalNotes: [],
+      systems: [],
+      people: [],
 
       setWorldAnchor: (anchor) => set((state) => (state.worldAnchor ? {} : { worldAnchor: anchor })),
+
+      enableModule: (id) =>
+        set((state) => (state.enabledModules.includes(id) ? {} : { enabledModules: [...state.enabledModules, id] })),
+
+      // Switching a module off only hides its tab — its data stays untouched, so
+      // turning it back on restores everything exactly as it was.
+      disableModule: (id) =>
+        set((state) =>
+          CORE_MODULE_IDS.includes(id) ? {} : { enabledModules: state.enabledModules.filter((m) => m !== id) },
+        ),
+
+      logMood: (mood, note) => {
+        const today = todayKey()
+        if (get().moodLog.some((m) => m.date === today)) return
+        set((state) => {
+          const stats = playerStats(state.profile)
+          stats.corazon += MOOD_CHECKIN_HEART
+          return {
+            moodLog: [{ id: `mood-${crypto.randomUUID()}`, date: today, mood, note }, ...state.moodLog],
+            profile: { ...state.profile, stats },
+          }
+        })
+      },
+
+      addJournalNote: (text) =>
+        set((state) => ({
+          journalNotes: [
+            { id: `note-${crypto.randomUUID()}`, date: todayKey(), text },
+            ...state.journalNotes,
+          ],
+        })),
+
+      deleteJournalNote: (noteId) =>
+        set((state) => ({ journalNotes: state.journalNotes.filter((n) => n.id !== noteId) })),
+
+      addSystem: (input) => {
+        const system: LifeSystem = {
+          id: `system-${crypto.randomUUID()}`,
+          name: input.name,
+          icon: input.icon,
+          color: input.color,
+          loops: input.loops,
+          steps: input.steps.map((label) => ({ id: `step-${crypto.randomUUID()}`, label })),
+        }
+        set((state) => ({ systems: [...state.systems, system] }))
+        return system.id
+      },
+
+      updateSystem: (systemId, input) =>
+        set((state) => ({
+          systems: state.systems.map((s) => (s.id === systemId ? { ...s, ...input } : s)),
+        })),
+
+      deleteSystem: (systemId) => set((state) => ({ systems: state.systems.filter((s) => s.id !== systemId) })),
+
+      addSystemStep: (systemId, label) =>
+        set((state) => ({
+          systems: state.systems.map((s) =>
+            s.id === systemId ? { ...s, steps: [...s.steps, { id: `step-${crypto.randomUUID()}`, label }] } : s,
+          ),
+        })),
+
+      updateSystemStep: (systemId, stepId, input) =>
+        set((state) => ({
+          systems: state.systems.map((s) =>
+            s.id === systemId
+              ? { ...s, steps: s.steps.map((step) => (step.id === stepId ? { ...step, ...input } : step)) }
+              : s,
+          ),
+        })),
+
+      deleteSystemStep: (systemId, stepId) =>
+        set((state) => ({
+          systems: state.systems.map((s) =>
+            s.id === systemId ? { ...s, steps: s.steps.filter((step) => step.id !== stepId) } : s,
+          ),
+        })),
+
+      addPerson: (input) => {
+        const person: Person = {
+          id: `person-${crypto.randomUUID()}`,
+          name: input.name,
+          roles: input.roles,
+        }
+        set((state) => ({ people: [...state.people, person] }))
+        return person.id
+      },
+
+      updatePerson: (personId, input) =>
+        set((state) => ({
+          people: state.people.map((p) => (p.id === personId ? { ...p, ...input } : p)),
+        })),
+
+      // Removing someone must not leave steps pointing at a ghost, so every
+      // assignment to them is cleared in the same update.
+      deletePerson: (personId) =>
+        set((state) => ({
+          people: state.people.filter((p) => p.id !== personId),
+          systems: state.systems.map((s) => ({
+            ...s,
+            steps: s.steps.map((step) =>
+              step.personId === personId ? { ...step, personId: undefined, role: undefined } : step,
+            ),
+          })),
+        })),
+
+      moveSystemStep: (systemId, stepId, direction) =>
+        set((state) => ({
+          systems: state.systems.map((s) => {
+            if (s.id !== systemId) return s
+            const index = s.steps.findIndex((step) => step.id === stepId)
+            const target = index + direction
+            if (index === -1 || target < 0 || target >= s.steps.length) return s
+            const steps = [...s.steps]
+            ;[steps[index], steps[target]] = [steps[target], steps[index]]
+            return { ...s, steps }
+          }),
+        })),
 
       setUsdToClp: (rate) => set({ usdToClp: rate > 0 ? rate : DEFAULT_USD_TO_CLP }),
 
@@ -718,6 +939,11 @@ export const useGameStore = create<GameState>()(
           equippedAura: null,
           claimedAchievements: [],
           lastVerseDate: null,
+          enabledModules: [...CORE_MODULE_IDS],
+          moodLog: [],
+          journalNotes: [],
+          systems: [],
+          people: [],
         }),
     }),
     {

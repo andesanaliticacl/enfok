@@ -223,3 +223,57 @@ export interface PlayerProfile {
   /** Cuerpo/Disciplina/Mente/Finanzas/Corazón — accumulated from completed missions by the region they happened in. */
   stats?: PlayerStats
 }
+
+/** Inventory modules the player can switch on — Enfok starts lean and grows with what you actually use. */
+export type InventoryModuleId = 'finanzas' | 'compras' | 'ejercicios' | 'sistemas'
+
+export type MoodKey = 'pena' | 'rabia' | 'miedo' | 'alegria'
+
+/** One daily emotional check-in. Feeds the Corazón stat and the bitácora. */
+export interface MoodEntry {
+  id: string
+  /** ISO date (yyyy-mm-dd) — one check-in per day. */
+  date: string
+  mood: MoodKey
+  note?: string
+}
+
+/** A free-text entry the player writes into the bitácora themselves. */
+export interface JournalNote {
+  id: string
+  /** ISO date (yyyy-mm-dd). */
+  date: string
+  text: string
+}
+
+/** Alguien de tu equipo. Una misma persona puede cumplir varios roles según la etapa. */
+export interface Person {
+  id: string
+  name: string
+  roles: string[]
+}
+
+export interface SystemStep {
+  id: string
+  label: string
+  note?: string
+  /** Quién responde por esta etapa — sin dueño, el paso se cae. */
+  personId?: string
+  /** Cuál de sus roles cumple aquí (una persona puede ser Editor en un paso y Comercial en otro). */
+  role?: string
+}
+
+/**
+ * A repeatable process drawn as boxes joined by arrows — "sistema de contenido",
+ * "sistema comercial". The point is seeing the whole machine at once so you can
+ * run it again without rebuilding it from scratch.
+ */
+export interface LifeSystem {
+  id: string
+  name: string
+  icon: string
+  color: string
+  steps: SystemStep[]
+  /** The last step feeds the first — the system compounds instead of ending. */
+  loops: boolean
+}

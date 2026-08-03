@@ -1,5 +1,8 @@
 import { useState } from 'react'
-import { Wallet, ShoppingCart, Dumbbell, Plus, Pencil, Check, TrendingUp, TrendingDown, Landmark, Home, ChevronRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Wallet, ShoppingCart, Dumbbell, Puzzle, Plus, Pencil, Check, TrendingUp, TrendingDown, Landmark, Home, ChevronRight } from 'lucide-react'
+import { INVENTORY_MODULES } from '@/data/inventoryModules'
+import { SystemsSection } from '@/components/systems/SystemsSection'
 import { ConfirmDeleteButton } from '@/components/ui/ConfirmDeleteButton'
 import { useGameStore } from '@/store/useGameStore'
 import { todayKey, MONTH_LABELS } from '@/lib/calendar'
@@ -15,7 +18,7 @@ import { ExerciseSection } from '@/components/inventory/ExerciseSection'
 import { GROCERY_CATEGORIES } from '@/data/groceryCategories'
 import { checkedGroceryTotal, groceryLineTotal, groceryTotal } from '@/lib/planning/groceryEngine'
 import { cn } from '@/lib/utils'
-import type { Currency, FinanceEntry, FinanceEntryType, GroceryCategory } from '@/types'
+import type { Currency, FinanceEntry, FinanceEntryType, GroceryCategory, InventoryModuleId } from '@/types'
 
 /** Last `count` months (oldest first, current month last), aggregated in one CLP-equivalent — no separate history storage needed. */
 function buildMonthlyTotals(entries: FinanceEntry[], count: number, usdToClp: number): MonthlyTotal[] {
@@ -58,39 +61,58 @@ function CurrencyChips({ value, onChange }: { value: Currency; onChange: (c: Cur
   )
 }
 
-type Tab = 'finanzas' | 'compras' | 'ejercicios'
-
-const TABS: { id: Tab; label: string; icon: typeof Wallet }[] = [
-  { id: 'finanzas', label: 'Finanzas', icon: Wallet },
-  { id: 'compras', label: 'Compras del mes', icon: ShoppingCart },
-  { id: 'ejercicios', label: 'Ejercicios', icon: Dumbbell },
-]
+const TAB_ICONS: Record<InventoryModuleId, typeof Wallet> = {
+  finanzas: Wallet,
+  compras: ShoppingCart,
+  ejercicios: Dumbbell,
+  sistemas: Puzzle,
+}
 
 export function InventoryPage() {
-  const [tab, setTab] = useState<Tab>('finanzas')
+  const navigate = useNavigate()
+  const enabledModules = useGameStore((s) => s.enabledModules)
+
+  // Only the modules you added get a tab — the rest live in the profile until claimed.
+  const tabs = INVENTORY_MODULES.filter((m) => enabledModules.includes(m.id))
+  const [tab, setTab] = useState<InventoryModuleId>('finanzas')
+  const activeTab = tabs.some((t) => t.id === tab) ? tab : (tabs[0]?.id ?? 'finanzas')
 
   return (
     <PageContainer>
       <h1 className="mb-4 font-pixel text-lg text-gold-400">Inventario</h1>
 
-      <div className="mb-6 flex gap-2">
-        {TABS.map(({ id, label, icon: Icon }) => (
+      <div className="mb-6 flex flex-wrap gap-2">
+        {tabs.map(({ id, label }) => {
+          const Icon = TAB_ICONS[id]
+          return (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
+                activeTab === id && 'bg-ink-800 text-gold-400',
+              )}
+            >
+              <Icon size={14} /> {label}
+            </button>
+          )
+        })}
+        {/* Nothing left to add means no dead-end button — the shortcut disappears once your inventory is complete */}
+        {tabs.length < INVENTORY_MODULES.length && (
           <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={cn(
-              'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
-              tab === id && 'bg-ink-800 text-gold-400',
-            )}
+            onClick={() => navigate('/perfil')}
+            title="Añadir módulos desde tu perfil"
+            className="flex items-center gap-1 rounded-full border border-dashed border-ink-600 px-3 py-1.5 text-xs text-ink-400 hover:border-gold-400 hover:text-gold-400"
           >
-            <Icon size={14} /> {label}
+            <Plus size={13} /> Añadir
           </button>
-        ))}
+        )}
       </div>
 
-      {tab === 'finanzas' && <FinanceSection />}
-      {tab === 'compras' && <GrocerySection />}
-      {tab === 'ejercicios' && <ExerciseSection />}
+      {activeTab === 'finanzas' && <FinanceSection />}
+      {activeTab === 'compras' && <GrocerySection />}
+      {activeTab === 'ejercicios' && <ExerciseSection />}
+      {activeTab === 'sistemas' && <SystemsSection />}
     </PageContainer>
   )
 }

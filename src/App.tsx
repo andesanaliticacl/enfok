@@ -13,6 +13,7 @@ import { RegionPage } from '@/pages/RegionPage'
 import { MissionsPage } from '@/pages/MissionsPage'
 import { InventoryPage } from '@/pages/InventoryPage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { MoodCheckIn } from '@/components/profile/MoodCheckIn'
 
 export default function App() {
   const hasCreatedCharacter = useAvatarStore((s) => s.hasCreatedCharacter)
@@ -40,6 +41,8 @@ export default function App() {
 
   return (
     <AppShell>
+      {/* Gate the day on naming how you feel — it's the first bitácora entry and the only source of Corazón you control daily. */}
+      <MoodCheckIn />
       <Routes>
         <Route path="/" element={<MapPage />} />
         <Route path="/region/:regionId" element={<RegionPage />} />

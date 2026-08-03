@@ -1,8 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Settings, Pencil, Globe2, Star, Coins, Flame, Trophy, Store, Rocket } from 'lucide-react'
+import { Settings, Pencil, Globe2, Star, Coins, Flame, Trophy, Store, Rocket, Medal, NotebookPen, Boxes } from 'lucide-react'
 import { AvatarAura } from '@/components/avatar/AvatarAura'
 import { ShopSection } from '@/components/profile/ShopSection'
+import { RankingsSection } from '@/components/profile/RankingsSection'
+import { JournalSection } from '@/components/profile/JournalSection'
+import { ModulesSection } from '@/components/profile/ModulesSection'
+import { INVENTORY_MODULES } from '@/data/inventoryModules'
 import { DailyVerseCard } from '@/components/profile/DailyVerseCard'
 import { PlayerStatsPanel } from '@/components/profile/PlayerStatsPanel'
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
@@ -45,6 +49,7 @@ export function ProfilePage() {
   const equippedTitle = useGameStore((s) => s.equippedTitle)
   const equippedAura = useGameStore((s) => s.equippedAura)
   const claimedAchievements = useGameStore((s) => s.claimedAchievements)
+  const enabledModules = useGameStore((s) => s.enabledModules)
   const claimAchievementReward = useGameStore((s) => s.claimAchievementReward)
   const { avatar, biome: biomeId, biomeVariant, biomeStickers, deleteCharacter } = useAvatarStore()
   const { user, signOut } = useAuthStore()
@@ -314,6 +319,30 @@ export function ProfilePage() {
             }
           >
             <ShopSection />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Rankings"
+            icon={<Medal size={14} />}
+            badge={<span className="text-[10px] text-ink-500">Marcas · Ingresos · Gastos</span>}
+          >
+            <RankingsSection />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Bitácora"
+            icon={<NotebookPen size={14} />}
+            badge={<span className="text-[10px] text-ink-500">Exportable</span>}
+          >
+            <JournalSection />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Mi inventario"
+            icon={<Boxes size={14} />}
+            badge={<span className="text-[10px] text-ink-500">{enabledModules.length}/{INVENTORY_MODULES.length}</span>}
+          >
+            <ModulesSection />
           </CollapsibleSection>
 
           <CollapsibleSection title="Planes exprés" icon={<Rocket size={14} />}>

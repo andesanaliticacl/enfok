@@ -30,6 +30,11 @@ function pickGameState() {
     groceryPurchaseEntryId: s.groceryPurchaseEntryId,
     exerciseItems: s.exerciseItems,
     trainingDayNames: s.trainingDayNames,
+    enabledModules: s.enabledModules,
+    moodLog: s.moodLog,
+    journalNotes: s.journalNotes,
+    systems: s.systems,
+    people: s.people,
   }
 }
 

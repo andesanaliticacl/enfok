@@ -39,8 +39,9 @@ export function MissionsPage() {
 
       <div className="mb-4 flex items-center justify-between">
         <h1 className="font-pixel text-lg text-gold-400">Misiones</h1>
-        <Button size="icon" onClick={handlePrimaryAdd} title={view === 'arbol' ? 'Nueva meta' : 'Nueva misión'}>
-          <Plus size={18} />
+        {/* Spelling out what the + creates — it changes with the view, so an icon alone is a guess */}
+        <Button size="sm" onClick={handlePrimaryAdd}>
+          <Plus size={15} /> {view === 'arbol' ? 'Nueva meta' : 'Nueva misión'}
         </Button>
       </div>
 
