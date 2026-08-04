@@ -64,20 +64,33 @@ async function recolorImage(src: string, targetHex: string): Promise<string> {
   const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height)
   const target = hexToHsl(targetHex)
 
-  for (let i = 0; i < data.length; i += 4) {
-    const alpha = data[i + 3]
-    if (alpha === 0) continue
+  const lightnessAt = (i: number) => {
     const r = data[i] / 255
     const g = data[i + 1] / 255
     const b = data[i + 2] / 255
-    const max = Math.max(r, g, b)
-    const min = Math.min(r, g, b)
-    const l = (max + min) / 2
-    // Hue can't tell two achromatic targets apart (black/gray/white all have
-    // s=0), so without this they'd all render identically off the original
-    // shading alone. Blend in the target's own lightness for those — colored
-    // targets keep the original hue-shift-only behavior untouched.
-    const outL = target.s < 0.05 ? l * 0.35 + target.l * 0.65 : l
+    return (Math.max(r, g, b) + Math.min(r, g, b)) / 2
+  }
+
+  // Average lightness of the artwork, so the recolor can be re-centred on the
+  // chosen swatch. Taking hue alone (the old behaviour) kept every pixel at the
+  // source sprite's brightness, which is why a dark brown skin tone came out as
+  // a pale tan: the hue was right but the artwork was never allowed to darken.
+  let sum = 0
+  let opaque = 0
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue
+    sum += lightnessAt(i)
+    opaque++
+  }
+  const sourceMean = opaque > 0 ? sum / opaque : 0.5
+
+  // Shading is the deviation from that mean, kept (slightly compressed so very
+  // dark or very light targets don't clip their highlights away).
+  const SHADING = 0.85
+
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue
+    const outL = Math.min(1, Math.max(0, target.l + (lightnessAt(i) - sourceMean) * SHADING))
     const [nr, ng, nb] = hslToRgb(target.h, target.s, outL)
     data[i] = nr
     data[i + 1] = ng

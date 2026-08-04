@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { lpcProvider } from '@/lib/avatar/providers/lpcProvider'
+import { lpcProvider, figureOfBodyId } from '@/lib/avatar/providers/lpcProvider'
 import { migrateBiomeId } from '@/data/biomes'
 import type { AvatarConfig } from '@/lib/avatar/types'
 import type { BiomeId } from '@/types'
@@ -123,9 +123,22 @@ export const useAvatarStore = create<AvatarState>()(
           const pixelOverrides = { ...state.avatar.pixelOverrides }
           if (state.avatar.options[category] !== optionId) delete pixelOverrides[category]
 
-          return {
-            avatar: { ...state.avatar, options: { ...state.avatar.options, [category]: optionId }, pixelOverrides },
+          const options = { ...state.avatar.options, [category]: optionId }
+          const colors = { ...state.avatar.colors }
+
+          // Each race has its own skin/fur palette, so a human's "Clara" means
+          // nothing on a wolf. Snap to that race's first colour (its most
+          // characteristic one) instead of leaving a selection that isn't there.
+          if (category === 'body') {
+            const palette =
+              lpcProvider.listOptions('body', figureOfBodyId(optionId)).find((o) => o.id === optionId)?.colors ?? []
+            if (palette.length > 0 && !palette.some((c) => c.id === colors.body)) {
+              colors.body = palette[0].id
+              colors.head = palette[0].id
+            }
           }
+
+          return { avatar: { ...state.avatar, options, colors, pixelOverrides } }
         }),
 
       setColor: (category, colorId) =>

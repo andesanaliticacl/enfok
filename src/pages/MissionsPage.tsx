@@ -5,6 +5,7 @@ import { TodayHeader } from '@/components/planning/TodayHeader'
 import { CalendarView } from '@/components/planning/CalendarView'
 import { DayView } from '@/components/planning/DayView'
 import { GoalTreeView } from '@/components/planning/GoalTreeView'
+import { MissionHierarchyGuide } from '@/components/planning/MissionHierarchyGuide'
 import { XpToast } from '@/components/missions/XpToast'
 import { MissionFormDialog } from '@/components/planning/MissionFormDialog'
 import { GoalFormDialog } from '@/components/planning/GoalFormDialog'
@@ -28,8 +29,13 @@ export function MissionsPage() {
   })
   const [goalDialog, setGoalDialog] = useState<{ open: boolean; goal?: Goal }>({ open: false })
 
+  const goals = useGameStore((s) => s.goals)
+  // A mission has nowhere to live without a goal, so before the first one the
+  // primary action is always "create a goal" — whatever view you're in.
+  const needsFirstGoal = goals.length === 0
+
   function handlePrimaryAdd() {
-    if (view === 'arbol') setGoalDialog({ open: true })
+    if (needsFirstGoal || view === 'arbol') setGoalDialog({ open: true })
     else setDialog({ open: true })
   }
 
@@ -41,58 +47,70 @@ export function MissionsPage() {
         <h1 className="font-pixel text-lg text-gold-400">Misiones</h1>
         {/* Spelling out what the + creates — it changes with the view, so an icon alone is a guess */}
         <Button size="sm" onClick={handlePrimaryAdd}>
-          <Plus size={15} /> {view === 'arbol' ? 'Nueva meta' : 'Nueva misión'}
+          <Plus size={15} /> {needsFirstGoal || view === 'arbol' ? 'Nueva meta' : 'Nueva misión'}
         </Button>
       </div>
 
       <TodayHeader />
 
-      <div className="mb-6 flex gap-2">
-        <button
-          onClick={() => setView('arbol')}
-          className={cn(
-            'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
-            view === 'arbol' && 'bg-ink-800 text-gold-400',
-          )}
-        >
-          <GitBranch size={14} /> Árbol
-        </button>
-        <button
-          onClick={() => setView('dia')}
-          className={cn(
-            'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
-            view === 'dia' && 'bg-ink-800 text-gold-400',
-          )}
-        >
-          <CalendarDays size={14} /> Mi día
-        </button>
-        <button
-          onClick={() => setView('calendario')}
-          className={cn(
-            'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
-            view === 'calendario' && 'bg-ink-800 text-gold-400',
-          )}
-        >
-          <CalendarIcon size={14} /> Calendario
-        </button>
-      </div>
-
-      {view === 'arbol' ? (
-        <GoalTreeView
-          onEditGoal={(goal) => setGoalDialog({ open: true, goal })}
-          onCreateMission={(goalId) => setDialog({ open: true, goalId })}
-          onEditMission={(mission) => setDialog({ open: true, mission })}
-        />
-      ) : view === 'dia' ? (
-        <DayView
-          onEdit={(mission) => setDialog({ open: true, mission })}
-          onCreate={(date) => setDialog({ open: true, date })}
-        />
+      {/* Before the first goal there's nothing to plan — teach the hierarchy instead of showing empty views */}
+      {needsFirstGoal ? (
+        <div className="mt-4">
+          <MissionHierarchyGuide variant="full" onCreateGoal={() => setGoalDialog({ open: true })} />
+        </div>
       ) : (
-        <CalendarView
-          onCreateOnDate={(date) => setDialog({ open: true, date })}
-          onEdit={(mission) => setDialog({ open: true, mission })}
-        />
+        <>
+          <div className="mb-6 flex gap-2">
+            <button
+              onClick={() => setView('arbol')}
+              className={cn(
+                'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
+                view === 'arbol' && 'bg-ink-800 text-gold-400',
+              )}
+            >
+              <GitBranch size={14} /> Árbol
+            </button>
+            <button
+              onClick={() => setView('dia')}
+              className={cn(
+                'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
+                view === 'dia' && 'bg-ink-800 text-gold-400',
+              )}
+            >
+              <CalendarDays size={14} /> Mi día
+            </button>
+            <button
+              onClick={() => setView('calendario')}
+              className={cn(
+                'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-400',
+                view === 'calendario' && 'bg-ink-800 text-gold-400',
+              )}
+            >
+              <CalendarIcon size={14} /> Calendario
+            </button>
+          </div>
+
+          {/* The tree is where the meta→misión relationship is actually drawn, so the reminder lives there */}
+          {view === 'arbol' && <MissionHierarchyGuide variant="compact" />}
+
+          {view === 'arbol' ? (
+            <GoalTreeView
+              onEditGoal={(goal) => setGoalDialog({ open: true, goal })}
+              onCreateMission={(goalId) => setDialog({ open: true, goalId })}
+              onEditMission={(mission) => setDialog({ open: true, mission })}
+            />
+          ) : view === 'dia' ? (
+            <DayView
+              onEdit={(mission) => setDialog({ open: true, mission })}
+              onCreate={(date) => setDialog({ open: true, date })}
+            />
+          ) : (
+            <CalendarView
+              onCreateOnDate={(date) => setDialog({ open: true, date })}
+              onEdit={(mission) => setDialog({ open: true, mission })}
+            />
+          )}
+        </>
       )}
 
       <MissionFormDialog

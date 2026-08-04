@@ -73,12 +73,13 @@ const SKELETON_SKIN_COLORS: ColorChoice[] = [
   { id: 'charred', label: 'Carbonizado', swatch: '#4a4540' },
 ]
 
+/** Café primero: es el pelaje que mejor lee los rasgos del sprite — el gris los aplana. */
 const FUR_COLORS: ColorChoice[] = [
-  { id: 'gray', label: 'Gris', swatch: '#8a8a8a' },
   { id: 'brown', label: 'Café', swatch: '#6a4a2a' },
-  { id: 'black', label: 'Negro', swatch: '#2f2f2f' },
-  { id: 'white', label: 'Blanco', swatch: '#e0e0e0' },
   { id: 'red', label: 'Rojizo', swatch: '#8b4a2a' },
+  { id: 'black', label: 'Negro', swatch: '#2f2f2f' },
+  { id: 'gray', label: 'Gris', swatch: '#8a8a8a' },
+  { id: 'white', label: 'Blanco', swatch: '#e0e0e0' },
 ]
 
 const VAMPIRE_SKIN_COLORS: ColorChoice[] = [
@@ -100,10 +101,10 @@ const ZOMBIE_SKIN_COLORS: ColorChoice[] = [
 ]
 
 const RABBIT_FUR_COLORS: ColorChoice[] = [
-  { id: 'white', label: 'Blanco', swatch: '#e8e8e8' },
-  { id: 'gray', label: 'Gris', swatch: '#b8b8b8' },
   { id: 'brown', label: 'Café', swatch: '#8a6a4a' },
   { id: 'cream', label: 'Crema', swatch: '#e8d8b8' },
+  { id: 'white', label: 'Blanco', swatch: '#e8e8e8' },
+  { id: 'gray', label: 'Gris', swatch: '#b8b8b8' },
 ]
 
 const MASK_COLORS: ColorChoice[] = [
