@@ -371,7 +371,8 @@ export function CharacterCreationPage({ mode = 'create' }: CharacterCreationPage
               <Button variant="outline" onClick={() => setStep('style')} className="flex-1">
                 Atrás
               </Button>
-              <Button onClick={() => finishAndExit('/')} className="flex-1" disabled={!selectedBiome}>
+              {/* Straight to the profile: the first thing you should meet is the character you just made */}
+              <Button onClick={() => finishAndExit('/perfil')} className="flex-1" disabled={!selectedBiome}>
                 Comenzar aventura
               </Button>
             </>

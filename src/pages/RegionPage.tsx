@@ -44,7 +44,7 @@ export function RegionPage() {
     return (
       <PageContainer className="text-sm text-ink-400">
         Región no encontrada.
-        <button onClick={() => navigate('/')} className="ml-2 text-gold-400 underline">
+        <button onClick={() => navigate('/mundo')} className="ml-2 text-gold-400 underline">
           Volver al mapa
         </button>
       </PageContainer>
@@ -56,7 +56,7 @@ export function RegionPage() {
       <XpToast />
 
       <button
-        onClick={() => navigate('/')}
+        onClick={() => navigate('/mundo')}
         className="mb-4 flex items-center gap-1 text-xs text-ink-400"
       >
         <ChevronLeft size={16} /> Mapa
@@ -158,7 +158,7 @@ export function RegionPage() {
         onSubmit={(input) => updateRegion(region.id, input)}
         onDelete={() => {
           deleteRegion(region.id)
-          navigate('/')
+          navigate('/mundo')
         }}
       />
 

@@ -6,6 +6,7 @@ import { CalendarView } from '@/components/planning/CalendarView'
 import { DayView } from '@/components/planning/DayView'
 import { GoalTreeView } from '@/components/planning/GoalTreeView'
 import { MissionHierarchyGuide } from '@/components/planning/MissionHierarchyGuide'
+import { FirstGoalCelebration } from '@/components/planning/FirstGoalCelebration'
 import { XpToast } from '@/components/missions/XpToast'
 import { MissionFormDialog } from '@/components/planning/MissionFormDialog'
 import { GoalFormDialog } from '@/components/planning/GoalFormDialog'
@@ -33,6 +34,21 @@ export function MissionsPage() {
   // A mission has nowhere to live without a goal, so before the first one the
   // primary action is always "create a goal" — whatever view you're in.
   const needsFirstGoal = goals.length === 0
+  /** Set only when the goal just created was the very first one. */
+  const [firstGoal, setFirstGoal] = useState<Goal | null>(null)
+
+  function handleGoalSubmit(input: Parameters<typeof addGoal>[0]) {
+    if (goalDialog.goal) {
+      updateGoal(goalDialog.goal.id, input)
+      return
+    }
+    const wasFirst = goals.length === 0
+    const id = addGoal(input)
+    if (wasFirst) {
+      const created = useGameStore.getState().goals.find((g) => g.id === id)
+      if (created) setFirstGoal(created)
+    }
+  }
 
   function handlePrimaryAdd() {
     if (needsFirstGoal || view === 'arbol') setGoalDialog({ open: true })
@@ -90,9 +106,6 @@ export function MissionsPage() {
             </button>
           </div>
 
-          {/* The tree is where the meta→misión relationship is actually drawn, so the reminder lives there */}
-          {view === 'arbol' && <MissionHierarchyGuide variant="compact" />}
-
           {view === 'arbol' ? (
             <GoalTreeView
               onEditGoal={(goal) => setGoalDialog({ open: true, goal })}
@@ -113,6 +126,16 @@ export function MissionsPage() {
         </>
       )}
 
+      <FirstGoalCelebration
+        goal={firstGoal}
+        onClose={() => setFirstGoal(null)}
+        onCreateMission={() => {
+          const goalId = firstGoal?.id
+          setFirstGoal(null)
+          setDialog({ open: true, goalId })
+        }}
+      />
+
       <MissionFormDialog
         open={dialog.open}
         onClose={() => setDialog({ open: false })}
@@ -128,7 +151,7 @@ export function MissionsPage() {
         onClose={() => setGoalDialog({ open: false })}
         defaultRegionId={goalDialog.goal?.regionId ?? regions[0]?.id}
         goal={goalDialog.goal}
-        onSubmit={(input) => (goalDialog.goal ? updateGoal(goalDialog.goal.id, input) : addGoal(input))}
+        onSubmit={handleGoalSubmit}
         onDelete={goalDialog.goal ? () => deleteGoal(goalDialog.goal!.id) : undefined}
       />
     </PageContainer>

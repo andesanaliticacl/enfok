@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { useAvatarStore } from '@/store/useAvatarStore'
 import { useAuthStore } from '@/store/useAuthStore'
@@ -44,7 +44,9 @@ export default function App() {
       {/* Gate the day on naming how you feel — it's the first bitácora entry and the only source of Corazón you control daily. */}
       <MoodCheckIn />
       <Routes>
-        <Route path="/" element={<MapPage />} />
+        {/* Home is the profile: the character sheet is the reason the rest exists */}
+        <Route path="/" element={<Navigate to="/perfil" replace />} />
+        <Route path="/mundo" element={<MapPage />} />
         <Route path="/region/:regionId" element={<RegionPage />} />
         <Route path="/misiones" element={<MissionsPage />} />
         <Route path="/inventario" element={<InventoryPage />} />

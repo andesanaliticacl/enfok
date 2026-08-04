@@ -101,7 +101,7 @@ export function GoalFormDialog({ open, onClose, defaultRegionId, goal, onSubmit,
           <Button
             onClick={() => {
               onClose()
-              navigate('/')
+              navigate('/mundo')
             }}
           >
             Ir al mapa a crear mi región

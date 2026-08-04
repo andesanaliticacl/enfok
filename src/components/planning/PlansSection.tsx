@@ -98,7 +98,7 @@ export function PlansSection() {
                 <Button
                   onClick={() => {
                     setPicking(null)
-                    navigate('/')
+                    navigate('/mundo')
                   }}
                 >
                   Ir al mapa a crear mi región
