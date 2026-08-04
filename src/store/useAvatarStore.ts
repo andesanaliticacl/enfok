@@ -83,6 +83,8 @@ interface AvatarState {
   removeBiomeSticker: (stickerId: string) => void
   setPixelOverride: (category: keyof AvatarConfig['options'], dataUrl: string) => void
   clearPixelOverride: (category: keyof AvatarConfig['options']) => void
+  /** Spawns the default larva form and marks the character as created. */
+  startAsLarva: (color: string) => void
   finishCreation: () => void
   deleteCharacter: () => void
 }
@@ -138,7 +140,9 @@ export const useAvatarStore = create<AvatarState>()(
             }
           }
 
-          return { avatar: { ...state.avatar, options, colors, pixelOverrides } }
+          // Choosing a real body is the moment the larva hatches.
+          const larva = category === 'body' ? undefined : state.avatar.larva
+          return { avatar: { ...state.avatar, options, colors, pixelOverrides, larva } }
         }),
 
       setColor: (category, colorId) =>
@@ -187,6 +191,12 @@ export const useAvatarStore = create<AvatarState>()(
           delete pixelOverrides[category]
           return { avatar: { ...state.avatar, pixelOverrides } }
         }),
+
+      startAsLarva: (color) =>
+        set((state) => ({
+          hasCreatedCharacter: true,
+          avatar: { ...state.avatar, larva: { color } },
+        })),
 
       finishCreation: () => set({ hasCreatedCharacter: true }),
 

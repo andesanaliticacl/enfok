@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { lpcProvider, isHatResizable } from '@/lib/avatar/providers/lpcProvider'
 import { AvatarLayerImage } from './AvatarLayerImage'
+import { LarvaSprite } from './LarvaSprite'
 import type { AvatarConfig } from '@/lib/avatar/types'
 
 interface AvatarSpriteProps {
@@ -77,6 +78,17 @@ export function AvatarSprite({ config, size = 192, className, animate = false, f
       .filter((layer) => layer !== null)
       .sort((a, b) => a.zIndex - b.zIndex)
   }, [config])
+
+  // The starter larva isn't an LPC character at all — it's drawn, so it bypasses
+  // the whole layer pipeline until the player picks a real body. Checked after
+  // the hooks above so the hook order never changes between forms.
+  if (config.larva) {
+    return (
+      <div className={className} style={{ width: size, height: size }}>
+        <LarvaSprite color={config.larva.color} size={size} animate={animate} />
+      </div>
+    )
+  }
 
   // Pixel art must scale by a whole number, or subpixel rounding shaves a row
   // of pixels off one edge (most visible at the top of the head). Snap to the

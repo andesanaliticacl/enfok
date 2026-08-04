@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useGameStore, normalizeGameState } from '@/store/useGameStore'
 import { useAvatarStore } from '@/store/useAvatarStore'
+import { ensureStarterCharacter } from '@/lib/starterCharacter'
 
 const SAVE_DEBOUNCE_MS = 1500
 
@@ -101,6 +102,11 @@ async function hydrateFromCloud(userId: string) {
     }
   } finally {
     hydrating = false
+    // After the cloud has had its say — restored a save, wiped a fresh one, or
+    // failed outright — anyone still without a character spawns as a larva. In
+    // the `finally` on purpose: a network error must not strand someone on a
+    // permanent "creando tu criatura" screen.
+    ensureStarterCharacter()
   }
 }
 

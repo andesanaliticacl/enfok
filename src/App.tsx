@@ -13,6 +13,7 @@ import { RegionPage } from '@/pages/RegionPage'
 import { MissionsPage } from '@/pages/MissionsPage'
 import { InventoryPage } from '@/pages/InventoryPage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { ensureStarterCharacter } from '@/lib/starterCharacter'
 import { MoodCheckIn } from '@/components/profile/MoodCheckIn'
 
 export default function App() {
@@ -22,6 +23,11 @@ export default function App() {
   useEffect(() => {
     setActiveUser(user?.id ?? null)
   }, [user?.id])
+
+  // Without Supabase there's no hydration step to wait for, so spawn here.
+  useEffect(() => {
+    if (!isSupabaseConfigured) ensureStarterCharacter()
+  }, [])
 
   if (isSupabaseConfigured && initializing) {
     return <div className="flex min-h-full items-center justify-center text-sm text-ink-400">Cargando...</div>
@@ -35,8 +41,10 @@ export default function App() {
     return <AuthPage />
   }
 
+  // The builder is no longer a gate: everyone spawns as a larva and edits later.
+  // This only shows in the brief moment before that spawn lands.
   if (!hasCreatedCharacter) {
-    return <CharacterCreationPage />
+    return <div className="flex min-h-full items-center justify-center text-sm text-ink-400">Creando tu criatura...</div>
   }
 
   return (

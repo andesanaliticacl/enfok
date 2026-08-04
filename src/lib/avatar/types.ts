@@ -52,6 +52,12 @@ export interface AvatarConfig {
   pixelOverrides: PixelOverrides
   /** Uniform size adjustment for the "hat" slot (helmets etc.), 1 = the art's native size. */
   hatScale: number
+  /**
+   * The starter form everyone spawns as, before choosing a race: a little
+   * swimming larva. While set it replaces the LPC layers entirely — picking a
+   * real body in the editor clears it and the character "hatches".
+   */
+  larva?: { color: string }
 }
 
 /**
