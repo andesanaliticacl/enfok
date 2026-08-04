@@ -7,17 +7,16 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { useGameStore } from '@/store/useGameStore'
-import { cn } from '@/lib/utils'
 
 import type { GoalInput } from '@/lib/planning/goalEngine'
-import type { Goal, MissionLocation, Priority, RegionId } from '@/types'
+import type { Goal, Priority, RegionId } from '@/types'
 
-/** Three sizes of ambition. The XP is a consequence of the size, not a field to fill in. */
-const GOAL_TIERS = [
-  { id: 'pequena', label: 'Pequeña', icon: '🌱', hint: 'Semanas', xp: 100 },
-  { id: 'mediana', label: 'Mediana', icon: '🌿', hint: 'Un par de meses', xp: 250 },
-  { id: 'grande', label: 'Grande', icon: '🌳', hint: 'Cambia tu año', xp: 500 },
-] as const
+/**
+ * Completing a goal is worth the same to everyone. Letting players price their
+ * own goals just invites inflating them, and the number was never the reason
+ * anyone finished one.
+ */
+const GOAL_XP_REWARD = 250
 
 interface GoalFormDialogProps {
   open: boolean
@@ -32,15 +31,12 @@ interface GoalFormDialogProps {
 const EMPTY_FORM = {
   name: '',
   description: '',
-  /** Fijo: la categoría libre no aportaba sobre la región + el nivel. */
-  category: 'Meta',
   startDate: '',
   dueDate: '',
   priority: 'media' as Priority,
-  xpReward: 250,
-  reward: '',
+  /** El motivo que la sostiene cuando se pone difícil. */
+  why: '',
   icon: '⭐',
-  location: undefined as MissionLocation | undefined,
 }
 
 export function GoalFormDialog({ open, onClose, defaultRegionId, goal, onSubmit, onDelete }: GoalFormDialogProps) {
@@ -60,14 +56,11 @@ export function GoalFormDialog({ open, onClose, defaultRegionId, goal, onSubmit,
       setForm({
         name: goal.name,
         description: goal.description,
-        category: goal.category,
         startDate: goal.startDate ?? '',
         dueDate: goal.dueDate ?? '',
         priority: goal.priority,
-        xpReward: goal.xpReward,
-        reward: goal.reward ?? '',
+        why: goal.reward ?? '',
         icon: goal.icon,
-        location: goal.location,
       })
     } else {
       setRegionId(defaultRegionId ?? '')
@@ -83,15 +76,19 @@ export function GoalFormDialog({ open, onClose, defaultRegionId, goal, onSubmit,
       regionId,
       name: form.name.trim(),
       description: form.description.trim(),
-      category: form.category.trim() || 'Meta',
+      // Kept on the model for older saves and express plans, but no longer asked.
+      category: goal?.category ?? 'Meta',
       startDate: form.startDate || undefined,
       dueDate: form.dueDate || undefined,
       priority: form.priority,
-      xpReward: Number(form.xpReward) || 0,
-      reward: form.reward.trim() || undefined,
+      xpReward: goal?.xpReward ?? GOAL_XP_REWARD,
+      reward: form.why.trim() || undefined,
       color: region.color,
       icon: form.icon || region.emoji,
-      location: form.location,
+      // New goals take their place from their region. An older goal that still
+      // carries its own pin keeps it — editing shouldn't quietly drop data the
+      // form no longer shows.
+      location: goal?.location,
     })
     onClose()
   }
@@ -174,28 +171,6 @@ export function GoalFormDialog({ open, onClose, defaultRegionId, goal, onSubmit,
           </label>
         </div>
 
-        {/* Ambition, not a number: each tier is a different size of life change,
-            and the XP it's worth follows from that. */}
-        <div>
-          <label className="mb-1.5 block text-xs text-ink-400">¿Qué tan grande es?</label>
-          <div className="grid grid-cols-3 gap-2">
-            {GOAL_TIERS.map((tier) => (
-              <button
-                key={tier.id}
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, xpReward: tier.xp }))}
-                className={cn(
-                  'flex flex-col items-center gap-0.5 rounded-xl border border-ink-600 bg-ink-900 py-2 text-xs text-ink-200',
-                  form.xpReward === tier.xp && 'border-gold-400 bg-gold-500/10 text-gold-400',
-                )}
-              >
-                <span>{tier.icon} {tier.label}</span>
-                <span className="text-[10px] text-ink-500">{tier.hint}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         <div className="grid grid-cols-2 gap-3">
           <label className="text-xs text-ink-400">
             Prioridad
@@ -220,11 +195,16 @@ export function GoalFormDialog({ open, onClose, defaultRegionId, goal, onSubmit,
           </label>
         </div>
 
-        <Input
-          placeholder="Recompensa personal (opcional)"
-          value={form.reward}
-          onChange={(e) => setForm((f) => ({ ...f, reward: e.target.value }))}
-        />
+        {/* The answer you'll reread on the day you want to quit */}
+        <label className="text-xs text-ink-400">
+          ¿Por qué cumplirlo?
+          <Textarea
+            className="mt-1"
+            placeholder="Lo que te va a sostener cuando cueste (opcional)"
+            value={form.why}
+            onChange={(e) => setForm((f) => ({ ...f, why: e.target.value }))}
+          />
+        </label>
 
         <div className="mt-2 flex gap-3">
           {goal && onDelete && (
