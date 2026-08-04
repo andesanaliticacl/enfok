@@ -17,6 +17,20 @@ export interface MissionInput {
   statFocus?: PlayerStatKey
 }
 
+/**
+ * Rewards are rolled, not chosen. Letting players set their own XP turns the
+ * whole economy into a slider they can max out — and picking a number is a
+ * decision that teaches nothing. A single roll drives both values so they stay
+ * proportional: a 40 XP mission always pays better than a 12 XP one.
+ */
+export function rollMissionReward(): { xp: number; coins: number } {
+  const roll = Math.random()
+  return {
+    xp: 10 + Math.round(roll * 30),
+    coins: 2 + Math.round(roll * 8),
+  }
+}
+
 export function createMission(input: MissionInput): Mission {
   return {
     id: `mission-${crypto.randomUUID()}`,
