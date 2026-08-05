@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useJsApiLoader } from '@react-google-maps/api'
-import { X, Dices, ChevronDown } from 'lucide-react'
+import { X, ChevronDown } from 'lucide-react'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -192,14 +192,6 @@ export function MissionFormDialog({
             <option value="personalizada">Personalizada</option>
           </Select>
         </div>
-
-        {/* The reward is the game's, not yours — saying so up front is friendlier than hiding it */}
-        {!mission && (
-          <p className="flex items-center gap-1.5 rounded-xl border border-ink-800 bg-ink-900/60 px-3 py-2 text-[11px] text-ink-400">
-            <Dices size={13} className="shrink-0 text-gold-400" />
-            La XP y las monedas se sortean al crearla.
-          </p>
-        )}
 
         {/* Everything below is optional — folded away so the common case is four fields */}
         <button
