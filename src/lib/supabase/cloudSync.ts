@@ -36,6 +36,7 @@ function pickGameState() {
     journalNotes: s.journalNotes,
     systems: s.systems,
     people: s.people,
+    leads: s.leads,
   }
 }
 

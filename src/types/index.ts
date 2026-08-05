@@ -225,7 +225,7 @@ export interface PlayerProfile {
 }
 
 /** Inventory modules the player can switch on — Enfok starts lean and grows with what you actually use. */
-export type InventoryModuleId = 'finanzas' | 'compras' | 'ejercicios' | 'sistemas'
+export type InventoryModuleId = 'finanzas' | 'compras' | 'ejercicios' | 'sistemas' | 'leads'
 
 export type MoodKey = 'pena' | 'rabia' | 'miedo' | 'alegria'
 
@@ -290,4 +290,33 @@ export interface LifeSystem {
   steps: SystemStep[]
   /** The last step feeds the first — the system compounds instead of ending. */
   loops: boolean
+}
+
+export type LeadType =
+  | 'municipalidad'
+  | 'empresa'
+  | 'app'
+  | 'web'
+  | 'ia'
+  | 'curso'
+  | 'colaboracion'
+  | 'sponsor'
+  | 'ong'
+  | 'otro'
+
+export type LeadState = 'nuevo' | 'contactado' | 'reunion' | 'propuesta' | 'cliente' | 'espera' | 'perdido'
+
+/** Una oportunidad, no una venta: lo mínimo para no olvidarla. */
+export interface Lead {
+  id: string
+  name: string
+  company?: string
+  type: LeadType
+  state: LeadState
+  /** Valor estimado en CLP. Opcional: al principio casi nunca se sabe. */
+  value?: number
+  /** ISO date (yyyy-mm-dd) del último contacto — de aquí sale "hace N días". */
+  lastContact: string
+  /** Lo siguiente que TÚ tienes que hacer. Sin esto, un lead se muere solo. */
+  nextAction?: string
 }

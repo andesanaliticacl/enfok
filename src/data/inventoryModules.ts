@@ -40,6 +40,12 @@ export const INVENTORY_MODULES: InventoryModuleDef[] = [
     icon: '🧩',
     description: 'Diseña procesos que se repiten solos, paso a paso.',
   },
+  {
+    id: 'leads',
+    label: 'Leads',
+    icon: '🎯',
+    description: 'Las oportunidades que te llegan, para que ninguna se te olvide.',
+  },
 ]
 
 export function inventoryModule(id: InventoryModuleId): InventoryModuleDef {

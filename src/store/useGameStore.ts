@@ -39,6 +39,7 @@ import type {
   MoodEntry,
   JournalNote,
   LifeSystem,
+  Lead,
   Person,
   SystemStep,
   StepDependency,
@@ -182,6 +183,14 @@ interface GameState {
     },
   ) => void
 
+  /** Oportunidades por atender — un mini CRM, no un pipeline. */
+  leads: Lead[]
+  addLead: (input: Omit<Lead, 'id'>) => void
+  updateLead: (leadId: string, input: Omit<Lead, 'id'>) => void
+  deleteLead: (leadId: string) => void
+  /** Marca contacto hoy sin abrir el formulario — el gesto que mantiene vivo un CRM. */
+  touchLead: (leadId: string) => void
+
   /** Tu equipo: quiénes son y qué roles cumplen. Compartido por todos los sistemas. */
   people: Person[]
   /** Crea la persona y devuelve su id — usable al vuelo desde un bloque. */
@@ -322,6 +331,7 @@ export function normalizeGameState(raw: Partial<GameState> & { places?: unknown;
     trainingDayNames: rest.trainingDayNames ?? {},
     moodLog: rest.moodLog ?? [],
     journalNotes: rest.journalNotes ?? [],
+    leads: rest.leads ?? [],
     ...migratePeopleAndSystems(rest.people, rest.systems),
     // Saves from before modules existed had every section always visible, so a
     // section holding real data must come back switched ON — otherwise upgrading
@@ -451,6 +461,7 @@ export const useGameStore = create<GameState>()(
       journalNotes: [],
       systems: [],
       people: [],
+      leads: [],
 
       setWorldAnchor: (anchor) => set((state) => (state.worldAnchor ? {} : { worldAnchor: anchor })),
 
@@ -538,6 +549,19 @@ export const useGameStore = create<GameState>()(
           systems: state.systems.map((s) =>
             s.id === systemId ? { ...s, steps: s.steps.filter((step) => step.id !== stepId) } : s,
           ),
+        })),
+
+      addLead: (input) =>
+        set((state) => ({ leads: [{ id: `lead-${crypto.randomUUID()}`, ...input }, ...state.leads] })),
+
+      updateLead: (leadId, input) =>
+        set((state) => ({ leads: state.leads.map((l) => (l.id === leadId ? { ...l, ...input } : l)) })),
+
+      deleteLead: (leadId) => set((state) => ({ leads: state.leads.filter((l) => l.id !== leadId) })),
+
+      touchLead: (leadId) =>
+        set((state) => ({
+          leads: state.leads.map((l) => (l.id === leadId ? { ...l, lastContact: todayKey() } : l)),
         })),
 
       addPerson: (input) => {
@@ -978,6 +1002,7 @@ export const useGameStore = create<GameState>()(
           journalNotes: [],
           systems: [],
           people: [],
+          leads: [],
         }),
 
       // Runs the file through normalizeGameState, the same path a saved game
