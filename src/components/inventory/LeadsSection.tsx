@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Plus, Pencil, CalendarCheck, ArrowRight } from 'lucide-react'
+import { Plus, Pencil, CalendarCheck, ArrowRight, Mail, Phone, Link2, AtSign } from 'lucide-react'
 import { useGameStore } from '@/store/useGameStore'
 import { todayKey, diffDays } from '@/lib/calendar'
-import { LEAD_TYPES, LEAD_STATES, leadType, leadState, LEAD_STALE_DAYS } from '@/data/leads'
+import { LEAD_TYPES, LEAD_STATES, leadType, leadState, LEAD_STALE_DAYS, readLeadContact } from '@/data/leads'
 import { formatMoney } from '@/lib/planning/currency'
 import { ConfirmDeleteButton } from '@/components/ui/ConfirmDeleteButton'
 import { Button } from '@/components/ui/button'
@@ -18,10 +18,13 @@ function emptyForm() {
     type: 'empresa' as LeadType,
     state: 'nuevo' as LeadState,
     value: '',
+    contact: '',
     lastContact: todayKey(),
     nextAction: '',
   }
 }
+
+const CONTACT_ICONS = { email: Mail, telefono: Phone, enlace: Link2, usuario: AtSign } as const
 
 /** "hoy", "ayer", "hace 5 días" — más útil que una fecha para saber si se está enfriando. */
 function sinceLabel(date: string, today: string): { text: string; stale: boolean } {
@@ -74,6 +77,7 @@ export function LeadsSection() {
       type: lead.type,
       state: lead.state,
       value: lead.value ? String(lead.value) : '',
+      contact: lead.contact ?? '',
       lastContact: lead.lastContact,
       nextAction: lead.nextAction ?? '',
     })
@@ -90,6 +94,7 @@ export function LeadsSection() {
       type: form.type,
       state: form.state,
       value: form.value ? Math.max(0, Number(form.value)) : undefined,
+      contact: form.contact.trim() || undefined,
       lastContact: form.lastContact || today,
       nextAction: form.nextAction.trim() || undefined,
     }
@@ -185,6 +190,30 @@ export function LeadsSection() {
                 <span className={cn(since.stale ? 'text-gold-400' : 'text-ink-500')}>Contacto {since.text}</span>
               </div>
 
+              {/* Tappable when there's an obvious action: call, mail, open. */}
+              {lead.contact && (() => {
+                const { kind, href } = readLeadContact(lead.contact)
+                const Icon = CONTACT_ICONS[kind]
+                const body = (
+                  <>
+                    <Icon size={11} className="shrink-0 text-ink-500" />
+                    <span className="truncate">{lead.contact}</span>
+                  </>
+                )
+                return href ? (
+                  <a
+                    href={href}
+                    target={kind === 'enlace' ? '_blank' : undefined}
+                    rel={kind === 'enlace' ? 'noreferrer' : undefined}
+                    className="mt-1.5 flex items-center gap-1.5 text-[11px] text-gold-400 hover:underline"
+                  >
+                    {body}
+                  </a>
+                ) : (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-ink-300">{body}</p>
+                )
+              })()}
+
               {lead.nextAction && (
                 <p className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-snug text-ink-200">
                   <ArrowRight size={11} className="mt-0.5 shrink-0 text-ink-500" />
@@ -259,6 +288,13 @@ export function LeadsSection() {
               />
             </label>
           </div>
+
+          {/* One field for however you reach them — the shape tells us what it is */}
+          <Input
+            placeholder="Contacto: teléfono, correo, @usuario o enlace"
+            value={form.contact}
+            onChange={(e) => setForm((f) => ({ ...f, contact: e.target.value }))}
+          />
 
           <label className="text-[10px] text-ink-400">
             Último contacto

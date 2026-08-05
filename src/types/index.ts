@@ -317,6 +317,8 @@ export interface Lead {
   value?: number
   /** ISO date (yyyy-mm-dd) del último contacto — de aquí sale "hace N días". */
   lastContact: string
+  /** Teléfono, correo, @usuario o enlace — se detecta solo cuál es. */
+  contact?: string
   /** Lo siguiente que TÚ tienes que hacer. Sin esto, un lead se muere solo. */
   nextAction?: string
 }

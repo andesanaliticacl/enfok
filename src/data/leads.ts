@@ -53,3 +53,25 @@ export function leadState(id: LeadState): LeadStateDef {
 
 /** Pasados estos días sin contacto, una oportunidad viva empieza a enfriarse. */
 export const LEAD_STALE_DAYS = 7
+
+export type LeadContactKind = 'email' | 'telefono' | 'enlace' | 'usuario'
+
+/**
+ * Un solo campo de contacto en vez de tres: se deduce qué es por su forma y se
+ * vuelve tocable cuando existe una acción obvia. Un @usuario no se enlaza a
+ * propósito — no hay forma de saber si es Instagram, LinkedIn o TikTok, y
+ * adivinar mal es peor que solo mostrarlo.
+ */
+export function readLeadContact(contact: string): { kind: LeadContactKind; href?: string } {
+  const value = contact.trim()
+
+  if (/^https?:\/\//i.test(value)) return { kind: 'enlace', href: value }
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return { kind: 'email', href: `mailto:${value}` }
+  if (value.startsWith('@')) return { kind: 'usuario' }
+
+  // Un número puede venir como "+56 9 1234 5678" o "912345678".
+  const digits = value.replace(/[\s().-]/g, '')
+  if (/^\+?\d{7,15}$/.test(digits)) return { kind: 'telefono', href: `tel:${digits}` }
+
+  return { kind: 'usuario' }
+}
