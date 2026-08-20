@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Wallet, ShoppingCart, Dumbbell, Puzzle, Target, Plus, Pencil, Check, TrendingUp, TrendingDown, Landmark, Home, ChevronRight } from 'lucide-react'
+import { Wallet, ShoppingCart, Dumbbell, Puzzle, Target, NotebookPen, Plus, Pencil, Check, TrendingUp, TrendingDown, Landmark, Home, ChevronRight } from 'lucide-react'
 import { INVENTORY_MODULES } from '@/data/inventoryModules'
 import { SystemsSection } from '@/components/systems/SystemsSection'
 import { LeadsSection } from '@/components/inventory/LeadsSection'
+import { NotesSection } from '@/components/inventory/NotesSection'
 import { ConfirmDeleteButton } from '@/components/ui/ConfirmDeleteButton'
 import { useGameStore } from '@/store/useGameStore'
 import { todayKey, MONTH_LABELS } from '@/lib/calendar'
@@ -68,6 +69,7 @@ const TAB_ICONS: Record<InventoryModuleId, typeof Wallet> = {
   ejercicios: Dumbbell,
   sistemas: Puzzle,
   leads: Target,
+  notas: NotebookPen,
 }
 
 export function InventoryPage() {
@@ -116,6 +118,7 @@ export function InventoryPage() {
       {activeTab === 'ejercicios' && <ExerciseSection />}
       {activeTab === 'sistemas' && <SystemsSection />}
       {activeTab === 'leads' && <LeadsSection />}
+      {activeTab === 'notas' && <NotesSection />}
     </PageContainer>
   )
 }

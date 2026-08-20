@@ -225,7 +225,7 @@ export interface PlayerProfile {
 }
 
 /** Inventory modules the player can switch on — Enfok starts lean and grows with what you actually use. */
-export type InventoryModuleId = 'finanzas' | 'compras' | 'ejercicios' | 'sistemas' | 'leads'
+export type InventoryModuleId = 'finanzas' | 'compras' | 'ejercicios' | 'sistemas' | 'leads' | 'notas'
 
 export type MoodKey = 'pena' | 'rabia' | 'miedo' | 'alegria'
 

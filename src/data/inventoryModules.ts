@@ -46,6 +46,12 @@ export const INVENTORY_MODULES: InventoryModuleDef[] = [
     icon: '🎯',
     description: 'Las oportunidades que te llegan, para que ninguna se te olvide.',
   },
+  {
+    id: 'notas',
+    label: 'Notas',
+    icon: '📝',
+    description: 'Apuntes sueltos, con su fecha puesta sola.',
+  },
 ]
 
 export function inventoryModule(id: InventoryModuleId): InventoryModuleDef {

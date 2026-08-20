@@ -152,6 +152,8 @@ interface GameState {
 
   journalNotes: JournalNote[]
   addJournalNote: (text: string) => void
+  /** Corrige el texto sin tocar la fecha: la nota sigue siendo del día en que la escribiste. */
+  updateJournalNote: (noteId: string, text: string) => void
   deleteJournalNote: (noteId: string) => void
 
   systems: LifeSystem[]
@@ -494,6 +496,11 @@ export const useGameStore = create<GameState>()(
             { id: `note-${crypto.randomUUID()}`, date: todayKey(), text },
             ...state.journalNotes,
           ],
+        })),
+
+      updateJournalNote: (noteId, text) =>
+        set((state) => ({
+          journalNotes: state.journalNotes.map((n) => (n.id === noteId ? { ...n, text } : n)),
         })),
 
       deleteJournalNote: (noteId) =>
