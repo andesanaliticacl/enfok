@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { FinanceBarChart } from '@/components/inventory/FinanceBarChart'
 import { FinanceLineChart, type MonthlyTotal } from '@/components/inventory/FinanceLineChart'
 import { CurrencyConverter } from '@/components/inventory/CurrencyConverter'
+import { CartolaImport } from '@/components/inventory/CartolaImport'
 import { ExerciseSection } from '@/components/inventory/ExerciseSection'
 import { GROCERY_CATEGORIES } from '@/data/groceryCategories'
 import { checkedGroceryTotal, groceryLineTotal, groceryTotal } from '@/lib/planning/groceryEngine'
@@ -496,6 +497,8 @@ function FinanceSection() {
           )}
         </div>
       </form>
+
+      <CartolaImport />
 
       <div className="flex flex-col gap-2">
         {financeEntries.length === 0 && <p className="text-sm text-ink-400">Aún no registras movimientos.</p>}

@@ -97,6 +97,9 @@ interface GameState {
   claimDailyVerse: (xp: number) => void
 
   addFinanceEntry: (input: { type: FinanceEntryType; amount: number; currency: Currency; description: string; date: string }) => void
+  importFinanceEntries: (
+    inputs: { type: FinanceEntryType; amount: number; currency: Currency; description: string; date: string; sourceRef: string }[],
+  ) => { added: number; skipped: number }
   updateFinanceEntry: (
     entryId: string,
     input: { type: FinanceEntryType; amount: number; currency: Currency; description: string; date: string },
@@ -661,6 +664,25 @@ export const useGameStore = create<GameState>()(
             ...state.financeEntries,
           ],
         })),
+
+      /**
+       * Importa movimientos de una cartola saltándose los que ya están. Poder
+       * cargar el mismo mes dos veces sin duplicar nada es lo que hace que
+       * importar sea cómodo: no hay que recordar qué se subió antes.
+       */
+      importFinanceEntries: (inputs) => {
+        const existing = new Set(get().financeEntries.map((e) => e.sourceRef).filter(Boolean))
+        const fresh = inputs.filter((i) => !existing.has(i.sourceRef))
+        if (fresh.length > 0) {
+          set((state) => ({
+            financeEntries: [
+              ...fresh.map((input) => ({ id: `finance-${crypto.randomUUID()}`, ...input })),
+              ...state.financeEntries,
+            ],
+          }))
+        }
+        return { added: fresh.length, skipped: inputs.length - fresh.length }
+      },
 
       updateFinanceEntry: (entryId, input) =>
         set((state) => ({

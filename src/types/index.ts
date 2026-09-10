@@ -125,6 +125,12 @@ export interface FinanceEntry {
   description: string
   /** ISO date (yyyy-mm-dd). */
   date: string
+  /**
+   * Huella del movimiento en su documento de origen (una cartola del banco).
+   * Sirve para no importar dos veces lo mismo. Las entradas escritas a mano no
+   * la tienen.
+   */
+  sourceRef?: string
 }
 
 /** A recurring monthly amount — salary, a side gig, rent income — counted every month without re-entering it. */
